@@ -45,8 +45,8 @@ application does not need code to recover from partially-finished updates.
 
 The typical hardware for Reliance Edge is a 32-bit microcontroller, but other
 targets are possible.  In its typical configurations, Reliance Edge needs at
-least 4 KB to 5 KB of RAM, 10 to 18 KB of code space (on the ROM or NOR flash),
-and 600 to 750 bytes of stack.
+least 4 KB to 5 KB of RAM, 11 to 18 KB of code space (on the ROM or NOR flash),
+and 500 to 700 bytes of stack.
 
 Reliance Edge is not designed for high-end embedded systems that run complicated
 operating systems like Linux or Windows Embedded Compact.  Embedded systems of
@@ -62,7 +62,8 @@ need to be filled in as well.  These functions reside in a subdirectory in the
 os/ directory; see os/stub/ for a blank set of functions.  Configuring includes
 creating a project directory (start by copying projects/newproj) and creating
 the two configuration files (redconf.h/redconf.c) using the Reliance Edge
-Configuration Utility (included with the _Developer's Guide_ download).
+Configuration Utility (which can be downloaded from
+<http://www.datalight.com/reliance-edge>).
 
 These topics are covered in much greater detail in the _Developer's Guide_,
 linked above.

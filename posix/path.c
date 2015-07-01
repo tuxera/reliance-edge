@@ -55,9 +55,10 @@ static bool PathHasMoreNames(const char *pszPathIdx);
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
-    @retval -RED_EINVAL @p pszPath is `NULL`; or @p ppszLocalPath is NULL but
-                        @p pszPath includes a local path.
-    @retval -RED_ENOENT @p pszPath could not be matched to any volume.
+    @retval -RED_EINVAL @p pszPath is `NULL`.
+    @retval -RED_ENOENT @p pszPath could not be matched to any volume; or
+                        @p ppszLocalPath is NULL but @p pszPath includes a local
+                        path.
 */
 REDSTATUS RedPathSplit(
     const char     *pszPath,
@@ -173,7 +174,7 @@ REDSTATUS RedPathSplit(
                 {
                     if(!IsRootDir(pszLocalPath))
                     {
-                        ret = -RED_EINVAL;
+                        ret = -RED_ENOENT;
                     }
                 }
             }

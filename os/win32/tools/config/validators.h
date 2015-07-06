@@ -58,6 +58,7 @@ Validity validateVolAtomicWrite(QString value, QString &msg);
 Validity validateByteOrder(QString value, QString &msg);
 Validity validateAlignmentSize(unsigned long value, QString &msg);
 Validity validateCrc(QString value, QString &msg);
+Validity validateInodeBlockCount(bool value, QString &msg);
 Validity validateInodeTimestamps(bool value, QString &msg);
 Validity validateDirectPointers(unsigned long value, QString &msg);
 Validity validateIndirectPointers(unsigned long value, QString &msg);

@@ -1058,11 +1058,11 @@ static void SeekCoord(
                 - ulDataBlock
             */
         }
-      #endif
       #if DINDIR_POINTERS > 0U
-      #if DINDIR_POINTERS < INODE_ENTRIES
         else
       #endif
+      #endif
+      #if DINDIR_POINTERS > 0U
         {
             uint32_t ulDindirRangeOffset = (ulBlock - REDCONF_DIRECT_POINTERS) - INODE_INDIR_BLOCKS;
             uint16_t uInodeEntry = (uint16_t)((ulDindirRangeOffset / DINDIR_DATA_BLOCKS) + REDCONF_DIRECT_POINTERS + REDCONF_INDIRECT_POINTERS);

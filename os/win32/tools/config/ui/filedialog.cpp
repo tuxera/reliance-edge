@@ -23,6 +23,7 @@
     more information.
 */
 #include "filedialog.h"
+#include <debug.h>
 
 QString FileDialog::defaultDir = QDir::homePath();
 
@@ -40,7 +41,6 @@ FileDialog::FileDialog(QWidget *parentWindow, AcceptMode amode, FileMode fmode)
 
     setFileMode(fmode);
     setAcceptMode(amode);
-    setDirectory(defaultDir);
 
     connect(this, SIGNAL(windowTitleChanged(QString)),
             this, SLOT(on_windowTitleChanged(QString)));
@@ -88,12 +88,15 @@ QString FileDialog::ShowGetCodefile()
 // Returns QString::null if no file is selected.
 QString FileDialog::showFileDialog()
 {
+    setDirectory(defaultDir);
+
     if(!exec())
     {
         return QString::null;
     }
 
-    defaultDir = directory().path();
+    defaultDir = directory().absolutePath();
+
     QStringList strList = selectedFiles();
 
     Q_ASSERT(strList.count() == 1); //Should give us one file
@@ -105,9 +108,11 @@ QString FileDialog::showFileDialog()
     return strList.at(0);
 }
 
-// This is implemented as a workaround on Ubuntu, where the FileDialog does
-// not automatically open to the same location when showFileDialog() is called
-// multiple times, and setDirectory is ineffective if called from that function.
+// This is implemented as a workaround on Ubuntu, where setDirectory is
+// ineffective unless called while the window is open.
+//
+// TODO: it's possible to open up a dialog without the window title changing.
+// Use a different event instead.
 void FileDialog::on_windowTitleChanged(const QString &title)
 {
     (void) title;

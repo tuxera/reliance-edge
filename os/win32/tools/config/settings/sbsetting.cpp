@@ -47,7 +47,10 @@ bool SbSetting::TryParse(const QString &toParse, unsigned long &out)
 {
     unsigned long result;
     bool success = IntSetting::TryParse(toParse, result);
-    if(success && result < INT_MAX)
+
+    // QSpinBox::setValue takes an int, so no values higher
+    // than INT_MAX are permitted.
+    if(success && result <= INT_MAX)
     {
         out = result;
         return true;

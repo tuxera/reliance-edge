@@ -576,6 +576,24 @@ Validity validateCrc(QString value, QString &msg)
 ///
 ///         Requires that ::allSettings be initialized.
 ///
+Validity validateInodeBlockCount(bool value, QString &msg)
+{
+    Q_ASSERT(allSettings.rbtnsUsePosix != NULL);
+
+    if(value && !allSettings.rbtnsUsePosix->GetValue())
+    {
+        msg = "The inode block count is not accessible from the File System Essentials API.";
+        return Warning;
+    }
+
+    return Valid;
+}
+
+///
+/// \brief  Validator for allSettings::sbsDirectPtrs
+///
+///         Requires that ::allSettings be initialized.
+///
 Validity validateInodeTimestamps(bool value, QString &msg)
 {
     Q_ASSERT(allSettings.rbtnsUsePosix != NULL);
@@ -785,13 +803,13 @@ Validity validateTransactVolFull(bool value, QString &msg)
 //Private method used to validate [in]direct pointer count
 unsigned long getInodeEntries()
 {
-    Q_ASSERT(allSettings.cbsInodeCount != NULL);
+    Q_ASSERT(allSettings.cbsInodeBlockCount != NULL);
     Q_ASSERT(allSettings.cbsInodeTimestamps != NULL);
     Q_ASSERT(allSettings.rbtnsUsePosix != NULL);
     Q_ASSERT(allSettings.cmisBlockSize != NULL);
 
     unsigned long inodeHeaderSize = 16 + 8
-            + (allSettings.cbsInodeCount->GetValue() ? 4 : 0)
+            + (allSettings.cbsInodeBlockCount->GetValue() ? 4 : 0)
             + (allSettings.cbsInodeTimestamps->GetValue() ? 12 : 0)
             + 4
             + (allSettings.rbtnsUsePosix->GetValue() ? 4 : 0);

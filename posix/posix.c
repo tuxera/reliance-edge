@@ -61,10 +61,10 @@
 #define FD_VOL_MAX  ((1UL << FD_VOL_BITS) - 1U)
 #define FD_IDX_MAX  ((1UL << FD_IDX_BITS) - 1U)
 
-#if REDCONF_VOLUME_COUNT >= FD_VOL_MAX
+#if REDCONF_VOLUME_COUNT > FD_VOL_MAX
   #error "Error: Too many file system volumes!"
 #endif
-#if REDCONF_HANDLE_COUNT >= FD_IDX_MAX
+#if REDCONF_HANDLE_COUNT > (FD_IDX_MAX + 1U)
   #error "Error: Too many file system handles!"
 #endif
 

@@ -72,7 +72,7 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     allSettings.cmssByteOrder = new CmbStrSetting(macroNameByteOrder, "Little endian", validateByteOrder, ui->cmbByteOrder, ui->wbtnByteOrder);
     allSettings.cmisNativeAlignment = new CmbIntSetting(macroNameNativeAlignment, 4, validateAlignmentSize, ui->cmbAlignmentSize, ui->wbtnAlignmentSize);
     allSettings.cmssCrc = new CmbStrSetting(macroNameCrc, "Slice by 8 - largest, fastest", validateCrc, ui->cmbCrc, ui->wbtnCrc);
-    allSettings.cbsInodeCount = new CbSetting(macroNameInodeCount, true, emptyBoolValidator, ui->cbInodeBlockCount);
+    allSettings.cbsInodeBlockCount = new CbSetting(macroNameInodeCount, true, validateInodeBlockCount, ui->cbInodeBlockCount, ui->wbtnInodeBlockCount);
     allSettings.cbsInodeTimestamps = new CbSetting(macroNameInodeTimestamps, true, validateInodeTimestamps, ui->cbInodeTimestamps, ui->wbtnInodeTimestamps);
     allSettings.cbsUpdateAtime = new CbSetting(macroNameUpdateAtime, false, emptyBoolValidator, ui->cbUpdateAtime);
     allSettings.sbsDirectPtrs = new SbSetting(macroNameDirectPtrs, 4, validateDirectPointers, ui->sbDirectPointers, ui->wbtnDirectPointers);
@@ -104,19 +104,20 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     allSettings.cbsTrVolFull = new CbSetting(macroNameTrVolFull, true, validateTransactVolFull, ui->cbTransactVolFull, ui->wbtnTransactVolFull);
     allSettings.cbsTrUmount = new CbSetting(macroNameTrUmount, true, emptyBoolValidator, ui->cbTransactVolUnmount);
 
-    allSettings.cbsInodeCount->notifyList.append(allSettings.sbsDirectPtrs);
-    allSettings.cbsInodeCount->notifyList.append(allSettings.sbsIndirectPtrs);
+    allSettings.cbsInodeBlockCount->notifyList.append(allSettings.sbsDirectPtrs);
+    allSettings.cbsInodeBlockCount->notifyList.append(allSettings.sbsIndirectPtrs);
     allSettings.cbsInodeTimestamps->notifyList.append(allSettings.sbsDirectPtrs);
     allSettings.cbsInodeTimestamps->notifyList.append(allSettings.sbsIndirectPtrs);
     allSettings.rbtnsUsePosix->notifyList.append(allSettings.sbsDirectPtrs);
     allSettings.rbtnsUsePosix->notifyList.append(allSettings.sbsIndirectPtrs);
+    allSettings.rbtnsUsePosix->notifyList.append(allSettings.cbsInodeBlockCount);
     allSettings.rbtnsUsePosix->notifyList.append(allSettings.cbsInodeTimestamps);
     allSettings.cmisBlockSize->notifyList.append(allSettings.sbsDirectPtrs);
     allSettings.cmisBlockSize->notifyList.append(allSettings.sbsIndirectPtrs);
     allSettings.sbsIndirectPtrs->notifyList.append(allSettings.sbsDirectPtrs);
     allSettings.sbsDirectPtrs->notifyList.append(allSettings.sbsIndirectPtrs);
 
-    allSettings.cbsInodeCount->notifyList.append(allSettings.sbsAllocatedBuffers);
+    allSettings.cbsInodeBlockCount->notifyList.append(allSettings.sbsAllocatedBuffers);
     allSettings.cbsInodeTimestamps->notifyList.append(allSettings.sbsAllocatedBuffers);
     allSettings.rbtnsUsePosix->notifyList.append(allSettings.sbsAllocatedBuffers);
     allSettings.cmisBlockSize->notifyList.append(allSettings.sbsAllocatedBuffers);
@@ -315,7 +316,7 @@ void ConfigWindow::timerEvent(QTimerEvent *event)
     }
 #endif
 
-    killTimer(timerId); // Don't call again.
+    killTimer(timerId); // Don't call this function again.
 }
 
 void ConfigWindow::cbReadonly_toggled(bool selected)
@@ -381,12 +382,21 @@ void ConfigWindow::cbPosixUnlink_toggled(bool selected)
 
 void ConfigWindow::cbPosixFtruncate_toggled(bool selected)
 {
-    ui->cbTransactTruncate->setEnabled(selected);
+    // Although this box cannot be toggled by the user while POSIX is disabled,
+    // it may be toggled internally when loading configuration values.
+    if(ui->rbtnUsePosix->isChecked())
+    {
+        ui->cbTransactTruncate->setEnabled(selected);
+    }
 }
 
 void ConfigWindow::cbFseTruncate_toggled(bool selected)
 {
-    ui->cbTransactTruncate->setEnabled(selected);
+    // See comment in ::cbPosixFtruncateToggled.
+    if(ui->rbtnUseFse->isChecked())
+    {
+        ui->cbTransactTruncate->setEnabled(selected);
+    }
 }
 
 void ConfigWindow::cbInodeTimestamps_toggled(bool selected)

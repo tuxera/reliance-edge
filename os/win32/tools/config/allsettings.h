@@ -119,7 +119,7 @@ struct AllSettings
     CmbStrSetting *cmssByteOrder;
     CmbIntSetting *cmisNativeAlignment;
     CmbStrSetting *cmssCrc;
-    CbSetting *cbsInodeCount;
+    CbSetting *cbsInodeBlockCount;
     CbSetting *cbsInodeTimestamps;
     CbSetting *cbsUpdateAtime;
     SbSetting *sbsDirectPtrs;

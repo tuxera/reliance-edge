@@ -193,7 +193,7 @@ QString AllSettings::FormatHeaderOutput()
                                  ? crcSarwate : crcSlice));
     toReturn += outputLine(macroNameCrc, currValue);
 
-    addBoolSetting(toReturn, allSettings.cbsInodeCount);
+    addBoolSetting(toReturn, allSettings.cbsInodeBlockCount);
     addBoolSetting(toReturn, allSettings.cbsInodeTimestamps);
 
     // Greyed out if cbInodeTimestamps is not selected
@@ -349,7 +349,7 @@ void AllSettings::GetErrors(QStringList &errors, QStringList &warnings)
     AllSettings::CheckError(allSettings.cmssByteOrder, errors, warnings);
     AllSettings::CheckError(allSettings.cmisNativeAlignment, errors, warnings);
     AllSettings::CheckError(allSettings.cmssCrc, errors, warnings);
-    AllSettings::CheckError(allSettings.cbsInodeCount, errors, warnings);
+    AllSettings::CheckError(allSettings.cbsInodeBlockCount, errors, warnings);
     AllSettings::CheckError(allSettings.cbsInodeTimestamps, errors, warnings);
     AllSettings::CheckError(allSettings.cbsUpdateAtime, errors, warnings);
     AllSettings::CheckError(allSettings.sbsDirectPtrs, errors, warnings);
@@ -486,7 +486,7 @@ void AllSettings::ParseHeaderToSettings(const QString &text,
         notFound += macroNameCrc;
     }
 
-    parseToSetting(text, allSettings.cbsInodeCount, notFound, notParsed);
+    parseToSetting(text, allSettings.cbsInodeBlockCount, notFound, notParsed);
     parseToSetting(text, allSettings.cbsInodeTimestamps, notFound, notParsed);
     parseToSetting(text, allSettings.cbsUpdateAtime, notFound, notParsed);
     parseToSetting(text, allSettings.sbsDirectPtrs, notFound, notParsed);
@@ -698,7 +698,7 @@ void AllSettings::DeleteAll()
     deleteAndNullify(&allSettings.cmssByteOrder);
     deleteAndNullify(&allSettings.cmisNativeAlignment);
     deleteAndNullify(&allSettings.cmssCrc);
-    deleteAndNullify(&allSettings.cbsInodeCount);
+    deleteAndNullify(&allSettings.cbsInodeBlockCount);
     deleteAndNullify(&allSettings.cbsInodeTimestamps);
     deleteAndNullify(&allSettings.cbsUpdateAtime);
     deleteAndNullify(&allSettings.sbsDirectPtrs);

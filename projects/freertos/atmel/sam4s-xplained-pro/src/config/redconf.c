@@ -11,7 +11,5 @@
 
 const VOLCONF gaRedVolConf[REDCONF_VOLUME_COUNT] =
 {
-    /*  512 megabyte sd card
-    */
-    { 512U, 979965U, false, 10U}
+    { 512U, 979965U, false, 1000U }
 };

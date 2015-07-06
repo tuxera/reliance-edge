@@ -1185,7 +1185,7 @@ REDSTATUS RedCoreLookup(
 {
     REDSTATUS   ret;
 
-    if((pulInode == NULL) && !gpRedVolume->fMounted)
+    if((pulInode == NULL) || !gpRedVolume->fMounted)
     {
         ret = -RED_EINVAL;
     }

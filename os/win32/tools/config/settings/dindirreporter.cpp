@@ -32,7 +32,7 @@ DindirReporter::DindirReporter(QLabel *dindirLabel)
     // Assert this one, assume the others.
     Q_ASSERT(allSettings.cmisBlockSize != NULL);
 
-    allSettings.cbsInodeCount->notifyList.append(this);
+    allSettings.cbsInodeBlockCount->notifyList.append(this);
     allSettings.cbsInodeTimestamps->notifyList.append(this);
     allSettings.rbtnsUsePosix->notifyList.append(this);
     allSettings.cmisBlockSize->notifyList.append(this);

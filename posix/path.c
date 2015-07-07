@@ -405,11 +405,11 @@ static bool IsRootDir(
     Example | Result
     ------- | ------
     ""        false
-    "\"       false
-    "\\"      false
+    "/"       false
+    "//"      false
     "a"       true
-    "\a"      true
-    "\\a"     true
+    "/a"      true
+    "//a"     true
 
     @param pszPathIdx   The path to examine, incremented to the point of
                         interest.

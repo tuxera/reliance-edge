@@ -136,6 +136,7 @@ int IbWriteFile(
             else if((uint32_t)pret < ulDataLen)
             {
                 ret = -1;
+                red_errno = RED_ENOSPC;
             }
         }
 

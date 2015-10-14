@@ -468,7 +468,7 @@ static REDSTATUS DiskRead(
         for(ulSectorIdx = 0U; ulSectorIdx < ulSectorCount; ulSectorIdx++)
         {
             iErr = pDriver->readsector(pDriver, &pbBuffer[ulSectorIdx * ulSectorSize],
-                                       CAST_ULONG(ullSectorStart + ulSectorCount));
+                                       CAST_ULONG(ullSectorStart + ulSectorIdx));
             if(iErr != 0)
             {
                 ret = -RED_EIO;
@@ -522,7 +522,7 @@ static REDSTATUS DiskWrite(
                 prototype is flawed, using a non-const pointer for the buffer.
             */
             iErr = pDriver->writesector(pDriver, CAST_AWAY_CONST(uint8_t, &pbBuffer[ulSectorIdx * ulSectorSize]),
-                                        CAST_ULONG(ullSectorStart + ulSectorCount));
+                                        CAST_ULONG(ullSectorStart + ulSectorIdx));
             if(iErr != 0)
             {
                 ret = -RED_EIO;

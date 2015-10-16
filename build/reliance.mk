@@ -128,8 +128,8 @@ $(P_BASEDIR)/os/$(P_OS)/services/osmutex.$(B_OBJEXT):		$(P_BASEDIR)/os/$(P_OS)/s
 $(P_BASEDIR)/os/$(P_OS)/services/osoutput.$(B_OBJEXT):		$(P_BASEDIR)/os/$(P_OS)/services/osoutput.c $(REDHDR) $(P_BASEDIR)/os/$(P_OS)/include/redosdeviations.h
 $(P_BASEDIR)/os/$(P_OS)/services/ostask.$(B_OBJEXT):		$(P_BASEDIR)/os/$(P_OS)/services/ostask.c $(REDHDR) $(P_BASEDIR)/os/$(P_OS)/include/redosdeviations.h
 $(P_BASEDIR)/os/$(P_OS)/services/ostimestamp.$(B_OBJEXT):	$(P_BASEDIR)/os/$(P_OS)/services/ostimestamp.c $(REDHDR) $(P_BASEDIR)/os/$(P_OS)/include/redosdeviations.h
-$(P_BASEDIR)/posix/path.$(B_OBJEXT):				$(P_BASEDIR)/posix/path.c $(REDHDR) $(P_BASEDIR)/posix/redpath.h
-$(P_BASEDIR)/posix/posix.$(B_OBJEXT):				$(P_BASEDIR)/posix/posix.c $(REDHDR) $(P_BASEDIR)/posix/redpath.h
+$(P_BASEDIR)/posix/path.$(B_OBJEXT):				$(P_BASEDIR)/posix/path.c $(REDHDR) $(P_BASEDIR)/include/redpath.h
+$(P_BASEDIR)/posix/posix.$(B_OBJEXT):				$(P_BASEDIR)/posix/posix.c $(REDHDR) $(P_BASEDIR)/include/redpath.h
 $(P_BASEDIR)/tests/posix/fsstress.$(B_OBJEXT):			$(P_BASEDIR)/tests/posix/fsstress.c $(REDHDR) $(P_BASEDIR)/tests/posix/redposixcompat.h
 $(P_BASEDIR)/tests/util/atoi.$(B_OBJEXT):			$(P_BASEDIR)/tests/util/atoi.c $(REDHDR)
 $(P_BASEDIR)/tests/util/math.$(B_OBJEXT):			$(P_BASEDIR)/tests/util/math.c $(REDHDR)

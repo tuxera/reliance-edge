@@ -32,7 +32,7 @@
 #include <redcoreapi.h>
 #include <redvolume.h>
 #include <redposix.h>
-#include "redpath.h"
+#include <redpath.h>
 
 
 static bool IsRootDir(const char *pszLocalPath);

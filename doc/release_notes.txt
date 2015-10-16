@@ -9,6 +9,13 @@ course of recent releases and a list of known issues.
 
 Release History and Changes
 
+Reliance Edge v1.0.1, October 2015
+
+-   Added MQX RTOS support in the commercial kit, with example projects
+    for the Kinetis Design Studio.
+-   Bug fix in the F_DRIVER implementation of the FreeRTOS block
+    device service.
+
 Reliance Edge v1.0, July 2015
 
 Common Code Changes

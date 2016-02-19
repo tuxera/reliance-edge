@@ -270,6 +270,20 @@ Validity validateBlockSize(unsigned long value, QString &msg)
 }
 
 ///
+/// \brief  Validator for allSettings::sbsBlockIoRetries
+///
+Validity validateVolIoRetries(unsigned long value, QString &msg)
+{
+    if(value > 254)
+    {
+        msg = "Block I/O retries cannot be higher than 254.";
+        return Invalid;
+    }
+
+    return Valid;
+}
+
+///
 /// \brief  Validator for the number of volumes added in the <i>Volumes</i> tab
 ///
 Validity validateVolumeCount(unsigned long value, QString &msg)

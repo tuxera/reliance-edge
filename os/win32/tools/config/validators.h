@@ -47,6 +47,7 @@ Validity validateTaskCount(unsigned long value, QString &msg);
 Validity validateHandleCount(unsigned long value, QString &msg);
 
 Validity validateBlockSize(unsigned long value, QString &msg);
+Validity validateVolIoRetries(unsigned long value, QString &msg);
 Validity validateVolumeCount(unsigned long value, QString &msg);
 
 Validity validateVolName(QString value, QString &msg);

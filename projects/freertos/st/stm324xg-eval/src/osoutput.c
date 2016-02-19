@@ -23,34 +23,55 @@
     more information.
 */
 /** @file
-    @brief Implements assertion handling.
+    @brief Implements outputting a character string. This implementation is
+           customized for the Atollic GCC compiler for STM32.
 */
 #include <redfs.h>
 
-#if REDCONF_ASSERTS == 1
+#if REDCONF_OUTPUT == 1
 
 #include <redosdeviations.h>
 
 
-/** @brief Invoke the native assertion handler.
+extern int __io_putchar(int ch);
 
-    @param pszFileName  Null-terminated string containing the name of the file
-                        where the assertion fired.
-    @param ulLineNum    Line number in @p pszFileName where the assertion
-                        fired.
+/** @brief Write a string to a user-visible output location.
+
+    Write a null-terminated string to the serial port, console, terminal, or
+    other display device, such that the text is visible to the user.
+
+    @param pszString    A null-terminated string.
 */
-void RedOsAssertFail(
-    const char *pszFileName,
-    uint32_t    ulLineNum)
+void RedOsOutputString(
+    const char *pszString)
 {
-  #if REDCONF_OUTPUT == 1
-    IGNORE_ERRORS(PRINT_ASSERT(pszFileName, ulLineNum));
-  #endif
-
-    while(true)
+    if(pszString == NULL)
     {
+        REDERROR();
+    }
+    else
+    {
+        /*  The arm-atollic-eabi version of putchar has been observed not to
+            end up calling __io_putchar() (as would have been expected), so
+            we call it directly instead.
+        */
+
+        uint32_t ulIdx = 0U;
+
+        while(pszString[ulIdx] != '\0')
+        {
+            __io_putchar(pszString[ulIdx]);
+
+            /*  Serial output often requires a \r to print newlines correctly.
+            */
+            if(pszString[ulIdx] == '\n')
+            {
+                __io_putchar('\r');
+            }
+
+            ulIdx++;
+        }
     }
 }
 
 #endif
-

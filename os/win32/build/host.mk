@@ -12,8 +12,10 @@ INCLUDES=					\
 EXTRA_CFLAGS += /W3 /D_CRT_SECURE_NO_WARNINGS
 ifeq ($(B_DEBUG),0)
 EXTRA_CFLAGS += /O2 /Ot /Ox
+LDFLAGS =
 else
 EXTRA_CFLAGS += /Od /D_DEBUG /MTd /Od /Zi /RTC1
+LDFLAGS = /DEBUG
 endif
 
 all: redfmt redimgbld
@@ -55,10 +57,10 @@ $(P_PROJDIR)/redconf.$(B_OBJEXT):	$(P_CONFDIR)/redconf.c
 
 
 redfmt: $(P_BASEDIR)/os/win32/tools/winfmt.$(B_OBJEXT) $(P_BASEDIR)/os/win32/tools/wintlcmn.$(B_OBJEXT) $(REDDRIVOBJ) $(REDTOOLOBJ)
-	$(LD) /OUT:$@.exe $^
+	$(LD) $(LDFLAGS) /OUT:$@.exe $^
 
 redimgbld: $(IMGBLDOBJ) $(REDDRIVOBJ) $(REDTOOLOBJ)
-	$(LD) /OUT:$@.exe $^
+	$(LD) $(LDFLAGS) /OUT:$@.exe $^
 
 .phony: clean
 clean:

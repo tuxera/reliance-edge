@@ -138,6 +138,9 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
                                         ui->labelVolSizeBytes,
                                         ui->sbInodeCount,
                                         ui->cmbAtomicWrite,
+                                        ui->cbEnableRetries,
+                                        ui->sbBlockIoRetries,
+                                        ui->widgetBlockIoRetries,
                                         ui->btnAddVol,
                                         ui->btnRemoveCurrVol,
                                         ui->listVolumes,
@@ -146,7 +149,8 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
                                         ui->wbtnSectorSize,
                                         ui->wbtnVolSize,
                                         ui->wbtnInodeCount,
-                                        ui->wbtnAtomicWrite);
+                                        ui->wbtnAtomicWrite,
+                                        ui->wbtnIoRetries);
 
     wbtns.append(ui->wbtnTransactVolFull);
     wbtns.append(ui->wbtnTransactManual);

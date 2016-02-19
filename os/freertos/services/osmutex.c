@@ -29,6 +29,7 @@
 #include <semphr.h>
 
 #include <redfs.h>
+#include <redosdeviations.h>
 
 #if REDCONF_TASK_COUNT > 1U
 
@@ -113,7 +114,7 @@ void RedOsMutexRelease(void)
 
     xSuccess = xSemaphoreGive(xMutex);
     REDASSERT(xSuccess == pdTRUE);
-    (void)xSuccess;
+    IGNORE_ERRORS(xSuccess);
 }
 
 #endif

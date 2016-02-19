@@ -102,4 +102,3 @@
 #define REDCONF_CHECKER 0
 
 #endif
-

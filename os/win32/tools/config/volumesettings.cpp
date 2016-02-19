@@ -36,12 +36,14 @@ VolumeSettings::Volume::Volume(QString name,
                                WarningBtn *wbtnSectorSize,
                                WarningBtn *wbtnVolSize,
                                WarningBtn *wbtnInodeCount,
-                               WarningBtn *wbtnAtomicWrite)
+                               WarningBtn *wbtnAtomicWrite,
+                               WarningBtn *wbtnBlockIoRetries)
     : stName("", name, validateVolName, wbtnPathPrefix),
       stSectorSize("", 512, validateVolSectorSize, wbtnSectorSize),
       stSectorCount("", 1024, validateVolSectorCount, wbtnVolSize),
       stInodeCount("", 100, validateVolInodeCount, wbtnInodeCount),
-      stAtomicWrite("", gpszAtomicWrFalse, validateVolAtomicWrite, wbtnAtomicWrite)
+      stAtomicWrite("", gpszAtomicWrFalse, validateVolAtomicWrite, wbtnAtomicWrite),
+      stBlockIoRetries("", 0, validateVolIoRetries, wbtnBlockIoRetries)
 {
     Q_ASSERT(allSettings.sbsAllocatedBuffers != NULL);
     stSectorCount.notifyList.append(allSettings.sbsAllocatedBuffers);
@@ -74,6 +76,12 @@ StrSetting *VolumeSettings::Volume::GetStAtomicWrite()
 {
     return &stAtomicWrite;
 }
+
+IntSetting *VolumeSettings::Volume::GetStBlockIoRetries()
+{
+    return &stBlockIoRetries;
+}
+
 
 bool VolumeSettings::Volume::NeedsExternalImap()
 {
@@ -109,6 +117,9 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
                                QLabel *volSizeLabel,
                                QSpinBox *inodeCountBox,
                                QComboBox *atomicWriteBox,
+                               QCheckBox *enableRetriesCheck,
+                               QSpinBox *numRetriesBox,
+                               QWidget *numRetriesWidget,
                                QPushButton *addButton,
                                QPushButton *removeButton,
                                QListWidget *volumesList,
@@ -117,7 +128,8 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
                                WarningBtn *sectorSizeWarn,
                                WarningBtn *volSizeWarn,
                                WarningBtn *inodeCountWarn,
-                               WarningBtn *atomicWriteWarn)
+                               WarningBtn *atomicWriteWarn,
+                               WarningBtn *ioRetriesWarn)
     : stVolumeCount(macroNameVolumeCount, 1, validateVolumeCount),
       lePathPrefix(pathPrefixBox),
       sbVolSize(volSizeBox),
@@ -125,6 +137,9 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
       labelVolSizeBytes(volSizeLabel),
       cmbSectorSize(sectorSizeBox),
       cmbAtomicWrite(atomicWriteBox),
+      cbEnableRetries(enableRetriesCheck),
+      sbNumRetries(numRetriesBox),
+      widgetNumRetries(numRetriesWidget),
       btnAdd(addButton),
       btnRemSelected(removeButton),
       listVolumes(volumesList),
@@ -134,6 +149,7 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
       wbtnVolSize(volSizeWarn),
       wbtnInodeCount(inodeCountWarn),
       wbtnAtomicWrite(atomicWriteWarn),
+      wbtnIoRetries(ioRetriesWarn),
       volTick(0)
 {
     Q_ASSERT(allSettings.rbtnsUsePosix != NULL);
@@ -143,21 +159,25 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
     SetActiveVolume(volumes.count() - 1);
 
     connect(lePathPrefix, SIGNAL(textChanged(QString)),
-                     this, SLOT(lePathPrefix_textChanged(QString)));
+            this, SLOT(lePathPrefix_textChanged(QString)));
     connect(sbVolSize, SIGNAL(valueChanged(QString)),
-                     this, SLOT(sbVolSize_valueChanged(QString)));
+            this, SLOT(sbVolSize_valueChanged(QString)));
     connect(sbInodeCount, SIGNAL(valueChanged(QString)),
-                     this, SLOT(sbInodeCount_valueChanged(QString)));
+            this, SLOT(sbInodeCount_valueChanged(QString)));
     connect(cmbSectorSize, SIGNAL(currentIndexChanged(int)),
-                     this, SLOT(cmbSectorSize_currentIndexChanged(int)));
+            this, SLOT(cmbSectorSize_currentIndexChanged(int)));
     connect(cmbAtomicWrite, SIGNAL(currentIndexChanged(int)),
-                     this, SLOT(cmbAtomicWrite_currentIndexChanged(int)));
+            this, SLOT(cmbAtomicWrite_currentIndexChanged(int)));
+    connect(cbEnableRetries, SIGNAL(stateChanged(int)),
+            this, SLOT(cbEnableRetries_stateChanged(int)));
+    connect(sbNumRetries, SIGNAL(valueChanged(QString)),
+            this, SLOT(sbNumRetries_valueChanged(QString)));
     connect(listVolumes, SIGNAL(currentRowChanged(int)),
-                     this, SLOT(listVolumes_currentRowChanged(int)));
+            this, SLOT(listVolumes_currentRowChanged(int)));
     connect(btnAdd, SIGNAL(clicked()),
-                     this, SLOT(btnAdd_clicked()));
+            this, SLOT(btnAdd_clicked()));
     connect(btnRemSelected, SIGNAL(clicked()),
-                     this, SLOT(btnRemSelected_clicked()));
+            this, SLOT(btnRemSelected_clicked()));
 
     updateVolSizeBytes();
 }
@@ -246,6 +266,14 @@ void VolumeSettings::SetActiveVolume(int index)
 
     cmbAtomicWrite->setCurrentText(volumes[index]->GetStAtomicWrite()->GetValue());
 
+    unsigned long ioRetriesValue = volumes[index]->GetStBlockIoRetries()->GetValue();
+    widgetNumRetries->setEnabled(ioRetriesValue != 0);
+    cbEnableRetries->setChecked(ioRetriesValue != 0);
+    if(ioRetriesValue != 0)
+    {
+        sbNumRetries->setValue(ioRetriesValue);
+    }
+
     listVolumes->setCurrentRow(index);
 }
 
@@ -254,7 +282,7 @@ void VolumeSettings::AddVolume()
     QString name = QString("VOL") + QString::number(volTick) + QString(":");
 
     volumes.append(new Volume(name, wbtnPathPrefix, wbtnSectorSize, wbtnVolSize,
-                              wbtnInodeCount, wbtnAtomicWrite));
+                              wbtnInodeCount, wbtnAtomicWrite, wbtnIoRetries));
     volTick++;
 
     if(!usePosix)
@@ -312,6 +340,7 @@ void VolumeSettings::GetErrors(QStringList &errors, QStringList &warnings)
         AllSettings::CheckError(volumes[i]->GetStInodeCount(), errors, warnings);
         AllSettings::CheckError(volumes[i]->GetStSectorSize(), errors, warnings);
         AllSettings::CheckError(volumes[i]->GetStAtomicWrite(), errors, warnings);
+        AllSettings::CheckError(volumes[i]->GetStBlockIoRetries(), errors, warnings);
     }
     if(activeIndex != rememberIndex)
     {
@@ -324,6 +353,7 @@ void VolumeSettings::GetErrors(QStringList &errors, QStringList &warnings)
         volumes[activeIndex]->GetStInodeCount()->Notify();
         volumes[activeIndex]->GetStSectorSize()->Notify();
         volumes[activeIndex]->GetStAtomicWrite()->Notify();
+        volumes[activeIndex]->GetStBlockIoRetries()->Notify();
     }
 }
 
@@ -376,6 +406,9 @@ const VOLCONF gaRedVolConf[REDCONF_VOLUME_COUNT] =\n\
                    ? QString("true") : QString("false"))
                 + QString(", ")
                 + QString::number(volumes[i]->GetStInodeCount()->GetValue())
+                + QString("U")
+                + QString(", ")
+                + QString::number(volumes[i]->GetStBlockIoRetries()->GetValue())
                 + QString("U");
 
         Q_ASSERT(allSettings.rbtnsUsePosix != NULL);
@@ -425,16 +458,16 @@ void VolumeSettings::ParseCodefile(const QString &text,
 
     exp = QRegularExpression("\\{\\s*([\\s\\S]*?)\\s*\\}\\s*,?");
 
-    // Skip comment: (/\\*[\\s\\S]*?\\*/)?
-    // Capture value: (\\w*)
-    // Skip final whitespace: \\s*
-    QRegularExpression valueExp = QRegularExpression("(/\\*[\\s\\S]*?\\*/)?\\s*(\\w*),?\\s*");
+    // Skip comment (capture index 1): (/\\*[\\s\\S]*?\\*/)?
+    // Capture value (capture index 2): (\\w+)
+    // Ensure we caught the whole argument, skip final whitespace: \\s*(,\\s*|$)
+    QRegularExpression valueExp = QRegularExpression("(/\\*[\\s\\S]*?\\*/)?\\s*(\\w+)\\s*(,\\s*|$)");
 
-    // Same regex as valueExp, except value is enclosed in quotation marks
+    // Same regex as valueExp, except value is enclosed in
+    // quotation marks and may be empty.
     QRegularExpression pathPrefixEpx = QRegularExpression("(/\\*[\\s\\S]*?\\*/)?\"(.*?)\",?\\s*");
 
-    // The position in strVolumes to start looking for
-    // the next volume
+    // The position in strVolumes to start looking for the next volume
     int currPos = 0;
     int currVolIndex = 0;
     QList<Volume *> newVolumes;
@@ -458,12 +491,19 @@ void VolumeSettings::ParseCodefile(const QString &text,
         // List of unparsed values of the settings of the current volume
         QStringList strValues;
 
-        for(int i = 0; i < 4; i++)
+        for(int i = 0; i < 5; i++)
         {
             rem = valueExp.match(currStr, currVolPos);
             if(!rem.hasMatch() || rem.lastCapturedIndex() < 2)
             {
-                failure = true;
+                // Don't report failure if the I/O Retries setting
+                // (index 4) isn't found. This allows the config tool
+                // to load files generated by older versions (1.0) of
+                // the tool.
+                if(i < 4)
+                {
+                    failure = true;
+                }
                 break;
             }
             strValues += rem.captured(2);
@@ -496,7 +536,8 @@ void VolumeSettings::ParseCodefile(const QString &text,
                                      wbtnSectorSize,
                                      wbtnVolSize,
                                      wbtnInodeCount,
-                                     wbtnAtomicWrite);
+                                     wbtnAtomicWrite,
+                                     wbtnIoRetries);
 
         parseAndSet(newVol->GetStSectorSize(), strValues[0], notParsed,
                 pathPrefix + QString(" sector size"));
@@ -519,6 +560,14 @@ void VolumeSettings::ParseCodefile(const QString &text,
 
         parseAndSet(newVol->GetStInodeCount(), strValues[3], notParsed,
                 pathPrefix + QString(" inode count"));
+
+        // Don't complain if I/O retries setting isn't found (see
+        // comments above).
+        if(strValues.count() > 4)
+        {
+            parseAndSet(newVol->GetStBlockIoRetries(), strValues[4], notParsed,
+                    pathPrefix + QString(" block I/O retries"));
+        }
 
         newVolumes.append(newVol);
         currVolIndex++;
@@ -809,6 +858,32 @@ void VolumeSettings::cmbAtomicWrite_currentIndexChanged(int index)
     {
         Q_ASSERT(false);
         return;
+    }
+}
+
+void VolumeSettings::cbEnableRetries_stateChanged(int state)
+{
+    widgetNumRetries->setEnabled(state == Qt::Checked);
+
+    if(state == Qt::Checked)
+    {
+        volumes[activeIndex]->GetStBlockIoRetries()
+                ->ProcessInput(sbNumRetries->text());
+    }
+    else
+    {
+        // Unchecked -> disable retries -> max 0 retries.
+        volumes[activeIndex]->GetStBlockIoRetries()
+                ->ProcessInput("0");
+    }
+}
+
+void VolumeSettings::sbNumRetries_valueChanged(const QString & text)
+{
+    if(cbEnableRetries->isChecked())
+    {
+        volumes[activeIndex]->GetStBlockIoRetries()
+                ->ProcessInput(text);
     }
 }
 

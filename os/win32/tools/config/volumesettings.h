@@ -30,6 +30,7 @@
 #include <QSpinBox>
 #include <QLabel>
 #include <QComboBox>
+#include <QCheckBox>
 #include <QPushButton>
 #include <QListWidget>
 #include <QList>
@@ -65,12 +66,14 @@ public:
                WarningBtn *wbtnSectorSize,
                WarningBtn *wbtnVolSize,
                WarningBtn *wbtnInodeCount,
-               WarningBtn *wbtnAtomicWrite);
+               WarningBtn *wbtnAtomicWrite,
+               WarningBtn *wbtnBlockIoRetries);
         StrSetting *GetStName();
         IntSetting *GetStSectorSize();
         IntSetting *GetStSectorCount();
         IntSetting *GetStInodeCount();
         StrSetting *GetStAtomicWrite();
+        IntSetting *GetStBlockIoRetries();
         bool NeedsExternalImap();
 
     private:
@@ -79,6 +82,7 @@ public:
         IntSetting stInodeCount;
         IntSetting stSectorSize;
         StrSetting stAtomicWrite;
+        IntSetting stBlockIoRetries;
     };
 
     ///
@@ -92,6 +96,9 @@ public:
                    QLabel *volSizeLabel,
                    QSpinBox *inodeCountBox,
                    QComboBox *atomicWriteBox,
+                   QCheckBox *enableRetriesCheck,
+                   QSpinBox *numRetriesBox,
+                   QWidget *numRetriesWidget,
                    QPushButton *addButton,
                    QPushButton *removeButton,
                    QListWidget *volumesList,
@@ -100,7 +107,8 @@ public:
                    WarningBtn *sectorSizeWarn,
                    WarningBtn *volSizeWarn,
                    WarningBtn *inodeCountWarn,
-                   WarningBtn *atomicWriteWarn);
+                   WarningBtn *atomicWriteWarn,
+                   WarningBtn *ioRetriesWarn);
     ~VolumeSettings();
 
     ///
@@ -179,8 +187,15 @@ public:
     /// \brief  Parse C code, loading volume settings.
     ///
     ///         This function is only required to correctly load settings from
-    ///         text that has been created by ::FormatCodefileOutput. It will
-    ///         attempt to load settings from any
+    ///         text that has been created by ::FormatCodefileOutput. If the
+    ///         text has been edited, it may or may not be legible to this
+    ///         method even if it is valid C code.
+    ///
+    ///         If the given text was modified outside of the configuration
+    ///         tool to contain invalid values for any settings, the program
+    ///         behavior is undefined. (For example, some fields of the
+    ///         configuration tool may display correct values but have a
+    ///         warning or error flag until the value is modified.)
     ///
     /// \param text         A string of C code from a redconf.c file.
     /// \param notFound     A list to which to append the name of any settings
@@ -229,6 +244,9 @@ private:
     QLabel *labelVolSizeBytes;
     QComboBox *cmbSectorSize;
     QComboBox *cmbAtomicWrite;
+    QCheckBox *cbEnableRetries;
+    QSpinBox *sbNumRetries;
+    QWidget *widgetNumRetries;  // Enabled only when cbEnableRetries is checked.
     QPushButton *btnAdd;
     QPushButton *btnRemSelected;
     QListWidget *listVolumes;
@@ -239,6 +257,7 @@ private:
     WarningBtn *wbtnInodeCount;
     WarningBtn *wbtnSectorSize;
     WarningBtn *wbtnAtomicWrite;
+    WarningBtn *wbtnIoRetries;
 
 private slots:
     void lePathPrefix_textChanged(const QString &text);
@@ -246,6 +265,8 @@ private slots:
     void sbVolSize_valueChanged(const QString &value);
     void sbInodeCount_valueChanged(const QString &value);
     void cmbAtomicWrite_currentIndexChanged(int index);
+    void cbEnableRetries_stateChanged(int state);
+    void sbNumRetries_valueChanged(const QString & text);
     void listVolumes_currentRowChanged(int row);
     void btnAdd_clicked();
     void btnRemSelected_clicked();

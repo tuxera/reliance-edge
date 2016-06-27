@@ -58,7 +58,7 @@ driver, but it might not be enabled (see the macros in that file).
 Tested Versions
 ---------------
 
-This project has been tested with FreeRTOS v8.2.0 and Atmel Studio 6.2.
+This project has been tested with FreeRTOS v8.2-v9.0 and Atmel Studio 6.2.
 Modifications may be required for other software versions.
 
 Resources

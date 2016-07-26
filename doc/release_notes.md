@@ -5,6 +5,12 @@ recent releases and a list of known issues.
 
 ## Release History and Changes
 
+### Reliance Edge v1.0.4, July 2016
+
+- Added ARM mbed and ARM mbed OS support in the commercial kit, with an example
+  projects for ARM mbed OS on the NXP FRDM-K64F board.
+- Some minor deficiencies in the POSIX-like API test suite have been addressed.
+
 ### Reliance Edge v1.0.3, June 2016
 
 - Added support for static memory allocation configuration in FreeRTOS

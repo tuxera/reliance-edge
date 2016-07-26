@@ -25,7 +25,7 @@ all: redfmt redimgbld
 
 # The redconf.h for the tools #includes the redconf.h from the parent project
 # to inherit its settings, so add it as a dependency.
-REDPROJHDR=$(P_CONFDIR)/redconf.h
+REDPROJHDR ?= $(P_CONFDIR)/redconf.h
 
 include $(P_BASEDIR)/build/reliance.mk
 

@@ -33,7 +33,7 @@
 
     <!-- This macro is updated automatically: do not edit! -->
 */
-#define RED_BUILD_NUMBER "672"
+#define RED_BUILD_NUMBER "673"
 
 #define RED_KIT_GPL         0U  /* Open source GPL kit. */
 #define RED_KIT_COMMERCIAL  1U  /* Commercially-licensed kit. */
@@ -48,7 +48,7 @@
 
 /** @brief Version number to display in output.
 */
-#define RED_VERSION "v1.0.3"
+#define RED_VERSION "v1.0.4"
 
 
 /** @brief On-disk version number.
@@ -78,7 +78,7 @@
 
 /** @brief Full product name and version.
 */
-#define RED_PRODUCT_NAME "Datalight "RED_PRODUCT_BASE_NAME" "RED_VERSION" Build "RED_BUILD_NUMBER ALPHABETA
+#define RED_PRODUCT_NAME "Datalight " RED_PRODUCT_BASE_NAME " " RED_VERSION " Build " RED_BUILD_NUMBER ALPHABETA
 
 
 /** @brief Product copyright.
@@ -94,11 +94,11 @@
 /** @brief Product edition.
 */
 #if RED_KIT == RED_KIT_GPL
-#define RED_PRODUCT_EDITION "Open-Source GPLv2 Edition -- Compiled "__DATE__" at "__TIME__
+#define RED_PRODUCT_EDITION "Open-Source GPLv2 Edition -- Compiled " __DATE__ " at " __TIME__
 #elif RED_KIT == RED_KIT_COMMERCIAL
-#define RED_PRODUCT_EDITION "Commercial Edition -- Compiled "__DATE__" at "__TIME__
+#define RED_PRODUCT_EDITION "Commercial Edition -- Compiled " __DATE__ " at " __TIME__
 #else
-#define RED_PRODUCT_EDITION "Developer Sandbox -- Compiled "__DATE__" at "__TIME__
+#define RED_PRODUCT_EDITION "Developer Sandbox -- Compiled " __DATE__ " at " __TIME__
 #endif
 
 

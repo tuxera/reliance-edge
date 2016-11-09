@@ -36,44 +36,6 @@
 
 #include "wintlcmn.h"
 
-
-/** @brief Massage a drive name into a standardized format.
-
-    @return pszDrive    The drive name to massage.
-
-    @return Pointer to the massaged drive name.
-*/
-const char *MassageDriveName(
-    const char *pszDrive)
-{
-    const char *pszRet;
-
-    /*  If it looks like a drive letter followed by nothing else...
-    */
-    if(    (    ((pszDrive[0U] >= 'A') && (pszDrive[0U] <= 'Z'))
-             || ((pszDrive[0U] >= 'a') && (pszDrive[0U] <= 'z')))
-        && (pszDrive[1U] == ':')
-        && (    (pszDrive[2U] == '\0')
-             || ((pszDrive[2U] == '\\') && (pszDrive[3U] == '\0'))))
-    {
-        static char szBuffer[8U]; /* Big enough for "\\.\X:" */
-
-        /*  Drives of the form "X:" or "X:\" are converted to "\\.\X:".
-        */
-        (void)strcpy(szBuffer, "\\\\.\\?:");
-        szBuffer[4U] = pszDrive[0U];
-
-        pszRet = szBuffer;
-    }
-    else
-    {
-        pszRet = pszDrive;
-    }
-
-    return pszRet;
-}
-
-
 /** @brief Prompt the user to confirm an operation by typing in y or n.
 
     @param pszMessage   The message to show the user to prompt for input. The

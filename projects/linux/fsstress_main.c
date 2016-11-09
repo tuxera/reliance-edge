@@ -61,20 +61,11 @@ int main(
             exit(red_errno);
         }
 
-        if((pszDrive != NULL) && (strcasecmp(pszDrive, "ram") != 0))
+        iErr = RedOsBDevConfig(bVolNum, pszDrive);
+        if(iErr != 0)
         {
-            REDSTATUS ret;
-
-            /*  Let the Win32 block device layer know the path/drive to be used
-                for this volume's block device.
-            */
-            pszDrive = MassageDriveName(pszDrive);
-            ret = RedOsBDevConfig(bVolNum, pszDrive);
-            if(ret != 0)
-            {
-                fprintf(stderr, "Unexpected error %d from RedOsBDevConfig()\n", (int)ret);
-                exit(ret);
-            }
+            fprintf(stderr, "Unexpected error %d from RedOsBDevConfig()\n", (int)iErr);
+            exit(iErr);
         }
 
         iErr = red_format(pszVolume);

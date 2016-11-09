@@ -28,10 +28,7 @@
 #ifndef WINTLCMN_H
 #define WINTLCMN_H
 
-
-const char *MassageDriveName(const char *pszDrive);
 bool ConfirmOperation(const char *pszMessage);
-
 
 #endif
 

@@ -331,18 +331,18 @@ int GetFileList(
 
                 REDASSERT(indirLen != 0);
 
-                strcpy(asTemp, currPath);
+                strncpy(asTemp, currPath, WIN_FILENAME_MAX);
 
                 /*  Ensure a path separator comes between the input directory
                     and the specified relative path.
                 */
-                if((pszIndirPath[indirLen - 1] == '/') || (pszIndirPath[indirLen - 1] == '\\'))
+                if(pszIndirPath[indirLen - 1] == '/')
                 {
                     pszToAppend = "";
                 }
                 else
                 {
-                    pszToAppend = "\\";
+                    pszToAppend = "/";
                 }
 
                 len = _snprintf(currPath, WIN_FILENAME_MAX, "%s%s%s", pszIndirPath, pszToAppend, asTemp);
@@ -411,7 +411,7 @@ int GetFileList(
 }
 
 
-/** @brief Checks whether a Windows file path appears to be relative or
+/** @brief Checks whether a Linux file path appears to be relative or
            absolute.
 
     @param pszPath  The file path to check.
@@ -426,10 +426,7 @@ bool PathIsAbsolute(
 
     /*  Check whether pszPath begins with a drive letter.
     */
-    if(     (    ((pszPath[0U] >= 'A') && (pszPath[0U] <= 'Z'))
-              || ((pszPath[0U] >= 'a') && (pszPath[0U] <= 'z')))
-         && (pszPath[1U] == ':')
-         && ((pszPath[2U] == '\\') || (pszPath[2U] == '/')))
+    if(pszPath[0U] == '/')
     {
         fIsAbsolute = true;
     }
@@ -473,13 +470,13 @@ int CreateFileListWin(
     /*  Assign host path separator to pszToAppend if pszDirPath does not already
         end with one.
     */
-    if((pszDirPath[pathLen - 1] == '/') || (pszDirPath[pathLen - 1] == '\\'))
+    if(pszDirPath[pathLen - 1] == '/')
     {
         pszToAppend = "";
     }
     else
     {
-        pszToAppend = "\\";
+        pszToAppend = "/";
     }
 
     if(pathLen + strlen(pszToAppend) >= WIN_FILENAME_MAX)
@@ -847,7 +844,7 @@ static int WriteDefineOut(
         {
             char c = pFileMapping->asInFilePath[fromIndex];
 
-            if((c == '\\') || (c == '/'))
+            if(c == '/')
             {
                 toIndex = 5; /* Reset output: only use the file name, not path */
                 fromIndex++;

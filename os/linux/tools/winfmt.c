@@ -133,7 +133,6 @@ int main(
         exit(ret);
     }
 
-    pszDrive = MassageDriveName(pszDrive);
     ret = RedOsBDevConfig(bVolNum, pszDrive);
     if(ret != 0)
     {

@@ -280,7 +280,7 @@ void TryParsePrgmArgs(
                 break;
           #endif
             case 'D': /* --dev */
-                pOptions->pszOutputFile = MassageDriveName(red_optarg);
+                pOptions->pszOutputFile = red_optarg;
                 break;
             case 'H': /* --help */
                 goto Help;

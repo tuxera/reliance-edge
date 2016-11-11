@@ -621,20 +621,17 @@ static REDSTATUS FileDiskOpen(
 {
     LINBDEV        *pDisk = &gaDisk[bVolNum];
     REDSTATUS       ret = 0;
-    int             accessMode = R_OK;
-    int             fileMode = O_RDONLY;
+    int             fileFlags = O_RDONLY;
 
 #if REDCONF_READ_ONLY == 0
     switch(mode)
     {
         case BDEV_O_RDWR:
-            accessMode = R_OK | W_OK;
-            fileMode = O_RDWR | O_CREAT;
+            fileFlags = O_RDWR;
             break;
 
         case BDEV_O_WRONLY:
-            accessMode = W_OK;
-            fileMode = O_WRONLY | O_CREAT;
+            fileFlags = O_WRONLY;
             break;
 
         default:
@@ -642,21 +639,14 @@ static REDSTATUS FileDiskOpen(
     }
 #endif
 
-    if (access(pDisk->pszSpec, accessMode))
+    fileFlags |= O_CREAT;
+
+    pDisk->hDevice = open(pDisk->pszSpec, fileFlags, S_IRUSR | S_IWUSR);
+
+    if(pDisk->hDevice == -1)
     {
-        ret = -RED_EROFS;
-    }
-
-    if(ret == 0)
-    {
-        int flags = 0;
-
-        pDisk->hDevice = open(pDisk->pszSpec, fileMode, flags);
-
-        if(pDisk->hDevice == -1)
-        {
-            ret = -RED_EIO;
-        }
+        perror("FileDiskOpen");
+        ret = -RED_EIO;
     }
 
     return ret;
@@ -834,20 +824,17 @@ static REDSTATUS RawDiskOpen(
 {
     LINBDEV        *pDisk = &gaDisk[bVolNum];
     REDSTATUS       ret = 0;
-    int             accessMode = R_OK;
-    int             fileMode = O_RDONLY;
+    int             fileFlags = O_RDONLY;
 
 #if REDCONF_READ_ONLY == 0
     switch(mode)
     {
         case BDEV_O_RDWR:
-            accessMode = R_OK | W_OK;
-            fileMode = O_RDWR;
+            fileFlags = O_RDWR;
             break;
 
         case BDEV_O_WRONLY:
-            accessMode = W_OK;
-            fileMode = O_WRONLY;
+            fileFlags = O_WRONLY;
             break;
 
         default:
@@ -855,21 +842,11 @@ static REDSTATUS RawDiskOpen(
     }
 #endif
 
-    if (access(pDisk->pszSpec, accessMode))
+    pDisk->hDevice = open(pDisk->pszSpec, fileFlags);
+
+    if(pDisk->hDevice == -1)
     {
-        ret = -RED_EROFS;
-    }
-
-    if(ret == 0)
-    {
-        int flags = 0;
-
-        pDisk->hDevice = open(pDisk->pszSpec, fileMode, flags);
-
-        if(pDisk->hDevice == -1)
-        {
-            ret = -RED_EIO;
-        }
+        ret = -RED_EIO;
     }
 
     return ret;

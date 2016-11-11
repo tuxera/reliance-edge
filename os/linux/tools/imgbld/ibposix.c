@@ -193,18 +193,25 @@ copy_file(const char *asCurrPath, const struct stat *sb,
         ret = CreatePosixDir(redVolName, asCurrPath, redBaseDir);
         break;
     case FTW_F:
-        strcpy(mapping.asInFilePath, asCurrPath);
-        ret = ConvertPath(redVolName, asCurrPath, redBaseDir,
-                          mapping.asOutFilePath);
-        if(ret == 0) {
-            ret = IbCopyFile(-1, &mapping);
+        if (strlen(asCurrPath) >= WIN_FILENAME_MAX)
+        {
+            ret = -1;
+        }
+        else
+        {
+            strcpy(mapping.asInFilePath, asCurrPath);
+            ret = ConvertPath(redVolName, asCurrPath, redBaseDir,
+                              mapping.asOutFilePath);
+            if(ret == 0) {
+                ret = IbCopyFile(-1, &mapping);
+            }
         }
         break;
     default:
         break;
     }
 
-    return 0;           /* To tell nftw() to continue */
+    return ret;           /* To tell nftw() to continue */
 }
 
 int IbPosixCopyDir(
@@ -240,21 +247,42 @@ int IbPosixCopyDir(
         }
         else
         {
+            struct stat pathStat;
+
             (void) strncpy(asInputDir, pszInDir, WIN_FILENAME_MAX - 1);
 
             /* Make sure the string is \0 terminated */
             asInputDir[WIN_FILENAME_MAX - 1] = '\0';
 
             /*  Get rid of ending path separator, if there is one.  */
-            if(asInputDir[inDirLen - 2] == '/')
+            if(asInputDir[inDirLen - 1] == '/')
             {
                 asInputDir[inDirLen - 1] = '\0';
             }
 
-            redVolName = pszVolName;
-            redBaseDir = asInputDir;
+            /* Check that the asInputDir is a directory */
+            if (stat(asInputDir, &pathStat))
+            {
+                fprintf(stderr, "failed to stat %s\n", asInputDir);
+                ret = -1;
+            }
 
-            ret = nftw(asInputDir, copy_file, 20, 0);
+            if (ret == 0)
+            {
+                if (!S_ISDIR(pathStat.st_mode))
+                {
+                    fprintf(stderr, "%s is not a dir\n", asInputDir);
+                    ret = -1;
+                }
+            }
+
+            if (ret == 0)
+            {
+                redVolName = pszVolName;
+                redBaseDir = asInputDir;
+
+                ret = nftw(asInputDir, copy_file, 20, 0);
+            }
         }
     }
 
@@ -296,34 +324,43 @@ static int CreatePosixDir(
     int         ret = 0;
     char        asOutPath[WIN_FILENAME_MAX];
 
-    ret = ConvertPath(pszVolName, pszFullPath, pszBasePath, asOutPath);
-
-    if(ret == 0)
+    if (strcmp(pszFullPath, pszBasePath) == 0)
     {
-        if(red_mkdir(asOutPath) != 0)
-        {
-            ret = -1;
+         /* This is the root dir so it always ewists and there is no need to
+            create it.
+          */
+    }
+    else
+    {
+        ret = ConvertPath(pszVolName, pszFullPath, pszBasePath, asOutPath);
 
-            switch(red_errno)
+        if(ret == 0)
+        {
+            if(red_mkdir(asOutPath) != 0)
             {
-                case RED_EIO:
-                    fprintf(stderr, "Disk I/O creating directory %s.\n", asOutPath);
-                    break;
-                case RED_ENOSPC:
-                    fprintf(stderr, "Insufficient space on target volume.\n");
-                    break;
-                case RED_ENFILE:
-                    fprintf(stderr, "Error: maximum number of files for volume %s exceeded.\n", pszVolName);
-                    break;
-                case RED_ENAMETOOLONG:
-                    /*  Message for RED_ENAMETOOLONG printed in RecursiveDirCopyWin.
-                    */
-                    break;
-                default:
-                    /*  Other errors not expected.
-                    */
-                    REDERROR();
-                    break;
+                ret = -1;
+
+                switch(red_errno)
+                {
+                    case RED_EIO:
+                        fprintf(stderr, "Disk I/O creating directory %s.\n", asOutPath);
+                        break;
+                    case RED_ENOSPC:
+                        fprintf(stderr, "Insufficient space on target volume.\n");
+                        break;
+                    case RED_ENFILE:
+                        fprintf(stderr, "Error: maximum number of files for volume %s exceeded.\n", pszVolName);
+                        break;
+                    case RED_ENAMETOOLONG:
+                        /*  Message for RED_ENAMETOOLONG printed in RecursiveDirCopyWin.
+                        */
+                        break;
+                    default:
+                        /*  Other errors not expected.
+                        */
+                        REDERROR();
+                        break;
+                }
             }
         }
     }
@@ -367,7 +404,7 @@ static int ConvertPath(
     /*  After skipping the base path, the next char should be a path separator.
         Skip this too.
     */
-    if((pszInPath[0] == '/') || (pszInPath[0] == '\\'))
+    if(pszInPath[0] == '/')
     {
         pszInPath++;
     }

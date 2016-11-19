@@ -64,6 +64,7 @@ redimgbld: $(IMGBLDOBJ) $(REDDRIVOBJ) $(REDTOOLOBJ)
 
 .phony: clean
 clean:
-	rm -f $(subst /,\,$(REDDRIVOBJ) $(REDTOOLOBJ) $(REDPROJOBJ)) 2> /dev/null
-	rm -f *.ilk *.pdb *.$(B_OBJEXT) *.suo *.sln 2> /dev/null
+	rm -f $(REDDRIVOBJ) $(REDTOOLOBJ) $(REDPROJOBJ) 2> /dev/null
+	rm -f redimgbld redfmt 2> /dev/null
+	rm -f *.$(B_OBJEXT) 2> /dev/null
 

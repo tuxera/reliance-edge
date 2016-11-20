@@ -2,6 +2,7 @@
   FUSE: Filesystem in Userspace
   Copyright (C) 2001-2007  Miklos Szeredi <miklos@szeredi.hu>
   Copyright (C) 2011       Sebastian Pipping <sebastian@pipping.org>
+  Copyright (C) 2016       Jean-Christophe Dubois <jcd@tribudubois.net>
 
   This program can be distributed under the terms of the GNU GPL.
   See the file COPYING.
@@ -14,7 +15,12 @@
  *
  * Compile with
  *
- *     gcc -Wall passthrough.c `pkg-config fuse3 --cflags --libs` -o passthrough
+ *     make
+ *
+ * Run with
+ *
+ *     mkdir /tmp/reliance
+ *     sudo ./reliance_fuse --device=/dev/ram15 -o auto_unmount -o allow_other /tmp/reliance/
  *
  */
 

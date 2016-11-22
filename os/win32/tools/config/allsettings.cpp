@@ -24,6 +24,7 @@
 */
 #include "volumesettings.h"
 #include "allsettings.h"
+#include "version.h"
 
 
 // Private helpers
@@ -31,6 +32,7 @@ static QString outputLine(const QString &macroName, const QString &value,
                           const QString &comment = QString::null);
 static QString outputIfNotBlank(const QString &macroName, const QString &value,
                                 const QString &comment = QString::null);
+static qint32 getMinCompatVer();
 template<typename T>
 static void parseToSetting(const QString &text, Setting<T> *setting,
                           QStringList &notFound, QStringList &notParsed,
@@ -270,8 +272,20 @@ QString AllSettings::FormatHeaderOutput()
             + QString("#define ") + macroNameExternalImap
             + (imapExternal ? QString(" 1\n\n") : QString(" 0\n\n"));
 
+    bool discardSupport = volumeSettings->GetDiscardsSupported();
+    toReturn += QString("#define ") + macroNameDiscardSupport
+            + (discardSupport ? QString(" 1\n\n") : QString(" 0\n\n"));
+
     toReturn += QString("#define REDCONF_IMAGE_BUILDER 0\n\n");
     toReturn += QString("#define REDCONF_CHECKER 0\n\n");
+
+    toReturn += QString("#define RED_CONFIG_UTILITY_VERSION 0x")
+            + QString::number(CONFIG_VERSION_VAL, 16)
+            + QString("U\n\n");
+
+    toReturn += QString("#define RED_CONFIG_MINCOMPAT_VER 0x")
+            + QString::number(getMinCompatVer(), 16)
+            + QString("U\n\n");
 
     toReturn += QString("#endif\n"); //close ifndef REDCONF_H
 
@@ -305,6 +319,25 @@ QString outputIfNotBlank(const QString &macroName, const QString &value,
     else
     {
         return outputLine(macroName, value, comment);
+    }
+}
+
+// Get the minimum compatible version of Reliance Edge. If an earlier version
+// of Reliance Edge tries to use this configuration, it should fail with a
+// helpful error message.
+static qint32 getMinCompatVer()
+{
+    if(volumeSettings->GetDiscardsSupported())
+    {
+        // Discard support added in v1.1; breaks backwards compatibility
+        // only if enabled.
+        return 0x01010000;
+    }
+    else
+    {
+        // Block I/O retries added in v1.0.2. Breaks backwards compatibility
+        // for all configurations.
+        return 0x01000200;
     }
 }
 
@@ -772,6 +805,7 @@ const QString macroNameIndirectPtrs = "REDCONF_INDIRECT_POINTERS";
 // Not in UI
 const QString macroNameInlineImap = "REDCONF_IMAP_INLINE";
 const QString macroNameExternalImap = "REDCONF_IMAP_EXTERNAL";
+const QString macroNameDiscardSupport = "REDCONF_DISCARDS";
 
 // "Memory" tab
 const QString macroNameAllocatedBuffers = "REDCONF_BUFFER_COUNT";

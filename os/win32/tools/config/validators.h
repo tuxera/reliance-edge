@@ -54,7 +54,8 @@ Validity validateVolName(QString value, QString &msg);
 Validity validateVolSectorSize(unsigned long value, QString &msg);
 Validity validateVolSectorCount(unsigned long value, QString &msg);
 Validity validateVolInodeCount(unsigned long value, QString &msg);
-Validity validateVolAtomicWrite(QString value, QString &msg);
+Validity validateSupportedUnsupported(QString value, QString &msg);
+Validity validateDiscardSupport(QString value, QString &msg);
 
 Validity validateByteOrder(QString value, QString &msg);
 Validity validateAlignmentSize(unsigned long value, QString &msg);

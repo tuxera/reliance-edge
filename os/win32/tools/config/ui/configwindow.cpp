@@ -138,6 +138,7 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
                                         ui->labelVolSizeBytes,
                                         ui->sbInodeCount,
                                         ui->cmbAtomicWrite,
+                                        ui->cmbDiscardsSupported,
                                         ui->cbEnableRetries,
                                         ui->sbBlockIoRetries,
                                         ui->widgetBlockIoRetries,
@@ -150,6 +151,7 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
                                         ui->wbtnVolSize,
                                         ui->wbtnInodeCount,
                                         ui->wbtnAtomicWrite,
+                                        ui->wbtnDiscardsSupported,
                                         ui->wbtnIoRetries);
 
     wbtns.append(ui->wbtnTransactVolFull);
@@ -165,6 +167,7 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     wbtns.append(ui->wbtnSectorSize);
     wbtns.append(ui->wbtnVolSize);
     wbtns.append(ui->wbtnAtomicWrite);
+    wbtns.append(ui->wbtnDiscardsSupported);
     wbtns.append(ui->wbtnInodeCount);
     wbtns.append(ui->wbtnPathPrefix);
     wbtns.append(ui->wbtnBlockSize);
@@ -214,6 +217,10 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
             this, SIGNAL(saveClicked()));
     connect(ui->actionLoad, SIGNAL(triggered()),
             this, SIGNAL(loadClicked()));
+
+    ui->actionSave->setShortcut(Qt::CTRL | Qt::Key_S);
+    ui->actionLoad->setShortcut(Qt::CTRL | Qt::Key_O);
+    ui->actionAbout->setShortcut(Qt::Key_F1);
 
     // Hide settings for unused API
     if(allSettings.rbtnsUsePosix->GetValue())

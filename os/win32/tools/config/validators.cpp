@@ -508,19 +508,44 @@ Validity validateVolInodeCount(unsigned long value, QString &msg)
 }
 
 ///
-/// \brief  Validator for a VolumeSettings::Volume::stAtomicWrite
+/// \brief  Validator for settings which should be either gpszSupported
+///         or gpszUnsupported.
 ///
-Validity validateVolAtomicWrite(QString value, QString &msg)
+/// Used for VolumeSettings::Volume::stAtomicWrite
+///
+Validity validateSupportedUnsupported(QString value, QString &msg)
 {
-    if(QString::compare(value, gpszAtomicWrTrue, Qt::CaseInsensitive) == 0
-            || QString::compare(value, gpszAtomicWrFalse, Qt::CaseInsensitive) == 0)
+    if(QString::compare(value, gpszSupported, Qt::CaseInsensitive) == 0
+            || QString::compare(value, gpszUnsupported, Qt::CaseInsensitive) == 0)
     {
         return Valid;
     }
     else
     {
         Q_ASSERT(false); // The associated QComboBox should not allow this.
-        msg = "Expected rename atomic to be either \"Supported\" or \"Unsupported\".";
+        msg = "Expected setting to be either \"Supported\" or \"Unsupported\".";
+        return Invalid;
+    }
+}
+
+///
+/// \brief  Validator for VolumeSettings::Volume::stDiscardSupport
+///
+Validity validateDiscardSupport(QString value, QString &msg)
+{
+    if(QString::compare(value, gpszSupported, Qt::CaseInsensitive) == 0)
+    {
+        msg = "Discards are only supported by the commercial version of Reliance Edge.";
+        return Warning;
+    }
+    else if(QString::compare(value, gpszUnsupported, Qt::CaseInsensitive) == 0)
+    {
+        return Valid;
+    }
+    else
+    {
+        Q_ASSERT(false); // The associated QComboBox should not allow this.
+        msg = "Expected setting to be either \"Supported\" or \"Unsupported\".";
         return Invalid;
     }
 }

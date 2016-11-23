@@ -32,12 +32,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <windows.h>
+#include <ctype.h>
 
 #include <redfse.h>
-
-#include "../wintlcmn.h"
-#include "ibheader.h"
+#include <redtools.h>
+#include <redtoolcmn.h>
 
 
 typedef struct sSTRLISTENTRY STRLISTENTRY;
@@ -148,7 +147,7 @@ int IbApiUninit(void)
     @retval 0   Operation was successful.
     @retval -1  An error occurred.
 */
-int GetFileList(
+int IbFseGetFileList(
     const char     *pszMapPath,
     const char     *pszIndirPath,
     FILELISTENTRY **ppFileListHead)
@@ -181,7 +180,7 @@ int GetFileList(
     while (ret == 0)
     {
         uint32_t    currIndex = 0;
-        char        currPath[WIN_FILENAME_MAX];
+        char        currPath[HOST_PATH_MAX];
         int         currChar = fgetc(pFile);
 
         /*  Skip over comment lines and whitespace between lines (allowing
@@ -270,7 +269,7 @@ int GetFileList(
             */
             if(currChar == '"')
             {
-                if(sprintf(asScanFormat, "%%%u[^\"]\"", WIN_FILENAME_MAX - 1) < 0)
+                if(sprintf(asScanFormat, "%%%u[^\"]\"", HOST_PATH_MAX - 1) < 0)
                 {
                     ret = -1;
                 }
@@ -289,7 +288,7 @@ int GetFileList(
                 {
                     ret = -1;
                 }
-                else if(sprintf(asScanFormat, "%%%us", WIN_FILENAME_MAX - 1) < 0)
+                else if(sprintf(asScanFormat, "%%%us", HOST_PATH_MAX - 1) < 0)
                 {
                     ret = -1;
                 }
@@ -307,52 +306,17 @@ int GetFileList(
             currChar = fgetc(pFile);
             if(!isspace(currChar) && currChar != EOF)
             {
-                fprintf(stderr, "Syntax error in mapping file: unexpected token %c at char #%d.\n", currChar, ftell(pFile));
+                fprintf(stderr, "Syntax error in mapping file: unexpected token %c at char #%ld.\n", currChar, ftell(pFile));
                 ret = -1;
             }
         }
 
-        /*  If a relative path was specified, set it to be relative to the input
-            directory.
-        */
-        if(ret == 0 && !PathIsAbsolute(currPath))
+        if(ret == 0)
         {
-            if(pszIndirPath == NULL)
-            {
-                fprintf(stderr, "Error: paths in mapping file must be absolute if no input directory is specified.\n");
-                ret = -1;
-            }
-            else
-            {
-                char    asTemp[WIN_FILENAME_MAX];
-                int     len;
-                char   *pszToAppend;
-                size_t  indirLen = strlen(pszIndirPath);
-
-                REDASSERT(indirLen != 0);
-
-                strcpy(asTemp, currPath);
-
-                /*  Ensure a path separator comes between the input directory
-                    and the specified relative path.
-                */
-                if((pszIndirPath[indirLen - 1] == '/') || (pszIndirPath[indirLen - 1] == '\\'))
-                {
-                    pszToAppend = "";
-                }
-                else
-                {
-                    pszToAppend = "\\";
-                }
-
-                len = _snprintf(currPath, WIN_FILENAME_MAX, "%s%s%s", pszIndirPath, pszToAppend, asTemp);
-
-                if((len < 0) || (len >= WIN_FILENAME_MAX))
-                {
-                    fprintf(stderr, "Error: file path too long: %s%s%s", pszIndirPath, pszToAppend, asTemp);
-                    ret = -1;
-                }
-            }
+            /*  If a relative path was specified, set it to be relative to the input
+                directory.
+            */
+            ret = IbSetRelativePath(currPath, pszIndirPath);
         }
 
         /*  Store index and host file path as a new entry in ppFileListHead
@@ -367,7 +331,7 @@ int GetFileList(
                 ret = -1;
             }
 
-            strncpy(pNewEntry->fileMapping.asInFilePath, currPath, WIN_FILENAME_MAX);
+            strncpy(pNewEntry->fileMapping.asInFilePath, currPath, HOST_PATH_MAX);
             pNewEntry->fileMapping.ulOutFileIndex = currIndex;
             pNewEntry->pNext = NULL;
 
@@ -404,195 +368,6 @@ int GetFileList(
     {
         fprintf(stderr, "Error reading specified mapping file.\n");
 
-        FreeFileList(ppFileListHead);
-    }
-
-    return ret;
-}
-
-
-/** @brief Checks whether a Windows file path appears to be relative or
-           absolute.
-
-    @param pszPath  The file path to check.
-
-    @return True if the @p pszPath appears to be an absolute path; false
-            otherwise.
-*/
-bool PathIsAbsolute(
-    const char *pszPath)
-{
-    bool    fIsAbsolute = false;
-
-    /*  Check whether pszPath begins with a drive letter.
-    */
-    if(     (    ((pszPath[0U] >= 'A') && (pszPath[0U] <= 'Z'))
-              || ((pszPath[0U] >= 'a') && (pszPath[0U] <= 'z')))
-         && (pszPath[1U] == ':')
-         && ((pszPath[2U] == '\\') || (pszPath[2U] == '/')))
-    {
-        fIsAbsolute = true;
-    }
-
-    return fIsAbsolute;
-}
-
-
-/** @brief Reads the contents of the input directory, assignes a file index
-           to each file name, and fills a linked list structure with the
-           names and indexes. Does not inspect subdirectories. Prints any
-           error messages to stderr.
-
-    @param pszDirPath The path to the input directory.
-    @param ppFileListHead a pointer to a FILELISTENTRY pointer to be
-           filled. A linked list is allocated onto this pointer if
-           successful, and thus should be freed after use by passing
-           it to FreeFileList.
-
-    @return An integer indicating the operation result.
-
-    @retval 0   Operation was successful.
-    @retval -1  An error occurred.
-*/
-int CreateFileListWin(
-    const char     *pszDirPath,
-    FILELISTENTRY **ppFileListHead)
-{
-    int             ret = 0;
-    char            asSPath[WIN_FILENAME_MAX];
-    int             currFileIndex = 2; /* Indexes 0 and 1 are reserved */
-    FILELISTENTRY  *pCurrEntry = NULL;
-    HANDLE          searchHandle = INVALID_HANDLE_VALUE;
-    size_t          pathLen = strlen(pszDirPath);
-    WIN32_FIND_DATA sFindData;
-    const char     *pszToAppend;
-
-    *ppFileListHead = NULL;
-    REDASSERT(pszDirPath != NULL);
-
-    /*  Assign host path separator to pszToAppend if pszDirPath does not already
-        end with one.
-    */
-    if((pszDirPath[pathLen - 1] == '/') || (pszDirPath[pathLen - 1] == '\\'))
-    {
-        pszToAppend = "";
-    }
-    else
-    {
-        pszToAppend = "\\";
-    }
-
-    if(pathLen + strlen(pszToAppend) >= WIN_FILENAME_MAX)
-    {
-        fprintf(stderr, "Input directory path exceeds maximum supported length.\n");
-        ret = -1;
-    }
-
-    if(ret == 0)
-    {
-        int stat;
-
-        stat = sprintf(asSPath, "%s%s*", pszDirPath, pszToAppend);
-
-        /*  Strings are aready tested; sprintf shouldn't fail.
-        */
-        REDASSERT(stat >= 0);
-        (void) stat;
-    }
-
-    if(ret == 0)
-    {
-        searchHandle = FindFirstFile(asSPath, &sFindData);
-
-        if(searchHandle == INVALID_HANDLE_VALUE)
-        {
-            if(GetLastError() == ERROR_FILE_NOT_FOUND)
-            {
-                fprintf(stderr, "Specified input directory empty or not found.\n");
-            }
-            else
-            {
-                fprintf(stderr, "Could not read input directory contents or empty input directory.\n");
-            }
-
-            ret = -1;
-        }
-    }
-
-    /*  Find each file in the directory and populate ppFileListHead
-    */
-    while(ret == 0)
-    {
-        /*  Skip over directories. Create a new entry for each file and add it
-            to ppFileListHead
-        */
-        if(!(sFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
-        {
-            int             len;
-            FILELISTENTRY  *pNewEntry = malloc(sizeof(*pNewEntry));
-
-            if(pNewEntry == NULL)
-            {
-                fprintf(stderr, "Error allocating memory.\n");
-                ret = -1;
-            }
-            else
-            {
-                len = _snprintf(pNewEntry->fileMapping.asInFilePath, WIN_FILENAME_MAX, "%s%s%s",
-                    pszDirPath, pszToAppend, sFindData.cFileName);
-
-                if((len < 0) || (len >= WIN_FILENAME_MAX))
-                {
-                    fprintf(stderr, "Error: file path too long: %s%s%s", pszDirPath, pszToAppend, sFindData.cFileName);
-                    ret = -1;
-                }
-                else
-                {
-                    pNewEntry->fileMapping.ulOutFileIndex = currFileIndex;
-                    pNewEntry->pNext = NULL;
-
-                    /*  If pCurrEntry is NULL, then pNewEntry will be the root entry.
-                        Otherwise add it to the end of the linked list.
-                    */
-                    if(pCurrEntry == NULL)
-                    {
-                        *ppFileListHead = pNewEntry;
-                    }
-                    else
-                    {
-                        pCurrEntry->pNext = pNewEntry;
-                    }
-                    pCurrEntry = pNewEntry;
-
-                    currFileIndex++;
-                }
-            }
-        }
-
-        if(ret == 0)
-        {
-            if(!FindNextFile(searchHandle, &sFindData))
-            {
-                if(GetLastError() != ERROR_NO_MORE_FILES)
-                {
-                    fprintf(stderr, "Error traversing input directory.\n");
-                    ret = -1;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-    }
-
-    if(searchHandle != INVALID_HANDLE_VALUE)
-    {
-        (void) FindClose(searchHandle);
-    }
-
-    if(ret != 0)
-    {
         FreeFileList(ppFileListHead);
     }
 
@@ -730,36 +505,36 @@ int IbWriteFile(
     @retval 0   Operation was successful.
     @retval -1  An error occurred.
 */
-int OutputDefinesFile(
+int IbFseOutputDefines(
     FILELISTENTRY          *pFileList,
-    const IMGBLDOPTIONS    *pOptions)
+    const IMGBLDPARAM      *pParam)
 {
     int                     ret = 0;
     FILELISTENTRY          *pCurrEntry = pFileList;
     STRLISTENTRY           *pStrList = NULL;
     FILE                   *pFileOut = NULL;
-    bool                    fUseFile = (pOptions->pszDefineFile != NULL);
+    bool                    fUseFile = (pParam->pszDefineFile != NULL);
 
     /*  When using a defines file, check if file exists and confirm overwrite
         unless nowarn was specified
     */
-    if(fUseFile && !pOptions->fNowarn)
+    if(fUseFile && !pParam->fNowarn)
     {
         bool fExists;
 
-        ret = CheckFileExists(pOptions->pszDefineFile, &fExists);
+        ret = IbCheckFileExists(pParam->pszDefineFile, &fExists);
 
         if((ret == 0) && fExists)
         {
-            fprintf(stderr, "Specified defines file %s already exists.\n", pOptions->pszDefineFile);
+            fprintf(stderr, "Specified defines file %s already exists.\n", pParam->pszDefineFile);
 
-            fUseFile = ConfirmOperation("Overwrite?");
+            fUseFile = RedConfirmOperation("Overwrite?");
         }
     }
 
     if((ret == 0) && fUseFile)
     {
-        pFileOut = fopen(pOptions->pszDefineFile, "w");
+        pFileOut = fopen(pParam->pszDefineFile, "w");
         if(pFileOut == NULL)
         {
             ret = -1;
@@ -783,7 +558,7 @@ int OutputDefinesFile(
         pFileOut = stdout;
     }
 
-    /*  Iterate over pFileList and output #DEFINE information.
+    /*  Iterate over pFileList and output #define information.
     */
     while(ret == 0 && pCurrEntry != NULL)
     {
@@ -907,7 +682,7 @@ static int WriteDefineOut(
                 else
                 {
                     uint32_t num;
-                    int stat = sscanf(&pCurrEntry->asStr[ulBeginNum], "%lu", &num);
+                    int stat = sscanf(&pCurrEntry->asStr[ulBeginNum], "%u", &num);
 
                     /*  We just checked and found decimal digits. Scanf should
                         find them too.

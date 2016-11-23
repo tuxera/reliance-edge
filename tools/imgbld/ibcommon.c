@@ -25,23 +25,15 @@
 /** @file
     @brief implements image builder methods shared between POSIX and FSE
 */
-
-/*  Include errno first to make sure Windows errno values are defined, not the
-    Reliance Edge ones.  This module does not deal directly with Reliance Edge
-    errno values, so this is safe to do.
-*/
-#include <errno.h>
-
 #include <redfs.h>
 
 #if REDCONF_IMAGE_BUILDER == 1
 
-#include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <io.h>
+#include <errno.h>
 
-#include "ibheader.h"
+#include <redtools.h>
 
 
 static int GetFileLen(FILE *fp, uint64_t *pLength);
@@ -151,27 +143,27 @@ int IbCopyFile(
     return ret;
 }
 
-/*  Private helper method to get the file length of the given file using the
-    Windows file API.
+
+/*  Gets the file length by seeking to the end and reading the file pointer
+    offset. Seeks back to the beginning of the file on completion.
 */
 static int GetFileLen(
-    FILE           *fp,
-    uint64_t       *pLength)
+    FILE       *fp,
+    uint64_t   *pLength)
 {
-    HANDLE          fh = (HANDLE) _get_osfhandle(_fileno(fp));
-    int             ret = 0;
-    LARGE_INTEGER   fsize;
-    BOOL            success;
+    int         ret = -1;
 
-    success = GetFileSizeEx(fh, &fsize);
+    if(fseek(fp, 0, SEEK_END) == 0)
+    {
+        long length = ftell(fp);
 
-    if(success)
-    {
-        *pLength = (uint64_t) fsize.QuadPart;
-    }
-    else
-    {
-        ret = -1;
+        if(length >= 0)
+        {
+            ret = 0;
+            *pLength = (uint64_t) length;
+        }
+
+        (void) fseek(fp, 0, SEEK_SET);
     }
 
     return ret;
@@ -190,7 +182,7 @@ static int GetFileLen(
     @retval 0   Operation was successful.
     @retval -1  An error occurred.
 */
-int CheckFileExists(
+int IbCheckFileExists(
     const char *pszPath,
     bool       *pfExists)
 {

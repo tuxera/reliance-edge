@@ -1,8 +1,8 @@
 #
-# Makefile for a Reliance Edge Win32 host tools project
+# Makefile for a Reliance Edge Linux host tools project
 #
 P_BASEDIR ?= ../../..
-P_PROJDIR ?= $(P_BASEDIR)/projects/win32/host
+P_PROJDIR ?= $(P_BASEDIR)/projects/linux/host
 P_CONFDIR ?= $(P_PROJDIR)/..
 B_DEBUG ?= 0
 
@@ -11,5 +11,4 @@ include $(P_BASEDIR)/os/win32/build/host.mk
 else
 include $(P_BASEDIR)/os/linux/build/host.mk
 endif
-
 

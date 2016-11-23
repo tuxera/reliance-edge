@@ -23,15 +23,16 @@
     more information.
 */
 /** @file
-    @brief Interfaces for certain shared methods for Win32 command line tools.
+    @brief Macros to encapsulate MISRA C:2012 deviations in OS-specific code.
 */
-#ifndef WINTLCMN_H
-#define WINTLCMN_H
+#ifndef REDOSDEVIATIONS_H
+#define REDOSDEVIATIONS_H
 
 
-const char *MassageDriveName(const char *pszDrive);
+/*  No deviations -- Linux is a host OS, and is not intended to comply with
+    MISRA C:2012.
+*/
 
 
 #endif
-
 

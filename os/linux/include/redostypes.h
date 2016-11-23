@@ -23,15 +23,20 @@
     more information.
 */
 /** @file
-    @brief Interfaces for certain shared methods for Win32 command line tools.
+    @brief Defines OS-specific types for use in common code.
 */
-#ifndef WINTLCMN_H
-#define WINTLCMN_H
+#ifndef REDOSTYPES_H
+#define REDOSTYPES_H
 
 
-const char *MassageDriveName(const char *pszDrive);
+/** @brief Implementation-defined timestamp type.
+
+    This can be an integer, a structure, or a pointer: anything that is
+    convenient for the implementation.  Since the underlying type is not fixed,
+    common code should treat this as an opaque type.
+*/
+typedef uint64_t REDTIMESTAMP;
 
 
 #endif
-
 

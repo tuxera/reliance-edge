@@ -101,6 +101,11 @@
 #undef  RedStrNCpyUnchecked
 #define RedStrNCpyUnchecked strncpy
 
+/*  Avoid extra transactions to improve image builder performance.
+*/
+#undef  REDCONF_TRANSACT_DEFAULT
+#define REDCONF_TRANSACT_DEFAULT (( RED_TRANSACT_FSYNC | RED_TRANSACT_VOLFULL | RED_TRANSACT_UMOUNT ) & RED_TRANSACT_MASK)
+
 
 #endif
 

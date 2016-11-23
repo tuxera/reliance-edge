@@ -23,15 +23,25 @@
     more information.
 */
 /** @file
-    @brief Interfaces for certain shared methods for Win32 command line tools.
+    @brief Implements task functions.
 */
-#ifndef WINTLCMN_H
-#define WINTLCMN_H
+#include <redfs.h>
 
+#if (REDCONF_TASK_COUNT > 1U) && (REDCONF_API_POSIX == 1)
 
-const char *MassageDriveName(const char *pszDrive);
+#include <sys/types.h>
+#include <unistd.h>
 
+/** @brief Get the current task ID.
+
+    This task ID must be unique for all tasks using the file system.
+
+    @return The task ID.  Must not be 0.
+*/
+uint32_t RedOsTaskId(void)
+{
+    return (uint32_t)getpid();
+}
 
 #endif
-
 

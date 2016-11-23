@@ -82,34 +82,6 @@
 #ifndef REDTYPES_H
 #define REDTYPES_H
 
-#if _WIN32
-
-
-typedef int bool;                   /**< @brief Boolean type; either true or false. */
-
-typedef unsigned __int8 uint8_t;    /**< @brief Unsigned 8-bit integer. */
-typedef          __int8 int8_t;     /**< @brief Signed 8-bit integer. */
-
-typedef unsigned __int16 uint16_t;  /**< @brief Unsigned 16-bit integer. */
-typedef          __int16 int16_t;   /**< @brief Signed 16-bit integer. */
-
-typedef unsigned __int32 uint32_t;  /**< @brief Unsigned 32-bit integer. */
-typedef          __int32 int32_t;   /**< @brief Signed 32-bit integer. */
-
-typedef unsigned __int64 uint64_t;  /**< @brief Unsigned 64-bit integer. */
-typedef          __int64 int64_t;   /**< @brief Signed 64-bit integer. */
-
-/** @brief Unsigned integer capable of storing a pointer.
-*/
-#ifdef _WIN64
-typedef uint64_t uintptr_t;
-#else
-typedef uint32_t uintptr_t;
-#endif
-
-
-#else
-
 
 /*  Defines bool.
 */
@@ -120,8 +92,6 @@ typedef uint32_t uintptr_t;
 */
 #include <stdint.h>
 
-
-#endif /* _WIN32 */
 
 #endif
 

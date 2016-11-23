@@ -32,16 +32,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <windows.h>
 
 #include <redposix.h>
-
-#include "ibheader.h"
-
-
-static int RecursiveDirCopyWin(const char *pszVolName, const char *pszInDir);
-static int CreatePosixDir(const char *pszVolName, const char *pszFullPath, const char *pszBasePath);
-static int ConvertPath(const char *pszVolName, const char *pszFullPath, const char *pszBasePath, char *szOutPath);
+#include <redtools.h>
 
 
 int IbApiInit(void)
@@ -202,23 +195,24 @@ int IbPosixCopyDir(
 
     if(ret == 0)
     {
-        char    asInputDir[WIN_FILENAME_MAX];
+        char    asInputDir[HOST_PATH_MAX];
         size_t  inDirLen = strlen(pszInDir);
 
-        (void) strncpy(asInputDir, pszInDir, WIN_FILENAME_MAX - 1);
+        (void) strncpy(asInputDir, pszInDir, HOST_PATH_MAX - 1);
 
-        /*  Get rid of ending path separator, if there is one.
+        /*  Get rid of any ending path separators.
         */
-        if(asInputDir[inDirLen - 2] == '/'
+        while(     asInputDir[inDirLen - 1] == '/'
       #ifdef _WIN32
-            || asInputDir[inDirLen - 2] == '\\'
+                || asInputDir[inDirLen - 1] == '\\'
       #endif
-            )
+             )
         {
-            asInputDir[inDirLen - 2] = '\0';
+            asInputDir[inDirLen - 1] = '\0';
+            inDirLen--;
         }
 
-        ret = RecursiveDirCopyWin(pszVolName, asInputDir);
+        ret = IbPosixCopyDirRecursive(pszVolName, asInputDir);
     }
 
     if(ret == 0)
@@ -244,128 +238,17 @@ int IbPosixCopyDir(
 }
 
 
-static int RecursiveDirCopyWin(
-    const char         *pszVolName,
-    const char         *pszInDir)
-{
-    /*  Used to record pszVolName the first time called in a recursion series.
-    */
-    static bool         isRecursing = false;
-    static const char  *pszBaseDir;
-    bool                rememberIsRecursing = isRecursing;
-    int                 ret = 0;
-    char                asCurrPath[WIN_FILENAME_MAX];
-    HANDLE              h;
-    WIN32_FIND_DATA     sFindData;
-    int                 len;
-
-    if(!isRecursing)
-    {
-        pszBaseDir = pszInDir;
-        isRecursing = true;
-    }
-
-    len = _snprintf(asCurrPath, WIN_FILENAME_MAX, "%s\\*", pszInDir);
-    if((len < 0) || (len >= WIN_FILENAME_MAX))
-    {
-        ret = -1;
-    }
-
-    if(ret == 0)
-    {
-        h = FindFirstFile(asCurrPath, &sFindData);
-        if(h == INVALID_HANDLE_VALUE)
-        {
-            fprintf(stderr, "Error reading from input directory.\n");
-            ret = -1;
-        }
-    }
-
-    while(ret == 0)
-    {
-        BOOL fFindSuccess;
-
-        if((strcmp(sFindData.cFileName, ".") != 0) && (strcmp(sFindData.cFileName, "..") != 0))
-        {
-            len = _snprintf(asCurrPath, WIN_FILENAME_MAX, "%s\\%s", pszInDir, sFindData.cFileName);
-
-            if((len == WIN_FILENAME_MAX) || (len < 0))
-            {
-                ret = -RED_ENAMETOOLONG;
-            }
-            else if(sFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-            {
-                /*  Create the direcctory, then recurse!
-                */
-                ret = CreatePosixDir(pszVolName, asCurrPath, pszBaseDir);
-                if(ret == 0)
-                {
-                    ret = RecursiveDirCopyWin(pszVolName, asCurrPath);
-                }
-            }
-            else
-            {
-                FILEMAPPING mapping;
-
-                strcpy(mapping.asInFilePath, asCurrPath);
-                ret = ConvertPath(pszVolName, asCurrPath, pszBaseDir, mapping.asOutFilePath);
-                if(ret == 0)
-                {
-                    ret = IbCopyFile(-1, &mapping);
-                }
-            }
-        }
-
-        fFindSuccess = FindNextFile(h, &sFindData);
-        if(!fFindSuccess)
-        {
-            DWORD err = GetLastError();
-
-            if(err == ERROR_NO_MORE_FILES)
-            {
-                break;
-            }
-            else
-            {
-                fprintf(stderr, "Error traversing input directory %s. Error code: %d\n", pszInDir, err);
-                ret = -1;
-            }
-        }
-    }
-
-    if(h != INVALID_HANDLE_VALUE)
-    {
-        (void) FindClose(h);
-    }
-
-    if(ret == -RED_ENAMETOOLONG)
-    {
-        fprintf(stderr, "Error: file path too long in %s.\n", pszVolName);
-    }
-
-    isRecursing = rememberIsRecursing;
-
-    return ret;
-}
-
-
-/** @brief  Creates a directory using the Reliance Edge POSIX API.
-
-    @param pszVolName
-    @param pszFullPath
-    @param pszBasePath
-
-    @return A negated ::REDSTATUS code indicating the operation result.
+/** @brief  Create a directory using the Reliance Edge POSIX API.
 */
-static int CreatePosixDir(
+int IbPosixCreateDir(
     const char *pszVolName,
     const char *pszFullPath,
     const char *pszBasePath)
 {
     int         ret = 0;
-    char        asOutPath[WIN_FILENAME_MAX];
+    char        asOutPath[HOST_PATH_MAX];
 
-    ret = ConvertPath(pszVolName, pszFullPath, pszBasePath, asOutPath);
+    ret = IbConvertPath(pszVolName, pszFullPath, pszBasePath, asOutPath);
 
     if(ret == 0)
     {
@@ -385,8 +268,7 @@ static int CreatePosixDir(
                     fprintf(stderr, "Error: maximum number of files for volume %s exceeded.\n", pszVolName);
                     break;
                 case RED_ENAMETOOLONG:
-                    /*  Message for RED_ENAMETOOLONG printed in RecursiveDirCopyWin.
-                    */
+                    fprintf(stderr, "Error: configured maximum file name length (%d) exceeded by directory %s.\n", REDCONF_NAME_MAX, pszFullPath);
                     break;
                 default:
                     /*  Other errors not expected.
@@ -408,7 +290,7 @@ static int CreatePosixDir(
     @param pszFullPath  The full host file path
     @param pszBasePath  A base path which will be removed from the back of
                         @p pszFullPath
-    @param szOutPath    A char array pointer allocated at least WIN_FILENAME_MAX
+    @param szOutPath    A char array pointer allocated at least HOST_PATH_MAX
                         chars at which to store the converted path
 
     @return An integer indicating the operation result.
@@ -416,7 +298,7 @@ static int CreatePosixDir(
     @retval 0   Operation was successful.
     @retval -1  An error occurred.
 */
-static int ConvertPath(
+int IbConvertPath(
     const char *pszVolName,
     const char *pszFullPath,
     const char *pszBasePath,
@@ -436,30 +318,38 @@ static int ConvertPath(
     /*  After skipping the base path, the next char should be a path separator.
         Skip this too.
     */
-    if((pszInPath[0] == '/') || (pszInPath[0] == '\\'))
+    if(    (pszInPath[0] == '/')
+      #ifdef _WIN32
+        || (pszInPath[0] == '\\')
+      #endif
+      )
     {
         pszInPath++;
     }
 
-    if((strlen(pszInPath) + 1 + strlen(pszVolName)) >= (WIN_FILENAME_MAX - 1))
+    if((strlen(pszInPath) + 1 + strlen(pszVolName)) >= (HOST_PATH_MAX - 1))
     {
         fprintf(stderr, "Error: path name too long: %s\n", pszFullPath);
         ret = -1;
     }
     else
     {
-        int len;
-
-        len = sprintf(szOutPath, "%s%c%s", pszVolName, REDCONF_PATH_SEPARATOR, pszInPath);
+        /*  Roundabout way of avoiding build warnings when REDCONF_ASSERTS
+            is disabled.
+        */
+      #if REDCONF_ASSERTS == 1
+        int len =
+      #endif
+        sprintf(szOutPath, "%s%c%s", pszVolName, REDCONF_PATH_SEPARATOR, pszInPath);
 
         REDASSERT(len >= (int) volNameLen);
 
         for(index = volNameLen + 1; szOutPath[index] != '\0'; index++)
         {
             if(    (szOutPath[index] == '/')
-          #ifdef _WIN32
+              #ifdef _WIN32
                 || (szOutPath[index] == '\\')
-          #endif
+              #endif
               )
             {
                 szOutPath[index] = REDCONF_PATH_SEPARATOR;

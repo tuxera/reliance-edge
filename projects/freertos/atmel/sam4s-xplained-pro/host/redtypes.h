@@ -82,6 +82,8 @@
 #ifndef REDTYPES_H
 #define REDTYPES_H
 
+#if _WIN32
+
 
 typedef int bool;                   /**< @brief Boolean type; either true or false. */
 
@@ -105,6 +107,21 @@ typedef uint64_t uintptr_t;
 typedef uint32_t uintptr_t;
 #endif
 
+
+#else
+
+
+/*  Defines bool.
+*/
+#include <stdbool.h>
+
+/*  Defines uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t, uint64_t,
+    int64_t, and uintptr_t.
+*/
+#include <stdint.h>
+
+
+#endif /* _WIN32 */
 
 #endif
 

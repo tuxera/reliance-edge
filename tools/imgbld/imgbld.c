@@ -25,7 +25,6 @@
 /** @file
     @brief Implements a Win32 command-line image builder tool
 */
-#include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,18 +37,14 @@
 #include <redgetopt.h>
 #include <redtoolcmn.h>
 #include <redcoreapi.h>
-
-#include "../wintlcmn.h"
-#include "ibheader.h"
+#include <redtools.h>
 
 
 #define COPY_BUFFER_SIZE_MIN    (1024U)
 #define COPY_BUFFER_SIZE_MAX    (32UL * 1024 * 1024)
 
 
-static void TryParsePrgmArgs(int argc, char *argv[], IMGBLDOPTIONS *pOptions);
 static void Usage(const char *pszProgramName, bool fError);
-static bool PathNamesVolume(const char *pszPath);
 
 
 void *gpCopyBuffer = NULL;
@@ -58,19 +53,14 @@ uint32_t gulCopyBufferSize;
 
 /** @brief Entry point for the Reliance Edge image builder utility.
 
-    @param argc The size of the @p argv array.
-    @param argv The arguments to the program.
+    @param pParam   Params structure for the image builder tool.
 
     @return Zero on success, nonzero on failure.
 */
-int main(
-    int             argc,
-    char           *argv[])
+int ImgbldStart(
+    IMGBLDPARAM    *pParam)
 {
-    IMGBLDOPTIONS   options;
     int             ret = 0;
-
-    TryParsePrgmArgs(argc, argv, &options);
 
     /*  Prints sign-on message
     */
@@ -88,23 +78,23 @@ int main(
         */
         bool            fFormatted = false;
 
-      #if REDCONF_API_POSIX == 0
+      #if REDCONF_API_FSE == 1
         if(ret == 0)
         {
-            if(options.pszMapFile != NULL)
+            if(pParam->pszMapFile != NULL)
             {
-                ret = GetFileList(options.pszMapFile, options.pszInputDir, &psFileListHead);
+                ret = IbFseGetFileList(pParam->pszMapFile, pParam->pszInputDir, &psFileListHead);
             }
             else
             {
-                ret = CreateFileListWin(options.pszInputDir, &psFileListHead);
+                ret = IbFseBuildFileList(pParam->pszInputDir, &psFileListHead);
             }
         }
       #endif
 
         if(ret == 0)
         {
-            REDSTATUS err = RedOsBDevConfig(options.bVolNumber, options.pszOutputFile);
+            REDSTATUS err = RedOsBDevConfig(pParam->bVolNumber, pParam->pszOutputFile);
 
             if(err != 0)
             {
@@ -122,7 +112,7 @@ int main(
 
         if(ret == 0)
         {
-            if(RedCoreVolSetCurrent(options.bVolNumber) != 0)
+            if(RedCoreVolSetCurrent(pParam->bVolNumber) != 0)
             {
                 REDERROR();
                 ret = -1;
@@ -170,18 +160,18 @@ int main(
       #if REDCONF_API_POSIX == 1
         if(ret == 0)
         {
-            ret = IbPosixCopyDir(options.pszVolName, options.pszInputDir);
+            ret = IbPosixCopyDir(pParam->pszVolName, pParam->pszInputDir);
         }
       #else
 
         if(ret == 0)
         {
-            ret = IbFseCopyFiles(options.bVolNumber, psFileListHead);
+            ret = IbFseCopyFiles(pParam->bVolNumber, psFileListHead);
         }
 
-        if((ret == 0) && (options.pszDefineFile != NULL))
+        if((ret == 0) && (pParam->pszDefineFile != NULL))
         {
-            ret = OutputDefinesFile(psFileListHead, &options);
+            ret = IbFseOutputDefines(psFileListHead, pParam);
         }
 
         FreeFileList(&psFileListHead);
@@ -199,16 +189,16 @@ int main(
 
         if(ret == 0)
         {
-            printf("Successfully created Reliance Edge image at %s.\n", options.pszOutputFile);
+            printf("Successfully created Reliance Edge image at %s.\n", pParam->pszOutputFile);
         }
         else
         {
             fprintf(stderr, "Error creating Reliance Edge image.\n");
 
-            if(fFormatted && !PathNamesVolume(options.pszOutputFile))
+            if(fFormatted && IsRegularFile(pParam->pszOutputFile))
             {
-                fprintf(stderr, "Removing image file %s\n", options.pszOutputFile);
-                if(remove(options.pszOutputFile) != 0)
+                fprintf(stderr, "\nRemoving image file %s\n", pParam->pszOutputFile);
+                if(remove(pParam->pszOutputFile) != 0)
                 {
                     fprintf(stderr, "Error removing image file.\n");
                 }
@@ -220,16 +210,18 @@ int main(
 }
 
 
-/** @brief Helper function to parse command line arguments
+/** @brief Helper function to parse command line arguments.
+
+    Does not return if params are invalid. (Prints usage and exits).
 
     @brief argc     The number of arguments.
     @brief argv     The argument array.
-    @param pOptions IMGBLDOPTIONS structure to fill
+    @param pParam   IMGBLDPARAM structure to fill
 */
-void TryParsePrgmArgs(
+void ImgbldParseParams(
     int             argc,
     char           *argv[],
-    IMGBLDOPTIONS  *pOptions)
+    IMGBLDPARAM    *pParam)
 {
     int32_t         c;
     const REDOPTION aLongopts[] =
@@ -259,28 +251,28 @@ void TryParsePrgmArgs(
 
     /*  Set default parameters.
     */
-    memset(pOptions, 0, sizeof(*pOptions));
+    memset(pParam, 0, sizeof(*pParam));
 
     while((c = RedGetoptLong(argc, argv, pszOptions, aLongopts, NULL)) != -1)
     {
         switch(c)
         {
             case 'i': /* --dir */
-                pOptions->pszInputDir = red_optarg;
+                pParam->pszInputDir = red_optarg;
                 break;
           #if REDCONF_API_FSE == 1
             case 'm': /* --map */
-                pOptions->pszMapFile = red_optarg;
+                pParam->pszMapFile = red_optarg;
                 break;
             case 'd': /* --defines */
-                pOptions->pszDefineFile = red_optarg;
+                pParam->pszDefineFile = red_optarg;
                 break;
             case 'W': /* --no-warn */
-                pOptions->fNowarn = true;
+                pParam->fNowarn = true;
                 break;
           #endif
             case 'D': /* --dev */
-                pOptions->pszOutputFile = MassageDriveName(red_optarg);
+                pParam->pszOutputFile = red_optarg;
                 break;
             case 'H': /* --help */
                 goto Help;
@@ -300,15 +292,15 @@ void TryParsePrgmArgs(
         goto BadOpt;
     }
 
-    pOptions->bVolNumber = RedFindVolumeNumber(argv[red_optind]);
-    if(pOptions->bVolNumber == REDCONF_VOLUME_COUNT)
+    pParam->bVolNumber = RedFindVolumeNumber(argv[red_optind]);
+    if(pParam->bVolNumber == REDCONF_VOLUME_COUNT)
     {
         fprintf(stderr, "Error: \"%s\" is not a valid volume identifier.\n", argv[red_optind]);
         goto BadOpt;
     }
 
   #if REDCONF_API_POSIX == 1
-    pOptions->pszVolName = gaRedVolConf[pOptions->bVolNumber].pszPathPrefix;
+    pParam->pszVolName = gaRedVolConf[pParam->bVolNumber].pszPathPrefix;
   #endif
 
     red_optind++; /* Move past volume parameter. */
@@ -325,20 +317,20 @@ void TryParsePrgmArgs(
     }
 
   #if REDCONF_API_POSIX == 1
-    if(pOptions->pszInputDir == NULL)
+    if(pParam->pszInputDir == NULL)
     {
         fprintf(stderr, "Input directory must be specified (--dir).\n");
         goto BadOpt;
     }
   #else
-    if((pOptions->pszInputDir == NULL) && (pOptions->pszMapFile == NULL))
+    if((pParam->pszInputDir == NULL) && (pParam->pszMapFile == NULL))
     {
         fprintf(stderr, "Either input directory (--dir) or input file map (--map) must be specified.\n");
         goto BadOpt;
     }
   #endif
 
-    if(pOptions->pszOutputFile == NULL)
+    if(pParam->pszOutputFile == NULL)
     {
         fprintf(stderr, "Output device (--dev) must be specified.\n");
         goto BadOpt;
@@ -378,10 +370,15 @@ static void Usage(
 "      of the volume to format.\n"
 "  --dev=devname, -D devname\n"
 "      Specifies the device name.  This can be the path and name of a file disk\n"
+  #if _WIN32
 "      (e.g., red.bin); or an OS-specific reference to a device (on Windows, a\n"
 "      drive letter like G: or a device name like \\\\.\\PhysicalDrive7; the\n"
 "      latter might be better than using a drive letter, which might only format\n"
 "      a partition instead of the entire physical media).\n"
+  #else
+"      (e.g., red.bin); or an OS-specific reference to a device (on Linux, a\n"
+"      device file like /dev/sdb).\n"
+  #endif
 "  --dir=inputDir, -i inputDir\n"
 "      A path to a directory that contains all of the files to be copied into\n"
 "      the image.\n"
@@ -421,31 +418,5 @@ static void Usage(
     exit(fError ? 1 : 0);
 }
 
-/*  Checks whether the given path appears to name a volume or not. Expects the
-    path to be in massaged "//./diskname" format if it names a volume.
-*/
-static bool PathNamesVolume(
-    const char *pszPath)
-{
-    return ((pszPath[0] == '\\')
-         && (pszPath[1] == '\\')
-         && (pszPath[2] == '.')
-         && (pszPath[3] == '\\')
-         && (strchr(&pszPath[4], '\\') == NULL)
-         && (strchr(&pszPath[4], '/') == NULL));
-}
-
-#else
-
-/** @brief Stubbed entry point for the Reliance Edge image builder.
-
-    @return Returns 1
-*/
-int main(void)
-{
-    fprintf(stderr, "Reliance Edge image builder tool disabled\n");
-    return 1;
-}
 
 #endif
-

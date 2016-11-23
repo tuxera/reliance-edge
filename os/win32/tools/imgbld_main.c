@@ -23,15 +23,50 @@
     more information.
 */
 /** @file
-    @brief Interfaces for certain shared methods for Win32 command line tools.
+    @brief Implements a Win32 command-line image builder tool
 */
-#ifndef WINTLCMN_H
-#define WINTLCMN_H
+#include <stdio.h>
+#include <string.h>
+
+#include <redfs.h>
+
+#if REDCONF_IMAGE_BUILDER == 1
+
+#include <redtools.h>
+#include "wintlcmn.h"
 
 
-const char *MassageDriveName(const char *pszDrive);
+/** @brief Entry point for the Reliance Edge image builder utility.
 
+    @param argc The size of the @p argv array.
+    @param argv The arguments to the program.
+
+    @return Zero on success, nonzero on failure.
+*/
+int main(
+    int         argc,
+    char       *argv[])
+{
+    IMGBLDPARAM param;
+
+    ImgbldParseParams(argc, argv, &param);
+
+    param.pszOutputFile = MassageDriveName(param.pszOutputFile);
+
+    return ImgbldStart(&param);
+}
+
+#else
+
+/** @brief Stubbed entry point for the Reliance Edge image builder.
+
+    @return Returns 1
+*/
+int main(void)
+{
+    fprintf(stderr, "Reliance Edge image builder tool disabled\n");
+    return 1;
+}
 
 #endif
-
 

@@ -23,15 +23,41 @@
     more information.
 */
 /** @file
-    @brief Interfaces for certain shared methods for Win32 command line tools.
+    @brief Implements assertion handling.
 */
-#ifndef WINTLCMN_H
-#define WINTLCMN_H
+#include <redfs.h>
+
+#if REDCONF_ASSERTS == 1
+
+#include <stdio.h>
+
+#undef NDEBUG  /* Ensure assert() is enabled since REDCONF_ASSERTS is true. */
+#include <assert.h>
 
 
-const char *MassageDriveName(const char *pszDrive);
+/** @brief Invoke the native assertion handler.
 
+    @param pszFileName  Null-terminated string containing the name of the file
+                        where the assertion fired.
+    @param ulLineNum    Line number in @p pszFileName where the assertion
+                        fired.
+*/
+void RedOsAssertFail(
+    const char *pszFileName,
+    uint32_t    ulLineNum)
+{
+  #if REDCONF_OUTPUT == 1
+    /*  pszFileName should never be NULL, but check just in case.
+    */
+    fprintf(stderr, "Assertion failed in \"%s\" at line %u\n",
+        (pszFileName == NULL) ? "" : pszFileName, (unsigned)ulLineNum);
+  #else
+    (void)pszFileName;
+    (void)ulLineNum;
+  #endif
+
+    assert(false);
+}
 
 #endif
-
 

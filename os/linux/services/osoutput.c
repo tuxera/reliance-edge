@@ -23,15 +23,34 @@
     more information.
 */
 /** @file
-    @brief Interfaces for certain shared methods for Win32 command line tools.
+    @brief Implements outputting a character string.
 */
-#ifndef WINTLCMN_H
-#define WINTLCMN_H
+#include <redfs.h>
+
+#if REDCONF_OUTPUT == 1
+
+#include <stdio.h>
 
 
-const char *MassageDriveName(const char *pszDrive);
+/** @brief Write a string to a user-visible output location.
 
+    Write a null-terminated string to the serial port, console, terminal, or
+    other display device, such that the text is visible to the user.
+
+    @param pszString    A null-terminated string.
+*/
+void RedOsOutputString(
+    const char *pszString)
+{
+    if(pszString == NULL)
+    {
+        REDERROR();
+    }
+    else
+    {
+        printf("%s", pszString);
+    }
+}
 
 #endif
-
 

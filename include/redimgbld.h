@@ -22,12 +22,23 @@
     distribution in any form.  Visit http://www.datalight.com/reliance-edge for
     more information.
 */
-#ifndef IBHEADER_H
-#define IBHEADER_H
+#ifndef REDIMGBLD_H
+#define REDIMGBLD_H
 
 #if REDCONF_IMAGE_BUILDER == 1
 
-#define WIN_FILENAME_MAX MAX_PATH
+#ifdef _WIN32
+
+#include <Windows.h>
+#define IB_PATH_MAX MAX_PATH
+
+#else
+
+#include <linux/limits.h>
+#define IB_PATH_MAX PATH_MAX
+
+#endif
+
 #define MACRO_NAME_MAX_LEN 32
 
 typedef struct
@@ -42,16 +53,21 @@ typedef struct
     const char *pszDefineFile;
     bool        fNowarn;
   #endif
-} IMGBLDOPTIONS;
+} IMGBLDPARAM;
+
+
+void ImgbldParseParams(int argc, char *argv [], IMGBLDPARAM *pParam);
+int ImgbldStart(IMGBLDPARAM *pParam);
+
 
 typedef struct
 {
   #if REDCONF_API_POSIX == 1
-    char     asOutFilePath[WIN_FILENAME_MAX];
+    char     asOutFilePath[IB_PATH_MAX];
   #else
     uint32_t ulOutFileIndex;
   #endif
-    char     asInFilePath[WIN_FILENAME_MAX];
+    char     asInFilePath[IB_PATH_MAX];
 } FILEMAPPING;
 
 
@@ -59,12 +75,18 @@ extern void *gpCopyBuffer;
 extern uint32_t gulCopyBufferSize;
 
 
+/*  Implemented in ibposix.c
+*/
 #if REDCONF_API_POSIX == 1
-
 REDSTATUS IbPosixCopyDir(const char *pszVolName, const char *pszInDir);
+int IbPosixCreateDir(const char *pszVolName, const char *pszFullPath, const char *pszBasePath);
+int IbConvertPath(const char *pszVolName, const char *pszFullPath, const char *pszBasePath, char *szOutPath);
+#endif
 
-#else
 
+/*  Implemented in ibfse.c
+*/
+#if REDCONF_API_FSE == 1
 typedef struct sFILELISTENTRY FILELISTENTRY;
 struct sFILELISTENTRY
 {
@@ -75,16 +97,31 @@ struct sFILELISTENTRY
 
 void FreeFileList(FILELISTENTRY **ppsFileList);
 
-int GetFileList(const char *pszPath, const char *pszIndirPath, FILELISTENTRY **ppFileListHead);
-bool PathIsAbsolute(const char *pszPath);
-int CreateFileListWin(const char *pszDirPath, FILELISTENTRY **ppFileListHead);
-int OutputDefinesFile(FILELISTENTRY *pFileList, const IMGBLDOPTIONS *pOptions);
+int IbFseGetFileList(const char *pszPath, const char *pszIndirPath, FILELISTENTRY **ppFileListHead);
+int IbFseOutputDefines(FILELISTENTRY *pFileList, const IMGBLDPARAM *pOptions);
 int IbFseCopyFiles(int volNum, const FILELISTENTRY *pFileList);
+#endif
 
-#endif /* Not POSIX */
 
+/*  Implemented in os-specific space (ibwin.c and iblinux.c)
+*/
+#if REDCONF_API_POSIX == 1
+int IbPosixCopyDirRecursive(const char *pszVolName, const char *pszInDir);
+#endif
+#if REDCONF_API_FSE == 1
+int IbFseBuildFileList(const char *pszDirPath, FILELISTENTRY **ppFileListHead);
+#endif
+#if REDCONF_API_FSE == 1
+int IbSetRelativePath(char *pszPath, const char *pszParentPath);
+#endif
+bool IsRegularFile(const char *pszPath);
+
+
+/*  Implemented in ibcommon.c
+*/
 int IbCopyFile(int volNum, const FILEMAPPING *pFileMapping);
-int CheckFileExists(const char *pszPath, bool *pfExists);
+int IbCheckFileExists(const char *pszPath, bool *pfExists);
+
 
 /*  Implemented separately in ibfse.c and ibposix.c
 */
@@ -95,5 +132,5 @@ int IbWriteFile(int volNum, const FILEMAPPING *pFileMapping, uint64_t ullOffset,
 #endif /* IMAGE_BUILDER */
 
 
-#endif /* IMGBLD_H */
+#endif /* REDIMGBLD_H */
 

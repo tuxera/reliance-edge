@@ -33,7 +33,7 @@
 #include "strsetting.h"
 
 ///
-/// \brief  The CmbStrSetting class is a special case class that manages  the
+/// \brief  The PathSepSetting class is a special case class that manages the
 ///         path separator character setting. It uses a QComboBox and a
 ///         QLineEdit for user input and holds a string value.
 ///

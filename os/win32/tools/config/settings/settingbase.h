@@ -44,13 +44,17 @@ public:
     ///         Validity.
     ///
     /// \param msg  Set to a human readable error or warning message if
-    ///             Validity::Invalid or Validity::Warning is returned
+    ///             Validity::Invalid or Validity::Warning is returned.
     ///
     virtual Validity RecheckValid(QString &msg) = 0;
 
     ///
     /// \brief  ::SettingBase objects added to this list will be notified when
-    ///         any value held by this ::SettingBase
+    ///         any value held by this ::SettingBase changes. This allows
+    ///         warning buttons to be updated to indicate invalid values the
+    ///         the moment they become invalid due to a dependency (e.g.
+    ///         the buffer count is no longer valid due to POSIX "rename" being
+    ///         checked).
     ///
     QList<Notifiable *> notifyList;
 };

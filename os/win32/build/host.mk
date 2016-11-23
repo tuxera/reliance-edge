@@ -18,6 +18,10 @@ EXTRA_CFLAGS += /Od /D_DEBUG /MTd /Od /Zi /RTC1
 LDFLAGS = /DEBUG
 endif
 
+ifeq (, $(shell where $(CC) 2>NUL))
+$(error "No $(CC) in PATH. Make sure you are running from a Visual Studio Command Prompt or you have run vcvarsall.bat")
+endif
+
 all: redfmt redimgbld
 
 %.$(B_OBJEXT): %.c
@@ -65,5 +69,5 @@ redimgbld: $(IMGBLDOBJ) $(REDDRIVOBJ) $(REDTOOLOBJ)
 .phony: clean
 clean:
 	del /f /q $(subst /,\,$(REDDRIVOBJ) $(REDTOOLOBJ) $(REDPROJOBJ)) 2>NUL
-	del /f /q *.ilk *.pdb *.$(B_OBJEXT) *.exe *.suo *.sln 2>NUL
+	del /f /q *.ilk *.pdb *.$(B_OBJEXT) *.exe 2>NUL
 

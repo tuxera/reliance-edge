@@ -39,8 +39,8 @@
 #include "settings/strsetting.h"
 #include "ui/warningbtn.h"
 
-extern const char * const gpszAtomicWrTrue;
-extern const char * const gpszAtomicWrFalse;
+extern const char * const gpszSupported;
+extern const char * const gpszUnsupported;
 
 ///
 /// \brief  The VolumeSettings class handles all of the volume-specific
@@ -67,12 +67,14 @@ public:
                WarningBtn *wbtnVolSize,
                WarningBtn *wbtnInodeCount,
                WarningBtn *wbtnAtomicWrite,
+               WarningBtn *wbtnDiscardSupport,
                WarningBtn *wbtnBlockIoRetries);
         StrSetting *GetStName();
         IntSetting *GetStSectorSize();
         IntSetting *GetStSectorCount();
         IntSetting *GetStInodeCount();
         StrSetting *GetStAtomicWrite();
+        StrSetting *GetStDiscardSupport();
         IntSetting *GetStBlockIoRetries();
         bool NeedsExternalImap();
 
@@ -82,6 +84,7 @@ public:
         IntSetting stInodeCount;
         IntSetting stSectorSize;
         StrSetting stAtomicWrite;
+        StrSetting stDiscardSupport;
         IntSetting stBlockIoRetries;
     };
 
@@ -96,6 +99,7 @@ public:
                    QLabel *volSizeLabel,
                    QSpinBox *inodeCountBox,
                    QComboBox *atomicWriteBox,
+                   QComboBox *discardSupportBox,
                    QCheckBox *enableRetriesCheck,
                    QSpinBox *numRetriesBox,
                    QWidget *numRetriesWidget,
@@ -108,6 +112,7 @@ public:
                    WarningBtn *volSizeWarn,
                    WarningBtn *inodeCountWarn,
                    WarningBtn *atomicWriteWarn,
+                   WarningBtn *discardSupportWarn,
                    WarningBtn *ioRetriesWarn);
     ~VolumeSettings();
 
@@ -177,6 +182,13 @@ public:
     void GetImapRequirements(bool &imapInline, bool &imapExternal);
 
     ///
+    /// \brief  Checks whether discards are supported on any volume.
+    ///
+    /// \return True if any volume supports discards; false otherwise.
+    ///
+    bool GetDiscardsSupported();
+
+    ///
     /// \brief  Formats the volume settings as valid C code.
     ///
     /// \return A string of C code for a redconf.c file.
@@ -244,6 +256,7 @@ private:
     QLabel *labelVolSizeBytes;
     QComboBox *cmbSectorSize;
     QComboBox *cmbAtomicWrite;
+    QComboBox *cmbDiscardSupport;
     QCheckBox *cbEnableRetries;
     QSpinBox *sbNumRetries;
     QWidget *widgetNumRetries;  // Enabled only when cbEnableRetries is checked.
@@ -257,6 +270,7 @@ private:
     WarningBtn *wbtnInodeCount;
     WarningBtn *wbtnSectorSize;
     WarningBtn *wbtnAtomicWrite;
+    WarningBtn *wbtnDiscardSupport;
     WarningBtn *wbtnIoRetries;
 
 private slots:
@@ -265,6 +279,7 @@ private slots:
     void sbVolSize_valueChanged(const QString &value);
     void sbInodeCount_valueChanged(const QString &value);
     void cmbAtomicWrite_currentIndexChanged(int index);
+    void cmbDiscardSupport_currentIndexChanged(int index);
     void cbEnableRetries_stateChanged(int state);
     void sbNumRetries_valueChanged(const QString & text);
     void listVolumes_currentRowChanged(int row);

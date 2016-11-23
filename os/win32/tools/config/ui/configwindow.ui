@@ -1449,6 +1449,72 @@
                     </layout>
                    </item>
                    <item>
+                    <layout class="QHBoxLayout" name="hlayDiscardsSupported">
+                     <item>
+                      <widget class="QLabel" name="label_22">
+                       <property name="text">
+                        <string>Discard (trim) support:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QComboBox" name="cmbDiscardsSupported">
+                       <property name="minimumSize">
+                        <size>
+                         <width>70</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>Supported</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>Unsupported</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                     <item>
+                      <spacer name="horizontalSpacer_35">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                     <item>
+                      <widget class="WarningBtn" name="wbtnDiscardsSupported" native="true">
+                       <property name="sizePolicy">
+                        <sizepolicy hsizetype="Fixed" vsizetype="Ignored">
+                         <horstretch>0</horstretch>
+                         <verstretch>0</verstretch>
+                        </sizepolicy>
+                       </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>0</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                       <property name="maximumSize">
+                        <size>
+                         <width>18</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
                     <layout class="QHBoxLayout" name="hlayInodeCount">
                      <item>
                       <widget class="QLabel" name="label_14">
@@ -1773,7 +1839,7 @@
              <x>0</x>
              <y>0</y>
              <width>364</width>
-             <height>491</height>
+             <height>504</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_19">
@@ -2345,8 +2411,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>349</width>
-             <height>522</height>
+             <width>364</width>
+             <height>504</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_24">
@@ -2722,7 +2788,7 @@
              <x>0</x>
              <y>0</y>
              <width>364</width>
-             <height>491</height>
+             <height>504</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -2974,8 +3040,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>349</width>
-             <height>507</height>
+             <width>364</width>
+             <height>504</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_10">

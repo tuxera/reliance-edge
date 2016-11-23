@@ -42,6 +42,7 @@ fsstress: $(P_PROJDIR)/fsstress_main.$(B_OBJEXT) $(P_BASEDIR)/os/linux/tools/win
 
 .phony: clean
 clean:
-	rm -f *.$(B_OBJEXT) *.pdb *.ilk *.exe *.suo *.sln
-	rm -f $(subst /,\,$(REDALLOBJ) $(REDPROJOBJ))
+	rm -f *.$(B_OBJEXT) 2> /dev/null
+	rm -f $(REDALLOBJ) $(REDPROJOBJ) 2> /dev/null
+	rm -f fsstress 2> /dev/null
 

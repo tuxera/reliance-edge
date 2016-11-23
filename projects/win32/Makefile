@@ -15,11 +15,15 @@ INCLUDES=					\
 	/I $(P_BASEDIR)/os/win32/tools		\
 	/I $(P_PROJDIR)
 
-EXTRA_CFLAGS += /W3 /D_CRT_SECURE_NO_WARNINGS
+EXTRA_CFLAGS += /W3 /WX /D_CRT_SECURE_NO_WARNINGS
 ifeq ($(B_DEBUG),0)
 EXTRA_CFLAGS += /O2 /Ot /Ox
 else
 EXTRA_CFLAGS += /Od /DD_DEBUG /MTd /Od /Zi /RTC1
+endif
+
+ifeq (, $(shell where $(CC) 2>NUL))
+$(error "No $(CC) in PATH. Make sure you are running from a Visual Studio Command Prompt or you have run vcvarsall.bat")
 endif
 
 all: fsstress
@@ -42,6 +46,6 @@ fsstress: $(P_PROJDIR)/fsstress_main.$(B_OBJEXT) $(P_BASEDIR)/os/win32/tools/win
 
 .phony: clean
 clean:
-	-cmd /c del /Q/F *.$(B_OBJEXT) *.pdb *.ilk *.exe *.suo *.sln
+	-cmd /c del /Q/F *.$(B_OBJEXT) *.pdb *.ilk *.exe
 	-cmd /c del /Q/F $(subst /,\,$(REDALLOBJ) $(REDPROJOBJ))
 

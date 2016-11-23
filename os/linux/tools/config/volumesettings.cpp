@@ -28,8 +28,8 @@
 #include "allsettings.h"
 #include "volumesettings.h"
 
-extern const char * const gpszAtomicWrTrue = "Supported";
-extern const char * const gpszAtomicWrFalse = "Unsupported";
+extern const char * const gpszSupported = "Supported";
+extern const char * const gpszUnsupported = "Unsupported";
 
 VolumeSettings::Volume::Volume(QString name,
                                WarningBtn *wbtnPathPrefix,
@@ -37,12 +37,14 @@ VolumeSettings::Volume::Volume(QString name,
                                WarningBtn *wbtnVolSize,
                                WarningBtn *wbtnInodeCount,
                                WarningBtn *wbtnAtomicWrite,
+                               WarningBtn *wbtnDiscardSupport,
                                WarningBtn *wbtnBlockIoRetries)
     : stName("", name, validateVolName, wbtnPathPrefix),
       stSectorSize("", 512, validateVolSectorSize, wbtnSectorSize),
       stSectorCount("", 1024, validateVolSectorCount, wbtnVolSize),
       stInodeCount("", 100, validateVolInodeCount, wbtnInodeCount),
-      stAtomicWrite("", gpszAtomicWrFalse, validateVolAtomicWrite, wbtnAtomicWrite),
+      stAtomicWrite("", gpszUnsupported, validateSupportedUnsupported, wbtnAtomicWrite),
+      stDiscardSupport("", gpszUnsupported, validateDiscardSupport, wbtnDiscardSupport),
       stBlockIoRetries("", 0, validateVolIoRetries, wbtnBlockIoRetries)
 {
     Q_ASSERT(allSettings.sbsAllocatedBuffers != NULL);
@@ -77,11 +79,15 @@ StrSetting *VolumeSettings::Volume::GetStAtomicWrite()
     return &stAtomicWrite;
 }
 
+StrSetting *VolumeSettings::Volume::GetStDiscardSupport()
+{
+    return &stDiscardSupport;
+}
+
 IntSetting *VolumeSettings::Volume::GetStBlockIoRetries()
 {
     return &stBlockIoRetries;
 }
-
 
 bool VolumeSettings::Volume::NeedsExternalImap()
 {
@@ -117,6 +123,7 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
                                QLabel *volSizeLabel,
                                QSpinBox *inodeCountBox,
                                QComboBox *atomicWriteBox,
+                               QComboBox *discardSupportBox,
                                QCheckBox *enableRetriesCheck,
                                QSpinBox *numRetriesBox,
                                QWidget *numRetriesWidget,
@@ -129,6 +136,7 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
                                WarningBtn *volSizeWarn,
                                WarningBtn *inodeCountWarn,
                                WarningBtn *atomicWriteWarn,
+                               WarningBtn *discardSupportWarn,
                                WarningBtn *ioRetriesWarn)
     : stVolumeCount(macroNameVolumeCount, 1, validateVolumeCount),
       lePathPrefix(pathPrefixBox),
@@ -137,6 +145,7 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
       labelVolSizeBytes(volSizeLabel),
       cmbSectorSize(sectorSizeBox),
       cmbAtomicWrite(atomicWriteBox),
+      cmbDiscardSupport(discardSupportBox),
       cbEnableRetries(enableRetriesCheck),
       sbNumRetries(numRetriesBox),
       widgetNumRetries(numRetriesWidget),
@@ -149,6 +158,7 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
       wbtnVolSize(volSizeWarn),
       wbtnInodeCount(inodeCountWarn),
       wbtnAtomicWrite(atomicWriteWarn),
+      wbtnDiscardSupport(discardSupportWarn),
       wbtnIoRetries(ioRetriesWarn),
       volTick(0)
 {
@@ -168,6 +178,8 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
             this, SLOT(cmbSectorSize_currentIndexChanged(int)));
     connect(cmbAtomicWrite, SIGNAL(currentIndexChanged(int)),
             this, SLOT(cmbAtomicWrite_currentIndexChanged(int)));
+    connect(cmbDiscardSupport, SIGNAL(currentIndexChanged(int)),
+            this, SLOT(cmbDiscardSupport_currentIndexChanged(int)));
     connect(cbEnableRetries, SIGNAL(stateChanged(int)),
             this, SLOT(cbEnableRetries_stateChanged(int)));
     connect(sbNumRetries, SIGNAL(valueChanged(QString)),
@@ -266,6 +278,8 @@ void VolumeSettings::SetActiveVolume(int index)
 
     cmbAtomicWrite->setCurrentText(volumes[index]->GetStAtomicWrite()->GetValue());
 
+    cmbDiscardSupport->setCurrentText(volumes[index]->GetStDiscardSupport()->GetValue());
+
     unsigned long ioRetriesValue = volumes[index]->GetStBlockIoRetries()->GetValue();
     widgetNumRetries->setEnabled(ioRetriesValue != 0);
     cbEnableRetries->setChecked(ioRetriesValue != 0);
@@ -282,7 +296,8 @@ void VolumeSettings::AddVolume()
     QString name = QString("VOL") + QString::number(volTick) + QString(":");
 
     volumes.append(new Volume(name, wbtnPathPrefix, wbtnSectorSize, wbtnVolSize,
-                              wbtnInodeCount, wbtnAtomicWrite, wbtnIoRetries));
+                              wbtnInodeCount, wbtnAtomicWrite, wbtnDiscardSupport,
+                              wbtnIoRetries));
     volTick++;
 
     if(!usePosix)
@@ -340,6 +355,7 @@ void VolumeSettings::GetErrors(QStringList &errors, QStringList &warnings)
         AllSettings::CheckError(volumes[i]->GetStInodeCount(), errors, warnings);
         AllSettings::CheckError(volumes[i]->GetStSectorSize(), errors, warnings);
         AllSettings::CheckError(volumes[i]->GetStAtomicWrite(), errors, warnings);
+        AllSettings::CheckError(volumes[i]->GetStDiscardSupport(), errors, warnings);
         AllSettings::CheckError(volumes[i]->GetStBlockIoRetries(), errors, warnings);
     }
     if(activeIndex != rememberIndex)
@@ -353,6 +369,7 @@ void VolumeSettings::GetErrors(QStringList &errors, QStringList &warnings)
         volumes[activeIndex]->GetStInodeCount()->Notify();
         volumes[activeIndex]->GetStSectorSize()->Notify();
         volumes[activeIndex]->GetStAtomicWrite()->Notify();
+        volumes[activeIndex]->GetStDiscardSupport()->Notify();
         volumes[activeIndex]->GetStBlockIoRetries()->Notify();
     }
 }
@@ -380,6 +397,22 @@ void VolumeSettings::GetImapRequirements(bool &imapInline, bool &imapExternal)
     }
 }
 
+bool VolumeSettings::GetDiscardsSupported()
+{
+    for(int i = 0; i < volumes.count(); i++)
+    {
+        if(QString::compare(volumes[i]->GetStDiscardSupport()->GetValue(),
+                            gpszSupported, Qt::CaseInsensitive) == 0)
+        {
+            // If one volume supports discards, then the driver needs
+            // to support them.
+            return true;
+        }
+    }
+
+    return false;
+}
+
 QString VolumeSettings::FormatCodefileOutput()
 {
 
@@ -402,7 +435,7 @@ const VOLCONF gaRedVolConf[REDCONF_VOLUME_COUNT] =\n\
                 + QString::number(volumes[i]->GetStSectorCount()->GetValue())
                 + QString("U, ")
                 + (QString::compare(volumes[i]->GetStAtomicWrite()->GetValue(),
-                                    gpszAtomicWrTrue, Qt::CaseInsensitive) == 0
+                                    gpszSupported, Qt::CaseInsensitive) == 0
                    ? QString("true") : QString("false"))
                 + QString(", ")
                 + QString::number(volumes[i]->GetStInodeCount()->GetValue())
@@ -410,6 +443,14 @@ const VOLCONF gaRedVolConf[REDCONF_VOLUME_COUNT] =\n\
                 + QString(", ")
                 + QString::number(volumes[i]->GetStBlockIoRetries()->GetValue())
                 + QString("U");
+
+        // Discards are only listed if REDCONF_DISCARDS is true.
+        if(GetDiscardsSupported())
+        {
+            toReturn += (QString::compare(volumes[i]->GetStDiscardSupport()->GetValue(),
+                                gpszSupported, Qt::CaseInsensitive) == 0
+                         ? QString(", true") : QString(", false"));
+        }
 
         Q_ASSERT(allSettings.rbtnsUsePosix != NULL);
         Q_ASSERT(allSettings.rbtnsUsePosix->GetValue() == usePosix);
@@ -434,7 +475,7 @@ const VOLCONF gaRedVolConf[REDCONF_VOLUME_COUNT] =\n\
         }
         else
         {
-            toReturn += QString("},\n");
+            toReturn += QString(" },\n");
         }
     }
 
@@ -491,15 +532,13 @@ void VolumeSettings::ParseCodefile(const QString &text,
         // List of unparsed values of the settings of the current volume
         QStringList strValues;
 
-        for(int i = 0; i < 5; i++)
+        for(int i = 0; i < 6; i++)
         {
             rem = valueExp.match(currStr, currVolPos);
             if(!rem.hasMatch() || rem.lastCapturedIndex() < 2)
             {
-                // Don't report failure if the I/O Retries setting
-                // (index 4) isn't found. This allows the config tool
-                // to load files generated by older versions (1.0) of
-                // the tool.
+                // All valid configuration files (from all versions of the
+                // configuration tool) should have at least 4 arguments.
                 if(i < 4)
                 {
                     failure = true;
@@ -537,6 +576,7 @@ void VolumeSettings::ParseCodefile(const QString &text,
                                      wbtnVolSize,
                                      wbtnInodeCount,
                                      wbtnAtomicWrite,
+                                     wbtnDiscardSupport,
                                      wbtnIoRetries);
 
         parseAndSet(newVol->GetStSectorSize(), strValues[0], notParsed,
@@ -547,11 +587,11 @@ void VolumeSettings::ParseCodefile(const QString &text,
         // Special case parse and set
         if(QString::compare(strValues[2], "true") == 0)
         {
-            newVol->GetStAtomicWrite()->SetValue(gpszAtomicWrTrue);
+            newVol->GetStAtomicWrite()->SetValue(gpszSupported);
         }
         else if(QString::compare(strValues[2], "false") == 0)
         {
-            newVol->GetStAtomicWrite()->SetValue(gpszAtomicWrFalse);
+            newVol->GetStAtomicWrite()->SetValue(gpszUnsupported);
         }
         else
         {
@@ -567,6 +607,28 @@ void VolumeSettings::ParseCodefile(const QString &text,
         {
             parseAndSet(newVol->GetStBlockIoRetries(), strValues[4], notParsed,
                     pathPrefix + QString(" block I/O retries"));
+        }
+
+        // The discard supported setting is set in Reliance Edge v1.1
+        // and above only if REDCONF_DISCARDS is enabled.
+        // For now, it's safe to check strValues.count(), but in the
+        // future we may need to check whether discards are globally
+        // supported before parsing per-volume.
+        if(strValues.count() > 5)
+        {
+            // Special case parse and set
+            if(QString::compare(strValues[5], "true") == 0)
+            {
+                newVol->GetStDiscardSupport()->SetValue(gpszSupported);
+            }
+            else if(QString::compare(strValues[5], "false") == 0)
+            {
+                newVol->GetStDiscardSupport()->SetValue(gpszUnsupported);
+            }
+            else
+            {
+                notParsed += pathPrefix + QString(" discards supported");
+            }
         }
 
         newVolumes.append(newVol);
@@ -853,6 +915,22 @@ void VolumeSettings::cmbAtomicWrite_currentIndexChanged(int index)
     try {
         volumes[activeIndex]->GetStAtomicWrite()
                 ->ProcessInput(cmbAtomicWrite->itemText(index));
+    }
+    catch(std::invalid_argument)
+    {
+        Q_ASSERT(false);
+        return;
+    }
+}
+
+void VolumeSettings::cmbDiscardSupport_currentIndexChanged(int index)
+{
+    // Asserts that the vol index is ok
+    if(!checkCurrentIndex()) return;
+
+    try {
+        volumes[activeIndex]->GetStDiscardSupport()
+                ->ProcessInput(cmbDiscardSupport->itemText(index));
     }
     catch(std::invalid_argument)
     {

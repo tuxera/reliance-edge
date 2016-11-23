@@ -177,7 +177,7 @@ extern const QString macroNameDebugProcesAsserts;
 
 // "Volumes" tab
 extern const QString macroNameBlockSize;
-extern const QString macroNameVolumeCount;
+extern const QString macroNameVolumeCount; //Not in UI
 
 // "Data Storage" tab
 extern const QString macroNameByteOrder;
@@ -192,6 +192,7 @@ extern const QString macroNameIndirectPtrs;
 // Not in UI:
 extern const QString macroNameInlineImap;
 extern const QString macroNameExternalImap;
+extern const QString macroNameDiscardSupport;
 
 // "Memory" tab
 extern const QString macroNameAllocatedBuffers;

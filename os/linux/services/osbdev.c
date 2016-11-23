@@ -35,6 +35,15 @@
 #include <fcntl.h>
 #include <stdio.h>
 
+/*  If this is set to 1 and REDCONF_DISCARDS is enabled, RAM disk volumes
+    will assert and return -RED_EIO when a read is attempted that includes
+    one or more blocks of discarded data.
+
+    This setting is incompatible with tests or applications that call
+    RedOsBDevRead() directly, including the POSIX-like API test.
+*/
+#define VERIFY_DISCARDS 0
+
 typedef enum
 {
     BDEVTYPE_RAM_DISK = 0,  /* Default: must be zero. */
@@ -547,6 +556,7 @@ static REDSTATUS RamDiskRead(
     uint32_t    ulSectorCount,
     void       *pBuffer)
 {
+    REDSTATUS   ret = 0;
     uint64_t    ullByteOffset = ullSectorStart
                                 * gaRedVolConf[bVolNum].ulSectorSize;
     uint32_t    ulByteCount = ulSectorCount
@@ -554,7 +564,7 @@ static REDSTATUS RamDiskRead(
 
     memcpy(pBuffer, &gaDisk[bVolNum].pbRamDisk[ullByteOffset], ulByteCount);
 
-    return 0;
+    return ret;
 }
 
 #if REDCONF_READ_ONLY == 0

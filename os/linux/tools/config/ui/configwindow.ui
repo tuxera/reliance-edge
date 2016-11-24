@@ -150,7 +150,7 @@
                  <item>
                   <widget class="QRadioButton" name="rbtnUseFse">
                    <property name="toolTip">
-                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;Reliance Edge provides two mutually exclusive file system APIs: the POSIX-like API and the File System Essentials API. This setting indicates your application will be using the Essentials API.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; See the File System Essentials API Guide for a discussion of this API (including reasons why you might use it instead of the POSIX-like API) and the API documentation for the list of the Essentials APIs.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;Reliance Edge provides two mutually exclusive file system APIs: the POSIX-like API and the File System Essentials API. This setting indicates your application will be using the Essentials API.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; See the File System Essentials API Guide for a discussion of this API (including reasons why you might use it instead of the POSIX-like API) and the API documentation for the list of the Essentials APIs.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                    </property>
                    <property name="text">
                     <string>Use File System Essentials API</string>
@@ -721,7 +721,7 @@
                   <item>
                    <widget class="QCheckBox" name="cbFseFormat">
                     <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the RedFseFormat() API will be available.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to format or reformat the storage media on the target, enable this setting; otherwise, disable it to reduce code size. Often the media is formatted only once, when the system is &amp;quot;flashed&amp;quot;, and never again; in this case there is no need for RedFseFormat(). Enabling RedFseFormat() will be required to run most of the tests provided with Reliance Edge.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the RedFseFormat() API will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to format or reformat the storage media on the target, enable this setting; otherwise, disable it to reduce code size. Often the media is formatted only once, when the system is &amp;quot;flashed&amp;quot;, and never again; in this case there is no need for RedFseFormat(). Enabling RedFseFormat() will be required to run most of the tests provided with Reliance Edge.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
                     <property name="text">
                      <string>Format</string>
@@ -731,7 +731,7 @@
                   <item>
                    <widget class="QCheckBox" name="cbFseTruncate">
                     <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the RedFseTruncate() API will be available.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance: &lt;/span&gt;If you plan to truncate files in your application, enable this setting; otherwise, disable it to reduce code size. Note that since the Essentials API does not support deletion, truncating data is the only way to free space, so most applications will want this enabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the RedFseTruncate() API will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance: &lt;/span&gt;If you plan to truncate files in your application, enable this setting; otherwise, disable it to reduce code size. Note that since the Essentials API does not support deletion, truncating data is the only way to free space, so most applications will want this enabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
                     <property name="text">
                      <string>Truncate</string>
@@ -741,7 +741,7 @@
                   <item>
                    <widget class="QCheckBox" name="cbFseGetMask">
                     <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether the RedFseTransMaskGet() API will be available.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance: &lt;/span&gt;If you plan to retrieve the transaction mask at run-time in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether the RedFseTransMaskGet() API will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance: &lt;/span&gt;If you plan to retrieve the transaction mask at run-time in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
                     <property name="text">
                      <string>Get transaction mask</string>
@@ -751,7 +751,7 @@
                   <item>
                    <widget class="QCheckBox" name="cbFseSetMask">
                     <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the RedFseTransMaskSet() API will be available.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to change the transaction mask at run-time in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the RedFseTransMaskSet() API will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to change the transaction mask at run-time in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
                     <property name="text">
                      <string>Set transaction mask</string>

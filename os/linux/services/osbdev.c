@@ -43,6 +43,7 @@
 #include <sys/ioctl.h>
 #include <linux/fs.h>
 #include <strings.h>
+#include <inttypes.h>
 
 #include <redfs.h>
 #include <redvolume.h>
@@ -673,16 +674,13 @@ static REDSTATUS FileDiskOpen(
             }
             else if(ullDevSize < ((uint64_t) ulVolSecSize * ullVolSecCount))
             {
+                fprintf(stderr, "Error: block device size (%" PRIu64 ") is smaller than requested size (%" PRIu64 ").\n", ullDevSize, (uint64_t)(ulVolSecSize * ullVolSecCount));
                 ret = -RED_EINVAL;
             }
             else if(iSectorSize != ulVolSecSize)
             {
+                fprintf(stderr, "Error: device sector size (%d) is different from the requested sector size (%d).\n", iSectorSize, ulVolSecSize);
                 ret = -RED_EINVAL;
-            }
-
-            if(ret == -RED_EINVAL)
-            {
-                fprintf(stderr, "Error: block device incompatible with configuration.\n");
             }
         }
     }

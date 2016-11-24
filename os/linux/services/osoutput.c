@@ -31,6 +31,7 @@
 
 #include <stdio.h>
 
+
 /** @brief Write a string to a user-visible output location.
 
     Write a null-terminated string to the serial port, console, terminal, or

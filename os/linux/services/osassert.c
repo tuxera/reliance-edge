@@ -30,7 +30,10 @@
 #if REDCONF_ASSERTS == 1
 
 #include <stdio.h>
+
+#undef NDEBUG  /* Ensure assert() is enabled since REDCONF_ASSERTS is true. */
 #include <assert.h>
+
 
 /** @brief Invoke the native assertion handler.
 
@@ -44,6 +47,8 @@ void RedOsAssertFail(
     uint32_t    ulLineNum)
 {
   #if REDCONF_OUTPUT == 1
+    /*  pszFileName should never be NULL, but check just in case.
+    */
     fprintf(stderr, "Assertion failed in \"%s\" at line %u\n",
         (pszFileName == NULL) ? "" : pszFileName, (unsigned)ulLineNum);
   #else

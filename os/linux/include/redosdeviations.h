@@ -29,10 +29,8 @@
 #define REDOSDEVIATIONS_H
 
 
-/*  Populate this header with macros that encapsulate MISRA C:2012 deviations if
-    creating a port which is intended to be MISRA C:2012 compliant.  See the
-    FreeRTOS version of this header as an example.  Otherwise, leave this header
-    blank (it needs to exist for the sake of Makefiles).
+/*  No deviations -- Linux is a host OS, and is not intended to comply with
+    MISRA C:2012.
 */
 
 

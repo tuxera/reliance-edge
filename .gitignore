@@ -7,8 +7,26 @@
 # command after changing this file, to see if there are
 # any tracked files which get ignored after the change.
 #
-# Normal rules
-#
-.*
-*.o
 
+#
+# Ignore standard build artifacts
+#
+*.o
+*.d
+*.obj
+*.exe
+*.pdb
+*.ilk
+
+#
+# Ignore build artifacts from host projects (extension
+# appended with 't' to allow host and target build
+# artifacts to coexist)
+#
+*.to
+*.tobj
+
+#
+# Ignore temporary backup files
+#
+~*

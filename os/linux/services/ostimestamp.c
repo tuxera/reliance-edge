@@ -32,6 +32,7 @@
 
 #include <sys/time.h>
 
+
 /** @brief Initialize the timestamp service.
 
     The behavior of invoking this function when timestamps are already
@@ -39,16 +40,11 @@
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
-    @retval 0           Operation was successful.
-    @retval -RED_ENOSYS The timestamp service has not been implemented.
+    @retval 0   Operation was successful.
 */
 REDSTATUS RedOsTimestampInit(void)
 {
-    REDSTATUS   ret;
-
-    ret = 0;
-
-    return ret;
+    return 0;
 }
 
 
@@ -63,11 +59,7 @@ REDSTATUS RedOsTimestampInit(void)
 */
 REDSTATUS RedOsTimestampUninit(void)
 {
-    REDSTATUS ret;
-
-    ret = 0;
-
-    return ret;
+    return 0;
 }
 
 
@@ -81,13 +73,11 @@ REDSTATUS RedOsTimestampUninit(void)
 */
 REDTIMESTAMP RedOsTimestamp(void)
 {
-    REDTIMESTAMP ret;
     struct timeval tv;
 
     gettimeofday(&tv, NULL);
-    ret = (1000000*tv.tv_sec) + tv.tv_usec;
 
-    return ret;
+    return (REDTIMESTAMP)((tv.tv_sec * (uint64_t)1000000U) + tv.tv_usec);
 }
 
 
@@ -103,6 +93,10 @@ REDTIMESTAMP RedOsTimestamp(void)
 uint64_t RedOsTimePassed(
     REDTIMESTAMP    tsSince)
 {
-    return (uint64_t)(RedOsTimestamp() - tsSince);
+    REDTIMESTAMP    now;
+
+    now = RedOsTimestamp();
+
+    return (uint64_t)(now - tsSince);
 }
 

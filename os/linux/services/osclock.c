@@ -29,6 +29,7 @@
 
 #include <time.h>
 
+
 /** @brief Initialize the real time clock.
 
     The behavior of calling this function when the RTC is already initialized
@@ -71,7 +72,9 @@ REDSTATUS RedOsClockUninit(void)
 */
 uint32_t RedOsClockGetTime(void)
 {
-    /*  Due to the signedness of time_t, this will break in 2038. */
+    /*  Due to the signedness of time_t, this will break in 2038 in 32-bit
+        executables.
+    */
     return (uint32_t)time(NULL);
 }
 

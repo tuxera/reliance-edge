@@ -33,27 +33,33 @@ REDPROJHDR ?= $(P_CONFDIR)/redconf.h
 
 include $(P_BASEDIR)/build/reliance.mk
 
-IMGBLDHDR=							\
-	$(P_BASEDIR)/os/win32/tools/imgbld/ibheader.h		\
+
+TOOLHDR=							\
+	$(P_BASEDIR)/include/redtools.h				\
 	$(P_BASEDIR)/os/win32/tools/wintlcmn.h
 IMGBLDOBJ=							\
-	$(P_BASEDIR)/os/win32/tools/imgbld/ibcommon.$(B_OBJEXT)	\
-	$(P_BASEDIR)/os/win32/tools/imgbld/ibfse.$(B_OBJEXT)	\
-	$(P_BASEDIR)/os/win32/tools/imgbld/ibposix.$(B_OBJEXT)	\
-	$(P_BASEDIR)/os/win32/tools/imgbld/imgbld.$(B_OBJEXT)	\
+	$(P_BASEDIR)/tools/imgbld/ibcommon.$(B_OBJEXT)		\
+	$(P_BASEDIR)/tools/imgbld/ibfse.$(B_OBJEXT)		\
+	$(P_BASEDIR)/tools/imgbld/ibposix.$(B_OBJEXT)		\
+	$(P_BASEDIR)/tools/imgbld/imgbld.$(B_OBJEXT)		\
+	$(P_BASEDIR)/os/win32/tools/imgbldwin.$(B_OBJEXT)	\
+	$(P_BASEDIR)/os/win32/tools/imgbld_main.$(B_OBJEXT)	\
 	$(P_BASEDIR)/os/win32/tools/wintlcmn.$(B_OBJEXT)
 REDPROJOBJ=							\
 	$(IMGBLDOBJ)						\
-	$(P_BASEDIR)/os/win32/tools/imgcopy.$(B_OBJEXT)		\
 	$(P_BASEDIR)/os/win32/tools/winchk.$(B_OBJEXT)		\
 	$(P_BASEDIR)/os/win32/tools/winfmt.$(B_OBJEXT)
 
-$(P_BASEDIR)/os/win32/tools/imgbld/ibcommon.$(B_OBJEXT):	$(P_BASEDIR)/os/win32/tools/imgbld/ibcommon.c $(REDHDR) $(IMGBLDHDR)
-$(P_BASEDIR)/os/win32/tools/imgbld/ibfse.$(B_OBJEXT):		$(P_BASEDIR)/os/win32/tools/imgbld/ibfse.c $(REDHDR) $(IMGBLDHDR)
-$(P_BASEDIR)/os/win32/tools/imgbld/ibposix.$(B_OBJEXT):		$(P_BASEDIR)/os/win32/tools/imgbld/ibposix.c $(REDHDR) $(IMGBLDHDR)
-$(P_BASEDIR)/os/win32/tools/imgbld/imgbld.$(B_OBJEXT):		$(P_BASEDIR)/os/win32/tools/imgbld/imgbld.c $(REDHDR) $(IMGBLDHDR)
-$(P_BASEDIR)/os/win32/tools/winfmt.$(B_OBJEXT):			$(P_BASEDIR)/os/win32/tools/winfmt.c $(REDHDR) $(P_BASEDIR)/os/win32/tools/wintlcmn.h
-$(P_BASEDIR)/os/win32/tools/wintlcmn.$(B_OBJEXT):		$(P_BASEDIR)/os/win32/tools/wintlcmn.c  $(REDHDR) $(P_BASEDIR)/os/win32/tools/wintlcmn.h
+
+
+$(P_BASEDIR)/tools/imgbld/ibcommon.$(B_OBJEXT):		$(P_BASEDIR)/tools/imgbld/ibcommon.c $(REDHDR) $(TOOLHDR)
+$(P_BASEDIR)/tools/imgbld/ibfse.$(B_OBJEXT):		$(P_BASEDIR)/tools/imgbld/ibfse.c $(REDHDR) $(TOOLHDR)
+$(P_BASEDIR)/tools/imgbld/ibposix.$(B_OBJEXT):		$(P_BASEDIR)/tools/imgbld/ibposix.c $(REDHDR) $(TOOLHDR)
+$(P_BASEDIR)/tools/imgbld.$(B_OBJEXT):			$(P_BASEDIR)/tools/imgbld/imgbld.c $(REDHDR) $(TOOLHDR)
+$(P_BASEDIR)/os/win32/tools/imgbldwin.$(B_OBJEXT):	$(P_BASEDIR)/os/win32/tools/imgbldwin.c $(REDHDR) $(TOOLHDR)
+$(P_BASEDIR)/os/win32/tools/imgbld_main.$(B_OBJEXT):	$(P_BASEDIR)/os/win32/tools/imgbld_main.c $(REDHDR) $(TOOLHDR)
+$(P_BASEDIR)/os/win32/tools/winfmt.$(B_OBJEXT):		$(P_BASEDIR)/os/win32/tools/winfmt.c $(REDHDR) $(P_BASEDIR)/os/win32/tools/wintlcmn.h
+$(P_BASEDIR)/os/win32/tools/wintlcmn.$(B_OBJEXT):	$(P_BASEDIR)/os/win32/tools/wintlcmn.c  $(REDHDR) $(P_BASEDIR)/os/win32/tools/wintlcmn.h
 
 # The redconf.c for the tools #includes the redconf.c from the parent project
 # to inherit its settings, so add it as a dependency.
@@ -69,5 +75,7 @@ redimgbld: $(IMGBLDOBJ) $(REDDRIVOBJ) $(REDTOOLOBJ)
 .phony: clean
 clean:
 	del /f /q $(subst /,\,$(REDDRIVOBJ) $(REDTOOLOBJ) $(REDPROJOBJ)) 2>NUL
+	del /f /q $(subst /,\,$(P_BASEDIR)/os/win32/tools/*.$(B_OBJEXT)) 2>NUL
+	del /f /q $(subst /,\,$(P_BASEDIR)/tools/*.$(B_OBJEXT)) 2>NUL
 	del /f /q *.ilk *.pdb *.$(B_OBJEXT) *.exe 2>NUL
 

@@ -33,7 +33,6 @@
 
 #include <redposix.h>
 #include <redvolume.h>
-#include <wintlcmn.h>
 
 
 /** @brief Entry point for the fsstress test.
@@ -53,6 +52,7 @@ int main(
     {
         const char *pszVolume = gaRedVolConf[bVolNum].pszPathPrefix;
         int32_t     iErr;
+        REDSTATUS   ret;
 
         iErr = red_init();
         if(iErr == -1)
@@ -61,11 +61,11 @@ int main(
             exit(red_errno);
         }
 
-        iErr = RedOsBDevConfig(bVolNum, pszDrive);
-        if(iErr != 0)
+        ret = RedOsBDevConfig(bVolNum, pszDrive);
+        if(ret != 0)
         {
-            fprintf(stderr, "Unexpected error %d from RedOsBDevConfig()\n", (int)iErr);
-            exit(iErr);
+           fprintf(stderr, "Unexpected error %d from RedOsBDevConfig()\n", (int)ret);
+            exit(ret);
         }
 
         iErr = red_format(pszVolume);
@@ -108,5 +108,6 @@ int main(void)
 }
 
 #endif
+
 
 

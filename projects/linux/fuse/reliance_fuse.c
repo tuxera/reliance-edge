@@ -44,6 +44,7 @@
 #undef st_atime
 #undef st_ctime
 #undef st_mtime
+#define __POSIX_2008_STAT__
 #endif
 
 #include <redfs.h>
@@ -241,9 +242,15 @@ static int reliance_getattr(const char *path, struct stat *stbuf)
 			stbuf->st_nlink = redstbuf.st_nlink;
 			stbuf->st_size = redstbuf.st_size;
 #if (REDCONF_INODE_TIMESTAMPS == 1)
+#if defined(__POSIX_2008_STAT__)
 			stbuf->st_atim.tv_sec = redstbuf.st_atime;
 			stbuf->st_ctim.tv_sec = redstbuf.st_ctime;
 			stbuf->st_mtim.tv_sec = redstbuf.st_mtime;
+#else
+			stbuf->st_atime = redstbuf.st_atime;
+			stbuf->st_ctime = redstbuf.st_ctime;
+			stbuf->st_mtime = redstbuf.st_mtime;
+#endif
 #endif
 #if (REDCONF_INODE_BLOCKS == 1)
 			stbuf->st_blocks = redstbuf.st_blocks;
@@ -544,6 +551,13 @@ static int reliance_utimens(const char *path, const struct timespec ts[2])
 
 	return -ENOSYS;
 #else
+	/*
+	   This is more of a hack. Reliance does not provide ways to change
+	   the date attached to a file.
+	   As a workaround, we add a byte at the end, then remove it.
+	   As a result, reliance will write the file to the media and
+	   change the date to the current date.
+	 */
 	int32_t fd;
 	int res = 0;
 
@@ -783,7 +797,6 @@ static void show_help(const char *progname)
 
 int main(int argc, char *argv[], char *argp[])
 {
-	const char *pszVolume;
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
 
 	(void) argp;

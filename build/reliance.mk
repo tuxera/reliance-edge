@@ -39,14 +39,14 @@ REDDRIVOBJ=								\
 
 # Additional objects necessary to build the host tools.
 REDTOOLOBJ=								\
-	$(P_BASEDIR)/toolcmn/getopt.$(B_OBJEXT)				\
-	$(P_BASEDIR)/toolcmn/toolcmn.$(B_OBJEXT)			\
+	$(P_BASEDIR)/tools/getopt.$(B_OBJEXT)				\
+	$(P_BASEDIR)/tools/toolcmn.$(B_OBJEXT)				\
 	$(P_BASEDIR)/util/endian.$(B_OBJEXT)
 
 # Additional objects necessary to build the tests.
 REDTESTOBJ=								\
-	$(P_BASEDIR)/toolcmn/getopt.$(B_OBJEXT)				\
-	$(P_BASEDIR)/toolcmn/toolcmn.$(B_OBJEXT)			\
+	$(P_BASEDIR)/tools/getopt.$(B_OBJEXT)				\
+	$(P_BASEDIR)/tools/toolcmn.$(B_OBJEXT)				\
 	$(P_BASEDIR)/tests/util/atoi.$(B_OBJEXT)			\
 	$(P_BASEDIR)/tests/util/math.$(B_OBJEXT)			\
 	$(P_BASEDIR)/tests/util/printf.$(B_OBJEXT)			\
@@ -135,8 +135,8 @@ $(P_BASEDIR)/tests/util/atoi.$(B_OBJEXT):			$(P_BASEDIR)/tests/util/atoi.c $(RED
 $(P_BASEDIR)/tests/util/math.$(B_OBJEXT):			$(P_BASEDIR)/tests/util/math.c $(REDHDR)
 $(P_BASEDIR)/tests/util/printf.$(B_OBJEXT):			$(P_BASEDIR)/tests/util/printf.c $(REDHDR)
 $(P_BASEDIR)/tests/util/rand.$(B_OBJEXT):			$(P_BASEDIR)/tests/util/rand.c $(REDHDR)
-$(P_BASEDIR)/toolcmn/getopt.$(B_OBJEXT):			$(P_BASEDIR)/toolcmn/getopt.c $(REDHDR)
-$(P_BASEDIR)/toolcmn/toolcmn.$(B_OBJEXT):			$(P_BASEDIR)/toolcmn/toolcmn.c $(REDHDR)
+$(P_BASEDIR)/tools/getopt.$(B_OBJEXT):				$(P_BASEDIR)/tools/getopt.c $(REDHDR)
+$(P_BASEDIR)/tools/toolcmn.$(B_OBJEXT):				$(P_BASEDIR)/tools/toolcmn.c $(REDHDR)
 $(P_BASEDIR)/util/bitmap.$(B_OBJEXT):				$(P_BASEDIR)/util/bitmap.c $(REDHDR)
 $(P_BASEDIR)/util/crc.$(B_OBJEXT):				$(P_BASEDIR)/util/crc.c $(REDHDR)
 $(P_BASEDIR)/util/memory.$(B_OBJEXT):				$(P_BASEDIR)/util/memory.c $(REDHDR)

@@ -25,13 +25,13 @@
 /** @file
     @brief Implements a synchronization object to provide mutual exclusion.
 */
+#include <pthread.h>
+
 #include <redfs.h>
 
 #if REDCONF_TASK_COUNT > 1U
 
-#include <pthread.h>
-
-static pthread_mutex_t cs_mutex =  PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t gMutex = PTHREAD_MUTEX_INITIALIZER;
 
 /** @brief Initialize the mutex.
 
@@ -46,11 +46,9 @@ static pthread_mutex_t cs_mutex =  PTHREAD_MUTEX_INITIALIZER;
 */
 REDSTATUS RedOsMutexInit(void)
 {
-    REDSTATUS ret;
-
-    ret = 0;
-
-    return ret;
+    /*  Mutex statically initialized.
+    */
+    return 0;
 }
 
 
@@ -66,11 +64,7 @@ REDSTATUS RedOsMutexInit(void)
 */
 REDSTATUS RedOsMutexUninit(void)
 {
-    REDSTATUS   ret;
-
-    ret = 0;
-
-    return ret;
+    return 0;
 }
 
 
@@ -82,7 +76,9 @@ REDSTATUS RedOsMutexUninit(void)
 */
 void RedOsMutexAcquire(void)
 {
-    pthread_mutex_lock( &cs_mutex );
+    pthread_mutex_lock(&gMutex);
+
+    return;
 }
 
 
@@ -97,7 +93,9 @@ void RedOsMutexAcquire(void)
 */
 void RedOsMutexRelease(void)
 {
-    pthread_mutex_unlock( &cs_mutex );
+    pthread_mutex_unlock(&gMutex);
+
+    return;
 }
 
 #endif

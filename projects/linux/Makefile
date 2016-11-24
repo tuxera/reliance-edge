@@ -1,48 +1,58 @@
-P_BASEDIR ?= ../..
-P_PROJDIR ?= $(P_BASEDIR)/projects/linux
-B_DEBUG ?= 1
+#
+# makefile for Linux project in Reliance Edge
+#
+P_PROJDIR ?= $(shell pwd)
+P_BASEDIR ?= $(shell readlink -f $(P_PROJDIR)/../..)
 
-CC=gcc
-P_OS ?= linux
+P_OS     ?= linux
 B_OBJEXT ?= o
+B_DEBUG  ?= 1
+CC=gcc
 
 INCLUDES=					\
 	-I $(P_BASEDIR)/include			\
 	-I $(P_BASEDIR)/core/include		\
 	-I $(P_BASEDIR)/tests/testfw		\
-	-I $(P_BASEDIR)/tests/stochposix	\
 	-I $(P_BASEDIR)/os/linux/include	\
-	-I $(P_BASEDIR)/os/linux/tools		\
+	-I $(P_BASEDIR)/tests/stochposix	\
 	-I $(P_PROJDIR)
+	
+##
+# All warnings are errors, Check to see if the GCC compiler
+# options for stack frame and unused variables are supported.
+##
 
-EXTRA_CFLAGS +=
-ifeq ($(B_DEBUG),0)
-EXTRA_CFLAGS += -O2
-else
-EXTRA_CFLAGS += -g -DDEBUG
+EXTRA_CFLAGS +=-Wall
+EXTRA_CFLAGS +=-Werror
+EXTRA_CFLAGS +=-Wno-switch-break
+EXTRA_CFLAGS +=-Wno-pointer-to-int-cast
+EXTRA_CFLAGS +=$(call cc-option,-Wframe-larger-than=4096)
+EXTRA_CFLAGS +=$(call cc-option,-Wno-error=unused-variable)
+
+ifneq ($(B_DEBUG),0)
+EXTRA_CFLAGS +=-g -DDEBUG
 endif
 
-all: fsstress
+all:    fsstress
 
-%.$(B_OBJEXT): %.c
-	$(CC) $(EXTRA_CFLAGS) $(INCLUDES) $< -c -o $@
+.c.o:
+	$(CC) $(EXTRA_CFLAGS) $(INCLUDES) -DD_DEBUG=$(B_DEBUG) -x c -c $< -o $@
 
 include $(P_BASEDIR)/build/reliance.mk
 
-REDPROJOBJ=							\
-	$(P_BASEDIR)/os/linux/tools/wintlcmn.$(B_OBJEXT)
-REDPROJOBJ +=							\
+REDPROJOBJ=						\
 	$(P_PROJDIR)/fsstress_main.$(B_OBJEXT)
 
-$(P_PROJDIR)/fsstress_main.$(B_OBJEXT):			$(P_PROJDIR)/fsstress_main.c $(REDHDR) $(P_BASEDIR)/os/linux/tools/wintlcmn.h
-$(P_BASEDIR)/os/linux/tools/wintlcmn.$(B_OBJEXT):	$(P_BASEDIR)/os/linux/tools/wintlcmn.c $(REDHDR) $(P_BASEDIR)/os/linux/tools/wintlcmn.h
+$(P_PROJDIR)/fsstress_main.$(B_OBJEXT):  $(P_PROJDIR)/fsstress_main.c $(REDHDR)
 
-fsstress: $(P_PROJDIR)/fsstress_main.$(B_OBJEXT) $(P_BASEDIR)/os/linux/tools/wintlcmn.$(B_OBJEXT) $(REDALLOBJ)
+# The underscore makes this program easier to tell apart from fsstress.
+
+fsstress: $(P_PROJDIR)/fsstress_main.$(B_OBJEXT) $(REDALLOBJ)
 	$(CC) $(EXTRA_CFLAGS) $^ -o $@
 
 .phony: clean
 clean:
-	rm -f *.$(B_OBJEXT) 2> /dev/null
-	rm -f $(REDALLOBJ) $(REDPROJOBJ) 2> /dev/null
-	rm -f fsstress 2> /dev/null
+	-rm -f $(REDALLOBJ)
+	-rm -f $(P_PROJDIR)/*.$(B_OBJEXT)
+	-rm -f fsstress
 

@@ -33,7 +33,6 @@
 
 #include <redposix.h>
 #include <redvolume.h>
-#include <wintlcmn.h>
 
 
 /** @brief Entry point for the fsstress test.
@@ -61,11 +60,16 @@ int main(
             exit(red_errno);
         }
 
-        iErr = RedOsBDevConfig(bVolNum, pszDrive);
-        if(iErr != 0)
+        if((pszDrive != NULL) && (strcasecmp(pszDrive, "ram") != 0))
         {
-            fprintf(stderr, "Unexpected error %d from RedOsBDevConfig()\n", (int)iErr);
-            exit(iErr);
+            REDSTATUS ret;
+
+            ret = RedOsBDevConfig(bVolNum, pszDrive);
+            if(ret != 0)
+            {
+                fprintf(stderr, "Unexpected error %d from RedOsBDevConfig()\n", (int)ret);
+                exit(ret);
+            }
         }
 
         iErr = red_format(pszVolume);
@@ -108,5 +112,6 @@ int main(void)
 }
 
 #endif
+
 
 

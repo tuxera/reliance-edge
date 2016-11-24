@@ -42,6 +42,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <linux/fs.h>
+#include <strings.h>
 
 #include <redfs.h>
 #include <redvolume.h>
@@ -115,7 +116,15 @@ REDSTATUS RedOsBDevConfig(
         RedMemSet(&gaDisk[bVolNum], 0U, sizeof(gaDisk[bVolNum]));
 
         gaDisk[bVolNum].pszSpec = pszBDevSpec;
-        gaDisk[bVolNum].type = BDEVTYPE_FILE_DISK;
+
+        if(strcasecmp(pszBDevSpec, "ram") == 0)
+        {
+            gaDisk[bVolNum].type = BDEVTYPE_RAM_DISK;
+        }
+        else
+        {
+            gaDisk[bVolNum].type = BDEVTYPE_FILE_DISK;
+        }
 
         ret = 0;
     }

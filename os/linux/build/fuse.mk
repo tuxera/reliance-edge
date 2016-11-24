@@ -1,7 +1,7 @@
 CC=gcc
 LD=gcc
 P_OS ?= linux
-B_OBJEXT ?= o
+B_OBJEXT ?= to
 
 INCLUDES=					\
 	-I $(P_PROJDIR)				\

@@ -61,7 +61,7 @@ static struct options {
 #define OPTION(t, p) { t, offsetof(struct options, p), 1 }
 
 static const struct fuse_opt option_spec[] = {
-        OPTION("--vol=%s", volume_num),
+        OPTION("--vol=%hhd", volume_num),
         OPTION("--device=%s", file_name),
         OPTION("--format", format),
         OPTION("-h", show_help),

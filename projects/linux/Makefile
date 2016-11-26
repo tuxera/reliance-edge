@@ -7,7 +7,7 @@ P_BASEDIR ?= $(shell readlink -f $(P_PROJDIR)/../..)
 P_OS     ?= linux
 B_OBJEXT ?= o
 B_DEBUG  ?= 1
-CC=gcc
+CC ?= gcc
 
 INCLUDES=					\
 	-I $(P_BASEDIR)/include			\

@@ -449,7 +449,7 @@ REDSTATUS RedDirEntryLookup(
 #if (REDCONF_API_POSIX_READDIR == 1) || (REDCONF_CHECKER == 1)
 /** @brief Read the next entry from a directory, given a starting index.
 
-    @param pInode   A pointer to the cached inode structure of the directory to
+    @param pPInode  A pointer to the cached inode structure of the directory to
                     read from.
     @param pulIdx   On entry, the directory index to start reading from.  On
                     successful return, populated with the directory index to use

@@ -99,7 +99,6 @@ static int nonopt_end = -1;   /* first option after non options (for permute) */
 
 /* Error messages */
 static const char recargchar[] = "option requires an argument -- %c\n";
-static const char illoptchar[] = "illegal option -- %c\n"; /* From P1003.2 */
 static int dash_prefix = NO_PREFIX;
 static const char gnuoptchar[] = "invalid option -- %c\n";
 

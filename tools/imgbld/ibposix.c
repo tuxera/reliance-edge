@@ -202,11 +202,7 @@ int IbPosixCopyDir(
 
         /*  Get rid of any ending path separators.
         */
-        while(     asInputDir[inDirLen - 1] == '/'
-      #ifdef _WIN32
-                || asInputDir[inDirLen - 1] == '\\'
-      #endif
-             )
+        while(asInputDir[inDirLen - 1] == '/' || asInputDir[inDirLen - 1] == '\\')
         {
             asInputDir[inDirLen - 1] = '\0';
             inDirLen--;
@@ -318,10 +314,7 @@ int IbConvertPath(
     /*  After skipping the base path, the next char should be a path separator.
         Skip this too.
     */
-    if(    (pszInPath[0] == '/')
-      #ifdef _WIN32
-        || (pszInPath[0] == '\\')
-      #endif
+    if((pszInPath[0] == '/') || (pszInPath[0] == '\\')
       )
     {
         pszInPath++;
@@ -346,11 +339,7 @@ int IbConvertPath(
 
         for(index = volNameLen + 1; szOutPath[index] != '\0'; index++)
         {
-            if(    (szOutPath[index] == '/')
-              #ifdef _WIN32
-                || (szOutPath[index] == '\\')
-              #endif
-              )
+            if((szOutPath[index] == '/') || (szOutPath[index] == '\\'))
             {
                 szOutPath[index] = REDCONF_PATH_SEPARATOR;
             }

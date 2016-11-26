@@ -30,3 +30,8 @@
 # Ignore temporary backup files
 #
 ~*
+
+#
+# Ignore QT creator config file
+#
+*.pro.user

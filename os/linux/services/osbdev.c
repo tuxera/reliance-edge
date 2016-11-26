@@ -28,11 +28,11 @@
 
 /*  Enable stat64 and make off_t 64 bits.
 */
-#define __USE_LARGEFILE64
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
 
+#include <features.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -497,6 +497,9 @@ REDSTATUS RamDiskClose(
         memory cannot be freed and will remain allocated until the program
         exits.
     */
+
+    (void) bVolNum;
+
     return 0;
 }
 
@@ -594,6 +597,8 @@ REDSTATUS RamDiskWrite(
 REDSTATUS RamDiskFlush(
     uint8_t     bVolNum)
 {
+    (void) bVolNum;
+
     return 0;
 }
 #endif /* REDCONF_READ_ONLY == 0 */

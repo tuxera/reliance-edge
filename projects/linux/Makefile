@@ -7,7 +7,7 @@ P_BASEDIR ?= $(shell readlink -f $(P_PROJDIR)/../..)
 P_OS     ?= linux
 B_OBJEXT ?= o
 B_DEBUG  ?= 1
-CC=gcc
+CC       ?= gcc
 
 INCLUDES=					\
 	-I $(P_BASEDIR)/include			\
@@ -16,7 +16,7 @@ INCLUDES=					\
 	-I $(P_BASEDIR)/os/linux/include	\
 	-I $(P_BASEDIR)/tests/stochposix	\
 	-I $(P_PROJDIR)
-	
+
 ##
 # All warnings are errors, Check to see if the GCC compiler
 # options for stack frame and unused variables are supported.
@@ -24,10 +24,7 @@ INCLUDES=					\
 
 EXTRA_CFLAGS +=-Wall
 EXTRA_CFLAGS +=-Werror
-EXTRA_CFLAGS +=-Wno-switch-break
-EXTRA_CFLAGS +=-Wno-pointer-to-int-cast
 EXTRA_CFLAGS +=$(call cc-option,-Wframe-larger-than=4096)
-EXTRA_CFLAGS +=$(call cc-option,-Wno-error=unused-variable)
 
 ifneq ($(B_DEBUG),0)
 EXTRA_CFLAGS +=-g -DDEBUG
@@ -52,7 +49,7 @@ fsstress: $(P_PROJDIR)/fsstress_main.$(B_OBJEXT) $(REDALLOBJ)
 
 .phony: clean
 clean:
-	-rm -f $(REDALLOBJ)
+	-rm -f $(REDALLOBJ) $(REDPROJOBJ)
 	-rm -f $(P_PROJDIR)/*.$(B_OBJEXT)
 	-rm -f fsstress
 

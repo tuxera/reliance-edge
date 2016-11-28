@@ -30,3 +30,10 @@
 # Ignore temporary backup files
 #
 ~*
+
+#
+# Ignore IDE config files
+#
+*.suo
+*.atsuo
+*.pro.user

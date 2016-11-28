@@ -59,10 +59,10 @@ int main(
             fprintf(stderr, "Unexpected error %d from red_init()\n", (int)red_errno);
             exit(red_errno);
         }
-
-        if((pszDrive != NULL) && (strcasecmp(pszDrive, "ram") != 0))
+        
+        if(pszDrive != NULL)
         {
-            REDSTATUS ret;
+            REDSTATUS   ret;
 
             ret = RedOsBDevConfig(bVolNum, pszDrive);
             if(ret != 0)

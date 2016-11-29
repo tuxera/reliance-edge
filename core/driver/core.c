@@ -1235,7 +1235,7 @@ REDSTATUS RedCoreLookup(
     @param pszSrcName   The name of the file or directory to rename.
     @param ulDstPInode  The new parent directory inode number of the file or
                         directory after the rename.
-    @param pszNewPath   The new name of the file or directory after the rename.
+    @param pszDstName   The new name of the file or directory after the rename.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
@@ -1314,7 +1314,7 @@ REDSTATUS RedCoreRename(
     @param pszSrcName   The name of the file or directory to rename.
     @param ulDstPInode  The new parent directory inode number of the file or
                         directory after the rename.
-    @param pszNewPath   The new name of the file or directory after the rename.
+    @param pszDstName   The new name of the file or directory after the rename.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 

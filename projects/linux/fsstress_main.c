@@ -52,7 +52,6 @@ int main(
     {
         const char *pszVolume = gaRedVolConf[bVolNum].pszPathPrefix;
         int32_t     iErr;
-        REDSTATUS   ret;
 
         iErr = red_init();
         if(iErr == -1)
@@ -60,12 +59,17 @@ int main(
             fprintf(stderr, "Unexpected error %d from red_init()\n", (int)red_errno);
             exit(red_errno);
         }
-
-        ret = RedOsBDevConfig(bVolNum, pszDrive);
-        if(ret != 0)
+        
+        if(pszDrive != NULL)
         {
-           fprintf(stderr, "Unexpected error %d from RedOsBDevConfig()\n", (int)ret);
-            exit(ret);
+            REDSTATUS   ret;
+
+            ret = RedOsBDevConfig(bVolNum, pszDrive);
+            if(ret != 0)
+            {
+                fprintf(stderr, "Unexpected error %d from RedOsBDevConfig()\n", (int)ret);
+                exit(ret);
+            }
         }
 
         iErr = red_format(pszVolume);

@@ -376,7 +376,7 @@ uint64_t RedMulDiv64(
 
     @param ullDividend  The value to divide.
     @param ulDivisor    The value to divide by.
-    @param pulRemander  Populated with the remainder; may be NULL.
+    @param pulRemainder Populated with the remainder; may be NULL.
 
     @return The quotient (result of the division).
 */
@@ -482,7 +482,7 @@ uint64_t RedUint64DivMod32(
 
     @param ullDividend  The value to divide.
     @param ullDivisor   The value to divide by.
-    @param pullRemander Populated with the remainder; may be NULL.
+    @param pullRemainder Populated with the remainder; may be NULL.
 
     @return The quotient (result of the division).
 */

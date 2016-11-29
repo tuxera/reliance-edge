@@ -746,19 +746,6 @@ static int reliance_fsync(const char *path, int isdatasync,
 #endif
 }
 
-static int reliance_fallocate(const char *path, int mode,
-			      off_t offset, off_t length,
-			      struct fuse_file_info *fi)
-{
-	(void) path;
-	(void) mode;
-	(void) offset;
-	(void) length;
-	(void) fi;
-
-	return -ENOSYS;
-}
-
 static struct fuse_operations reliance_oper = {
 	.init           = reliance_init,
 	.getattr	= reliance_getattr,
@@ -782,7 +769,6 @@ static struct fuse_operations reliance_oper = {
 	.statfs		= reliance_statfs,
 	.release	= reliance_release,
 	.fsync		= reliance_fsync,
-	.fallocate	= reliance_fallocate,
 };
 
 static void show_help(const char *progname)

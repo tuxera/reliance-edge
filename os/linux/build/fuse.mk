@@ -1,4 +1,4 @@
-CC=gcc
+CC ?= gcc
 P_OS ?= linux
 B_OBJEXT ?= to
 

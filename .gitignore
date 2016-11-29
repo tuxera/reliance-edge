@@ -32,6 +32,8 @@
 ~*
 
 #
-# Ignore QT creator config file
+# Ignore IDE config files
 #
+*.suo
+*.atsuo
 *.pro.user

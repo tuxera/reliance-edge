@@ -480,8 +480,8 @@ uint64_t RedUint64DivMod32(
     However, it does so without ever actually dividing/modulating a 64-bit
     value, since such operations are not allowed in all environments.
 
-    @param ullDividend   The value to divide.
-    @param ullDivisor    The value to divide by.
+    @param ullDividend  The value to divide.
+    @param ullDivisor   The value to divide by.
     @param pullRemainder Populated with the remainder; may be NULL.
 
     @return The quotient (result of the division).

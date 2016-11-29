@@ -52,7 +52,6 @@ int main(
     {
         const char *pszVolume = gaRedVolConf[bVolNum].pszPathPrefix;
         int32_t     iErr;
-        REDSTATUS   ret;
 
         iErr = red_init();
         if(iErr == -1)

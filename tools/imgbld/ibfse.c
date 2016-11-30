@@ -622,7 +622,11 @@ static int WriteDefineOut(
         {
             char c = pFileMapping->asInFilePath[fromIndex];
 
-            if((c == '\\') || (c == '/'))
+            if(    (c == '/')
+              #ifdef _WIN32
+                || (c == '\\')
+              #endif
+              )
             {
                 toIndex = 5; /* Reset output: only use the file name, not path */
                 fromIndex++;

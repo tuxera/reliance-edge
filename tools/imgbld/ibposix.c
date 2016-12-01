@@ -199,6 +199,7 @@ int IbPosixCopyDir(
         size_t  inDirLen = strlen(pszInDir);
 
         (void) strncpy(asInputDir, pszInDir, HOST_PATH_MAX - 1);
+        asInputDir[HOST_PATH_MAX - 1] = '\0';
 
         /*  Get rid of any ending path separators.
         */

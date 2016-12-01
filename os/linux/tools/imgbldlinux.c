@@ -144,7 +144,9 @@ static int FtwCopyFile(
             }
             else
             {
-                strcpy(mapping.asInFilePath, pszPath);
+                (void) strncpy(mapping.asInFilePath, pszPath,
+                               sizeof(mapping.asInFilePath) - 1);
+                mapping.asInFilePath[sizeof(mapping.asInFilePath) - 1] = '\0';
                 ret = IbConvertPath(gVolName, pszPath, gBaseDir, mapping.asOutFilePath);
                 
                 if(ret == 0)
@@ -335,7 +337,8 @@ int IbSetRelativePath(
 
             REDASSERT(indirLen != 0);
 
-            strncpy(asTemp, pszPath, HOST_PATH_MAX);
+            (void) strncpy(asTemp, pszPath, HOST_PATH_MAX - 1);
+            asTemp[HOST_PATH_MAX - 1] = '\0';
 
             /*  Ensure a path separator comes between the input directory
                 and the specified relative path.

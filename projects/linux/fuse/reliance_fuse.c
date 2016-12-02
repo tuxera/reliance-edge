@@ -604,7 +604,7 @@ static int reliance_open(const char *path, struct fuse_file_info *fi)
 	if (fd == -1) {
 		res = rederrno_to_errno(red_errno);
 	} else {
-		(void)red_close(fd);
+		fi->fh = (uint64_t)fd;
 	}
 
 	return res;
@@ -613,26 +613,20 @@ static int reliance_open(const char *path, struct fuse_file_info *fi)
 static int reliance_read(const char *path, char *buf, size_t size, off_t offset,
 			 struct fuse_file_info *fi)
 {
+	(void) path;
 	int32_t fd;
 	int res = 0;
 
-	(void) fi;
+	fd = (int32_t)fi->fh;
 
-	fd = red_local_open(path, O_RDONLY);
-	if (fd == -1) {
+	res = red_lseek(fd, offset, RED_SEEK_SET);
+	if (res == -1) {
 		res = rederrno_to_errno(red_errno);
 	} else {
-		res = red_lseek(fd, offset, RED_SEEK_SET);
+		res = red_read(fd, buf, size);
 		if (res == -1) {
 			res = rederrno_to_errno(red_errno);
-		} else {
-			res = red_read(fd, buf, size);
-			if (res == -1) {
-				res = rederrno_to_errno(red_errno);
-			}
 		}
-
-		(void)red_close(fd);
 	}
 
 	return res;
@@ -650,27 +644,20 @@ static int reliance_write(const char *path, const char *buf, size_t size,
 
 	return -ENOSYS
 #else
+	(void) path;
 	int32_t fd;
 	int res = 0;
 
-	(void) fi;
+	fd = (int32_t)fi->fh;
 
-	fd = red_local_open(path, O_WRONLY);
-
-	if (fd == -1) {
+	res = red_lseek(fd, offset, RED_SEEK_SET);
+	if (res == -1) {
 		res = rederrno_to_errno(red_errno);
 	} else {
-		res = red_lseek(fd, offset, RED_SEEK_SET);
+		res = red_write(fd, buf, size);
 		if (res == -1) {
 			res = rederrno_to_errno(red_errno);
-		} else {
-			res = red_write(fd, buf, size);
-			if (res == -1) {
-				res = rederrno_to_errno(red_errno);
-			}
 		}
-
-		(void)red_close(fd);
 	}
 
 	return res;
@@ -704,13 +691,17 @@ static int reliance_statfs(const char *path, struct statvfs *stbuf)
 
 static int reliance_release(const char *path, struct fuse_file_info *fi)
 {
-	/* Just a stub.	 This method is optional and can safely be left
-	   unimplemented */
-
 	(void) path;
-	(void) fi;
+	int32_t fd;
+	int res = 0;
 
-	return 0;
+	fd = (int32_t)fi->fh;
+
+	if (red_close(fd)) {
+		res = rederrno_to_errno(red_errno);
+	}
+
+	return res;
 }
 
 static int reliance_fsync(const char *path, int isdatasync,
@@ -723,23 +714,16 @@ static int reliance_fsync(const char *path, int isdatasync,
 
 	return -ENOSYS
 #else
+	(void) isdatasync;
+	(void) path;
 	int32_t fd;
 	int res = 0;
 
-	(void) isdatasync;
-	(void) fi;
+	fd = (int32_t)fi->fh;
 
-	fd = red_local_open(path, O_WRONLY);
-
-	if (fd == -1) {
+	res = red_fsync(fd);
+	if (res == -1) {
 		res = rederrno_to_errno(red_errno);
-	} else {
-		res = red_fsync(fd);
-		if (res == -1) {
-			res = rederrno_to_errno(red_errno);
-		}
-
-		(void)red_close(fd);
 	}
 
 	return res;

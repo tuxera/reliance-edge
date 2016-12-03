@@ -39,7 +39,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <pthread.h>
 
 /*  These undefs are preset to remove the definitions for the
     fields of the same name in the Posix time and stat code.
@@ -339,7 +338,7 @@ static int fuse_red_mkdir(
     int         result = 0;
     char        acRedPath[PATH_MAX];
 
-    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) > PATH_MAX)
+    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
         result = -ENAMETOOLONG;
@@ -365,7 +364,7 @@ static int fuse_red_unlink(
     int         result = 0;
     char        acRedPath[PATH_MAX];
 
-    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) > PATH_MAX)
+    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
         result = -ENAMETOOLONG;
@@ -391,7 +390,7 @@ static int fuse_red_rmdir(
     int         result = 0;
     char        acRedPath[PATH_MAX];
 
-    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) > PATH_MAX)
+    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
         result = -ENAMETOOLONG;
@@ -419,12 +418,12 @@ static int fuse_red_rename(
     char        acOldRedPath[PATH_MAX];
     char        acNewRedPath[PATH_MAX];
 
-    if(snprintf(acOldRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath) > PATH_MAX)
+    if(snprintf(acOldRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath);
         result = -ENAMETOOLONG;
     }
-    if(snprintf(acNewRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath) > PATH_MAX)
+    if(snprintf(acNewRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath);
         result = -ENAMETOOLONG;
@@ -452,12 +451,12 @@ static int fuse_red_link(
     char        acOldRedPath[PATH_MAX];
     char        acNewRedPath[PATH_MAX];
 
-    if(snprintf(acOldRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath) > PATH_MAX)
+    if(snprintf(acOldRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath);
         result = -ENAMETOOLONG;
     }
-    if(snprintf(acNewRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath) > PATH_MAX)
+    if(snprintf(acNewRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath);
         result = -ENAMETOOLONG;
@@ -731,7 +730,7 @@ static int fuse_red_readdir(
     (void)offset;
     (void)pFileInfo;
 
-    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) > PATH_MAX)
+    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
         result = -ENAMETOOLONG;
@@ -1075,11 +1074,9 @@ static int32_t red_local_open(
     int         flags)
 {
     char        acRedPath[PATH_MAX];
-    int         result;
+    int32_t     result;
 
-    result = snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
-
-    if(result > PATH_MAX)
+    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
 
@@ -1087,12 +1084,17 @@ static int32_t red_local_open(
             appropriately.
         */
         red_errno = RED_ENAMETOOLONG;
+        result = -1;
+    }
+    else
+    {
+        result = red_open(acRedPath, flags_to_redflags(flags));
     }
 
-    return red_open(acRedPath, flags_to_redflags(flags));
+    return result;
 }
 
-#else
+#else // REDCONF_API_POSIX
 
 int main(void)
 {
@@ -1100,4 +1102,4 @@ int main(void)
     return 1;
 }
 
-#endif
+#endif // REDCONF_API_POSIX

@@ -99,11 +99,6 @@ static int32_t red_local_open(const char *pszPath, int flags);
 
 static struct fuse_operations red_oper =
 {
-    /*  These flags cannot be set because fuse_red_readdir requires a path.
-    */
-    .flag_nullpath_ok = 0,
-    .flag_nopath = 0,
-
     .getattr = fuse_red_getattr,
     .access = fuse_red_access,
     .create = fuse_red_create,

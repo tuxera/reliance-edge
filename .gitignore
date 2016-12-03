@@ -35,5 +35,6 @@
 # Ignore IDE config files
 #
 *.suo
+*.user
 *.atsuo
 *.pro.user

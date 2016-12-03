@@ -11,7 +11,7 @@ Building
 ========
 
 The configuration tool is designed for Windows and Linux.  The build processes
-described here have been tested on Windows 7 and on Ubuntu 12.04, respectively.
+described here have been tested on Windows 7 and 10 and on Ubuntu 12.04.
 
 The most basic thing you will need is a C++ compiler.  On Windows, you can
 obtain one by downloading and installing a free version of Visual Studio, such

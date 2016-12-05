@@ -687,7 +687,7 @@ static REDSTATUS FileDiskOpen(
                 fprintf(stderr, "Error: device sector size (%d) is different from the requested sector size (%d).\n", iSectorSize, ulVolSecSize);
                 ret = -RED_EINVAL;
             }
-            else
+		    else
             {
                 /*  No error.
                 */

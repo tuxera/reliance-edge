@@ -1094,7 +1094,7 @@ static int32_t red_local_open(
     return result;
 }
 
-#else // REDCONF_API_POSIX
+#else /* REDCONF_API_POSIX */
 
 int main(void)
 {
@@ -1102,4 +1102,4 @@ int main(void)
     return 1;
 }
 
-#endif // REDCONF_API_POSIX
+#endif /* REDCONF_API_POSIX */

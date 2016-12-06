@@ -152,11 +152,11 @@ static int red_stat(const char *pszPath, REDSTAT *pStat);
 #define link(path, hardlink) red_link(MakeFullPath(path), MakeFullPath(hardlink))
 #define opendir(path) red_opendir(MakeFullPath(path))
 
-#define FSSTRESS_BUF_SZ 1024U
+#define FSSTRESS_BUF_SIZE 1024U
 
 /*  Stores the simulated current working directory.
 */
-static char szLocalCwd[FSSTRESS_BUF_SZ] = "/";
+static char szLocalCwd[FSSTRESS_BUF_SIZE] = "/";
 
 
 /** @brief Change the current working directory.
@@ -196,7 +196,7 @@ static int red_chdir(
     }
     else
     {
-        char    szOldCwd[FSSTRESS_BUF_SZ];
+        char    szOldCwd[FSSTRESS_BUF_SIZE];
 
         /*  chdir() must have no effect on the CWD if it fails, so save the CWD
             so we can revert it if necessary.
@@ -211,8 +211,7 @@ static int red_chdir(
             }
             else
             {
-                strncpy(szLocalCwd, pszPath, FSSTRESS_BUF_SZ - 1);
-                szLocalCwd[FSSTRESS_BUF_SZ - 1] = '\0';
+                strcpy(szLocalCwd, pszPath);
             }
         }
         else
@@ -231,8 +230,7 @@ static int red_chdir(
                     ulIdx++;
                 }
 
-                strncpy(&szLocalCwd[ulIdx], pszPath, FSSTRESS_BUF_SZ - 1 - ulIdx);
-                szLocalCwd[FSSTRESS_BUF_SZ - 1] = '\0';
+                strcpy(&szLocalCwd[ulIdx], pszPath);
             }
         }
 
@@ -327,7 +325,7 @@ static const char *MakeFullPath(
     const char     *pszName)
 {
     #define         MAXVOLNAME 64U /* Enough for most configs. */
-    static char     aszFullPath[2U][MAXVOLNAME + 1U + FSSTRESS_BUF_SZ];
+    static char     aszFullPath[2U][MAXVOLNAME + 1U + FSSTRESS_BUF_SIZE];
     static uint32_t ulWhich = 0U;
 
     char           *pszFullPath = aszFullPath[ulWhich];

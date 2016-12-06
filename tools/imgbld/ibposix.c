@@ -198,21 +198,29 @@ int IbPosixCopyDir(
         char    asInputDir[HOST_PATH_MAX];
         size_t  inDirLen = strlen(pszInDir);
 
-        (void) strncpy(asInputDir, pszInDir, HOST_PATH_MAX - 1);
-
-        /*  Get rid of any ending path separators.
-        */
-        while(     asInputDir[inDirLen - 1] == '/'
-      #ifdef _WIN32
-                || asInputDir[inDirLen - 1] == '\\'
-      #endif
-             )
+        if(inDirLen >= HOST_PATH_MAX)
         {
-            asInputDir[inDirLen - 1] = '\0';
-            inDirLen--;
+            fprintf(stderr, "Error: path too long: %s\n", pszInDir);
+            ret = -1;
         }
+        else
+        {
+            strcpy(asInputDir, pszInDir);
 
-        ret = IbPosixCopyDirRecursive(pszVolName, asInputDir);
+            /*  Get rid of any ending path separators.
+            */
+            while(     asInputDir[inDirLen - 1] == '/'
+          #ifdef _WIN32
+                    || asInputDir[inDirLen - 1] == '\\'
+          #endif
+                 )
+            {
+                asInputDir[inDirLen - 1] = '\0';
+                inDirLen--;
+            }
+
+            ret = IbPosixCopyDirRecursive(pszVolName, asInputDir);
+        }
     }
 
     if(ret == 0)

@@ -146,7 +146,7 @@ static int FtwCopyFile(
             {
                 strcpy(mapping.asInFilePath, pszPath);
                 ret = IbConvertPath(gVolName, pszPath, gBaseDir, mapping.asOutFilePath);
-                
+
                 if(ret == 0)
                 {
                     ret = IbCopyFile(-1, &mapping);
@@ -326,6 +326,11 @@ int IbSetRelativePath(
             fprintf(stderr, "Error: paths in mapping file must be absolute if no input directory is specified.\n");
             ret = -1;
         }
+        else if(strlen(pszPath) >= HOST_PATH_MAX)
+        {
+            fprintf(stderr, "Error: path too long: %s\n", pszPath);
+            ret = -1;
+        }
         else
         {
             char    asTemp[HOST_PATH_MAX];
@@ -335,7 +340,7 @@ int IbSetRelativePath(
 
             REDASSERT(indirLen != 0);
 
-            strncpy(asTemp, pszPath, HOST_PATH_MAX);
+            strcpy(asTemp, pszPath);
 
             /*  Ensure a path separator comes between the input directory
                 and the specified relative path.

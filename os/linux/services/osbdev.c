@@ -682,7 +682,7 @@ static REDSTATUS FileDiskOpen(
                 fprintf(stderr, "Error: block device size (%" PRIu64 ") is smaller than requested size (%" PRIu64 ").\n", ullDevSize, (uint64_t)(ulVolSecSize * ullVolSecCount));
                 ret = -RED_EINVAL;
             }
-            else if(iSectorSize != ulVolSecSize)
+            else if(iSectorSize != (int)ulVolSecSize)
             {
                 fprintf(stderr, "Error: device sector size (%d) is different from the requested sector size (%d).\n", iSectorSize, ulVolSecSize);
                 ret = -RED_EINVAL;
@@ -754,7 +754,7 @@ static REDSTATUS FileDiskRead(
 
         result = read(pDisk->fd, pBuffer, readlen);
 
-        if(result != readlen)
+        if(result != (ssize_t)readlen)
         {
             ret = -RED_EIO;
         }

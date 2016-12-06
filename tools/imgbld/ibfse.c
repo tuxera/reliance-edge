@@ -331,9 +331,7 @@ int IbFseGetFileList(
                 ret = -1;
             }
 
-            (void) strncpy(pNewEntry->fileMapping.asInFilePath, currPath,
-                           sizeof(pNewEntry->fileMapping.asInFilePath) - 1);
-            pNewEntry->fileMapping.asInFilePath[sizeof(pNewEntry->fileMapping.asInFilePath) - 1] = '\0';
+            strcpy(pNewEntry->fileMapping.asInFilePath, currPath);
             pNewEntry->fileMapping.ulOutFileIndex = currIndex;
             pNewEntry->pNext = NULL;
 

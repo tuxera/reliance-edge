@@ -146,7 +146,7 @@ static int FtwCopyFile(
             {
                 strcpy(mapping.asInFilePath, pszPath);
                 ret = IbConvertPath(gVolName, pszPath, gBaseDir, mapping.asOutFilePath);
-
+                
                 if(ret == 0)
                 {
                     ret = IbCopyFile(-1, &mapping);
@@ -328,7 +328,10 @@ int IbSetRelativePath(
         }
         else if(strlen(pszPath) >= HOST_PATH_MAX)
         {
+            /*  Not expected; the length of pszPath should have already been checked.
+            */
             fprintf(stderr, "Error: path too long: %s\n", pszPath);
+            REDERROR();
             ret = -1;
         }
         else

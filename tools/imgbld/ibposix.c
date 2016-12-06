@@ -200,7 +200,10 @@ int IbPosixCopyDir(
 
         if(inDirLen >= HOST_PATH_MAX)
         {
+            /*  Not expected; the length of pszInDir should have already been checked.
+            */
             fprintf(stderr, "Error: path too long: %s\n", pszInDir);
+            REDERROR();
             ret = -1;
         }
         else

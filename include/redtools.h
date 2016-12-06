@@ -22,8 +22,8 @@
     distribution in any form.  Visit http://www.datalight.com/reliance-edge for
     more information.
 */
-#ifndef REDIMGBLD_H
-#define REDIMGBLD_H
+#ifndef REDTOOLS_H
+#define REDTOOLS_H
 
 
 #ifdef _WIN32
@@ -179,5 +179,5 @@ void ImgcopyMkdir(const char *pszDir);
 void ImgcopyRecursiveRmdir(const char *pszDir);
 
 
-#endif /* REDIMGBLD_H */
+#endif /* REDTOOLS_H */
 

@@ -146,7 +146,7 @@ static int FtwCopyFile(
             {
                 strcpy(mapping.asInFilePath, pszPath);
                 ret = IbConvertPath(gVolName, pszPath, gBaseDir, mapping.asOutFilePath);
-                
+
                 if(ret == 0)
                 {
                     ret = IbCopyFile(-1, &mapping);

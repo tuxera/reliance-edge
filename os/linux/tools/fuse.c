@@ -40,15 +40,19 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-/*  These undefs are preset to remove the definitions for the
-    fields of the same name in the Posix time and stat code.
-    If these are not present, a very cryptic error message
-    will occur if this is compiled on a Linux (or other
-    Posix-based) system.
-*/
-#undef st_atime
-#undef st_mtime
-#undef st_ctime
+#ifdef st_atime
+  #define POSIX_2008_STAT
+
+  /*  These undefs are preset to remove the definitions for the
+      fields of the same name in the Posix time and stat code.
+      If these are not present, a very cryptic error message
+      will occur if this is compiled on a Linux (or other
+      Posix-based) system.
+  */
+  #undef st_atime
+  #undef st_mtime
+  #undef st_ctime
+#endif
 
 #include <redfs.h>
 
@@ -131,7 +135,6 @@ static REDOPTIONS gOptions;
 
 #define OPTION(t, p) { t, offsetof(REDOPTIONS, p), 1 }
 
-// TODO: use --dev instead of device
 static const struct fuse_opt gOptionSpec[] = {
     OPTION("--vol=%s", pszVolSpec),
     OPTION("--dev=%s", pszBDevSpec),
@@ -161,6 +164,17 @@ static void show_help(const char *progname)
 }
 
 
+/** @brief Entry point for the Reliance Edge FUSE implementation.
+
+    Reliance Edge can be installed as a FUSE driver (File System in User Space)
+    on Linux.  This allows a user to mount a Reliance Edge volume within a
+    folder so that it appears like a native Linux file system.  The contents of
+    the volume can then be accessed with a file browser or any other Linux
+    program.    
+
+    This function is a simple wrapper to parse Reliance Edge-specific options
+    before calling fuse_main. 
+*/
 int main(
     int                 argc,
     char               *argv[])
@@ -168,8 +182,16 @@ int main(
     int                 result;
     bool                fShowHelp = false;
     struct fuse_args    args = FUSE_ARGS_INIT(argc, argv);
+    REDSTATUS           status;     /* For RedOsBDevConfig() return value */
 
     (void)argc;
+
+    /*  Initialize immediately to ensure the output is printed.
+    */
+    if(red_init() != 0) {
+        fprintf(stderr, "Unexpected error %d from red_init()\n", (int)red_errno);
+        return 1;
+    }
 
     /*  Parse options
     */
@@ -183,8 +205,6 @@ int main(
         fShowHelp = true;
         goto ShowHelp;
     }
-
-    // TODO: error if volume not specified and REDCONF_VOLUMES != 1
 
     if(gOptions.pszBDevSpec == NULL)
     {
@@ -207,6 +227,47 @@ int main(
       #endif
     }
 
+    assert(gOptions.pszVolSpec != NULL);
+    gbVolume = RedFindVolumeNumber(gOptions.pszVolSpec);
+
+    if(gbVolume >= REDCONF_VOLUME_COUNT)
+    {
+        fprintf(stderr, "Invalid volume specifier \"%s\"\n", gOptions.pszVolSpec);
+        return 1;
+    }
+
+    gpszVolume = gaRedVolConf[gbVolume].pszPathPrefix;
+
+    status = RedOsBDevConfig(gbVolume, gOptions.pszBDevSpec);
+    if(status != 0)
+    {
+        fprintf(stderr, "Unexpected error %d from RedOsBDevConfig()\n", (int)status);
+        return 1;
+    }
+
+    if(gOptions.fFormat)
+    {
+      #if (REDCONF_API_POSIX_FORMAT == 1)
+        if(red_format(gpszVolume) != 0)
+        {
+            fprintf(stderr, "Error %d from red_format().\n"
+"    Make sure you can access the device specified and that it is compatible\n"
+"    with your Reliance Edge volume configuration.\n", (int)red_errno);
+            return 1;
+        }
+      #else
+        fprintf(stderr, "red_format() is not supported\n");
+        return 1;
+      #endif
+    }
+
+    if(red_mount(gpszVolume) != 0)
+    {
+        fprintf(stderr, "Error %d from red_mount().\n"
+"    Make sure you can access the device specified and that it is compatible\n"
+"    with your Reliance Edge volume configuration.\n", (int)red_errno);
+        return 1;
+    }
 
   ShowHelp:
     /*  When --help is specified, first print our own file-system
@@ -233,10 +294,6 @@ static int fuse_red_getattr(
 {
     int             result;
     int32_t         iFd;
-    REDSTAT         redstbuf;
-
-    /* Set the structure to 0 */
-    memset(stbuf, 0, sizeof(*stbuf));
 
     iFd = red_local_open(pszPath, O_RDONLY);
     if(iFd < 0)
@@ -245,35 +302,11 @@ static int fuse_red_getattr(
     }
     else
     {
-        result = red_fstat(iFd, &redstbuf);
-        if(result == 0)
-        {
-            /*   Translate the REDSTAT to Unix stat
-            */
-            stbuf->st_dev = redstbuf.st_dev;
-            stbuf->st_ino = redstbuf.st_ino;
-            stbuf->st_mode = redmode_to_mode(redstbuf.st_mode);
-            stbuf->st_nlink = redstbuf.st_nlink;
-            stbuf->st_size = redstbuf.st_size;
-          #if REDCONF_INODE_TIMESTAMPS == 1
-          #if defined(__POSIX_2008_STAT__) //TODO
-            stbuf->st_atim.tv_sec = redstbuf.st_atime;
-            stbuf->st_ctim.tv_sec = redstbuf.st_ctime;
-            stbuf->st_mtim.tv_sec = redstbuf.st_mtime;
-          #else
-            stbuf->st_atime = redstbuf.st_atime;
-            stbuf->st_ctime = redstbuf.st_ctime;
-            stbuf->st_mtime = redstbuf.st_mtime;
-          #endif
-          #endif
-          #if REDCONF_INODE_BLOCKS == 1
-            stbuf->st_blocks = redstbuf.st_blocks;
-          #endif
-        }
-        else
-        {
-            result = rederrno_to_errno(red_errno);
-        }
+        struct fuse_file_info fileInfo;
+
+        fileInfo.fh = (uint64_t)iFd;
+
+        result = fuse_red_fgetattr(pszPath, stbuf, &fileInfo);
 
         (void)red_close(iFd);
     }
@@ -291,13 +324,10 @@ static int fuse_red_access(
 
     result = fuse_red_getattr(pszPath, &st);
 
-    if(result == 0)
-    {
-        if(mask && ((st.st_mode & mask) != mask))
-        {
-            result = -EACCES;
-        }
-    }
+    /*  Reliance Edge doesn't support permissions, so access is always OK as
+        long as we can successfully open the file.
+    */
+    (void)mask;
 
     return result;
 }
@@ -533,11 +563,6 @@ static int fuse_red_open(
 {
     int32_t                 iFd;
     int                     result = 0;
-
-    /*  TODO: this currently just checks to make sure the file can be opened.
-        It should save iFd in the fuse_file_info so that it doesn't have to be
-        re-opened for subsequent operations.
-    */
 
     iFd = red_local_open(pszPath, pFileInfo->flags);
 
@@ -816,47 +841,14 @@ static int fuse_red_fsyncdir(
 static void *fuse_red_init(
     struct fuse_conn_info  *conn)
 {
-    REDSTATUS               status;
-
     (void)conn;
 
-    assert(gOptions.pszVolSpec != NULL);
-    gbVolume = RedFindVolumeNumber(gOptions.pszVolSpec);
-
-    if(gbVolume >= REDCONF_VOLUME_COUNT)
+    /*  We already called red_mount() in main(); call it again just in case
+        fuse_red_destroy() has been called and we are re-mounting.  But ignore
+        RED_EBUSY errors because the volume may already be mounted.
+    */
+    if((red_mount(gpszVolume) != 0) && (red_errno != RED_EBUSY))
     {
-        fprintf(stderr, "Invalid volume specifier \"%s\"\n", gOptions.pszVolSpec);
-        exit(1);
-    }
-
-    gpszVolume = gaRedVolConf[gbVolume].pszPathPrefix;
-
-    if(red_init() != 0) {
-        fprintf(stderr, "Unexpected error %d from red_init()\n", (int)red_errno);
-        exit(rederrno_to_errno(red_errno));
-    }
-
-    status = RedOsBDevConfig(gbVolume, gOptions.pszBDevSpec);
-    if(status != 0) {
-        fprintf(stderr, "Unexpected error %d from RedOsBDevConfig()\n", (int)status);
-        exit((int)status);
-    }
-
-    if(gOptions.fFormat)
-    {
-      #if (REDCONF_API_POSIX_FORMAT == 1)
-        if(red_format(gpszVolume) != 0)
-        {
-            fprintf(stderr, "Unexpected error %d from red_format()\n", (int)red_errno);
-            exit(rederrno_to_errno(red_errno));
-        }
-      #else
-        fprintf(stderr, "red_format() is not supported\n");
-        exit(-1);
-      #endif
-    }
-
-    if(red_mount(gpszVolume) != 0) {
         fprintf(stderr, "Unexpected error %d from red_mount()\n", (int)red_errno);
         exit(rederrno_to_errno(red_errno));
     }
@@ -876,11 +868,10 @@ static void fuse_red_destroy(
         exit(1);
     }
 
-    if(red_uninit() != 0)
-    {
-        fprintf(stderr, "red_uninit() failed, errno %d\n", red_errno);
-        exit(1);
-    }
+    /*  Note: don't uninit just in case fuse_red_init() is called again.
+        There is nothing particularly bad about leaving the filesystem
+        initialized until the task is aborted.
+    */
 }
 
 
@@ -892,6 +883,7 @@ static int fuse_red_ftruncate(
   #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_FTRUNCATE == 1)
     int                     result = 0;
 
+    (void)pszPath;
     assert(pFileInfo != NULL);
 
     if(red_ftruncate((int32_t)pFileInfo->fh, (uint64_t)size) != 0)
@@ -918,6 +910,7 @@ static int fuse_red_fgetattr(
     int                     result = 0;
     REDSTAT                 redstbuf;
 
+    (void)pszPath;
     assert(pFileInfo != NULL);
 
     memset(stbuf, 0, sizeof(*stbuf));
@@ -928,7 +921,7 @@ static int fuse_red_fgetattr(
     }
     else
     {
-        /*   Translate the REDSTAT to Unix stat
+        /*  Translate the REDSTAT to Unix stat
         */
         stbuf->st_dev = redstbuf.st_dev;
         stbuf->st_ino = redstbuf.st_ino;
@@ -936,7 +929,7 @@ static int fuse_red_fgetattr(
         stbuf->st_nlink = redstbuf.st_nlink;
         stbuf->st_size = redstbuf.st_size;
       #if REDCONF_INODE_TIMESTAMPS == 1
-      #if defined(__POSIX_2008_STAT__) //TODO
+      #ifdef POSIX_2008_STAT
         stbuf->st_atim.tv_sec = redstbuf.st_atime;
         stbuf->st_ctim.tv_sec = redstbuf.st_ctime;
         stbuf->st_mtim.tv_sec = redstbuf.st_mtime;
@@ -963,7 +956,7 @@ static int fuse_reltr_utimens(
     */
     (void)pszPath;
     (void)tv;
-    return 0;
+    return -ENOSYS;
 }
 
 

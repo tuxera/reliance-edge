@@ -46,7 +46,7 @@ FileDialog::FileDialog(QWidget *parentWindow, AcceptMode amode, FileMode fmode)
             this, SLOT(on_windowTitleChanged(QString)));
 }
 
-QString FileDialog::ShowGetHeader()
+QString FileDialog::ShowGetHeader(const QString &defaultPath)
 {
     if(acceptMode == AcceptSave)
     {
@@ -59,13 +59,21 @@ QString FileDialog::ShowGetHeader()
     }
 
     setDefaultSuffix("h");
-    selectFile("redconf.h");
     setNameFilters(headerNameFilters);
+
+    if(!defaultPath.isNull())
+    {
+        selectFile(defaultPath);
+    }
+    else
+    {
+        selectFile("redconf.h");
+    }
 
     return showFileDialog();
 }
 
-QString FileDialog::ShowGetCodefile()
+QString FileDialog::ShowGetCodefile(const QString &defaultPath)
 {
     if(acceptMode == AcceptSave)
     {
@@ -78,8 +86,16 @@ QString FileDialog::ShowGetCodefile()
     }
 
     setDefaultSuffix("c");
-    selectFile("redconf.c");
     setNameFilters(codefileNameFilters);
+
+    if(!defaultPath.isNull())
+    {
+        selectFile(defaultPath);
+    }
+    else
+    {
+        selectFile("redconf.c");
+    }
 
     return showFileDialog();
 }

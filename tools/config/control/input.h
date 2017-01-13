@@ -82,7 +82,7 @@ private:
     QMessageBox *messageBox;
 
 signals:
-    void results(Input::Result r);
+    void results(Input::Result r, const QString & headerPath, const QString & codefilePath);
 };
 
 #endif // INPUT_H

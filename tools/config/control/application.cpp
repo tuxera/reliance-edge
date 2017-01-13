@@ -32,7 +32,9 @@ Application::Application(int &argc, char *argv[])
       configWindow(NULL),
       output(NULL),
       input(NULL),
-      messageBox(NULL)
+      messageBox(NULL),
+      currHeaderPath(QString::null),
+      currCodefilePath(QString::null)
 {
 }
 
@@ -72,12 +74,14 @@ int Application::Run()
 
     connect(configWindow, SIGNAL(saveClicked()),
                      this, SLOT(TrySave()));
-    connect(output, SIGNAL(results(Output::Result)),
-                     this, SLOT(output_results(Output::Result)));
+    connect(configWindow, SIGNAL(saveAsClicked()),
+                     this, SLOT(TrySaveAs()));
+    connect(output, SIGNAL(results(Output::Result, QString, QString)),
+                     this, SLOT(output_results(Output::Result, QString, QString)));
     connect(configWindow, SIGNAL(loadClicked()),
                      this, SLOT(TryLoad()));
-    connect(input, SIGNAL(results(Input::Result)),
-                     this, SLOT(input_results(Input::Result)));
+    connect(input, SIGNAL(results(Input::Result, QString, QString)),
+                     this, SLOT(input_results(Input::Result, QString, QString)));
     connect(configWindow, SIGNAL(warningBtnClicked()),
                      this, SLOT(ShowErrors()));
 
@@ -88,7 +92,15 @@ int Application::Run()
 
 void Application::TrySave()
 {
-    output->TrySave();
+    output->TrySave(currHeaderPath, currCodefilePath);
+
+    // Result handled by output_results
+}
+
+void Application::TrySaveAs()
+{
+    output->TrySave(QString::null, QString::null);
+
     // Result handled by output_results
 }
 
@@ -104,18 +116,25 @@ void Application::ShowErrors()
     output->ShowErrors(true);
 }
 
-void Application::output_results(Output::Result r)
+void Application::output_results(Output::Result r, const QString &headerPath, const QString &codefilePath)
 {
     if(r == Output::OutResultFileError)
     {
         messageBox->setInformativeText("Error saving configuration files. Try saving to a different directory.");
         messageBox->exec();
     }
+    else if(r == Output::OutResultSuccess)
+    {
+        Q_ASSERT(!headerPath.isNull());
+        Q_ASSERT(!codefilePath.isNull());
+        currHeaderPath = headerPath;
+        currCodefilePath = codefilePath;
+    }
     configWindow->activateWindow();
 
 }
 
-void Application::input_results(Input::Result r)
+void Application::input_results(Input::Result r, const QString & headerPath, const QString & codefilePath)
 {
     if(r == Input::InResultFileError)
     {
@@ -130,6 +149,12 @@ void Application::input_results(Input::Result r)
     else if (r == Input::InResultSuccess)
     {
         configWindow->SetMemRbtnSelection(ConfigWindow::Customize);
+
+        Q_ASSERT(headerPath != QString::null);
+        Q_ASSERT(codefilePath != QString::null);
+        currHeaderPath = headerPath;
+        currCodefilePath = codefilePath;
+
         output->ShowErrors(false);
     }
     configWindow->activateWindow();

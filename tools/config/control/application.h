@@ -64,12 +64,25 @@ private:
     Output *output;
     Input *input;
     QMessageBox *messageBox;
+    QString currCodefilePath;
+    QString currHeaderPath;
 
 public slots:
     ///
     /// \brief  Calls Output::TrySave and handles results
     ///
+    /// If the user is editting existing configuration files, this attempts to
+    /// save over the existing files and shows the save dialogs if that fails.
+    ///
     void TrySave();
+
+    ///
+    /// \brief  Calls Output::TrySave and handles results
+    ///
+    /// This forces the save as dialogs to be shown even if the user is editing
+    /// existing configuration files.
+    ///
+    void TrySaveAs();
 
     ///
     /// \brief  Calls Output::TryLoad and handles results
@@ -82,8 +95,8 @@ public slots:
     void ShowErrors();
 
 private slots:
-    void output_results(Output::Result r);
-    void input_results(Input::Result r);
+    void output_results(Output::Result r, const QString & headerPath, const QString & codefilePath);
+    void input_results(Input::Result r, const QString & headerPath, const QString & codefilePath);
 };
 
 #endif // APPLICATION_H

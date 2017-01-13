@@ -45,17 +45,17 @@ void Input::TryLoad()
                                     QFileDialog::ExistingFile);
     }
 
-    QString headerPath = fileDialog->ShowGetHeader();
+    QString headerPath = fileDialog->ShowGetHeader(QString::null);
     if(headerPath.isNull() || headerPath.isEmpty())
     {
-        emit results(InResultUserCancelled);
+        emit results(InResultUserCancelled, QString::null, QString::null);
         return;
     }
 
-    QString codefilePath = fileDialog->ShowGetCodefile();
+    QString codefilePath = fileDialog->ShowGetCodefile(QString::null);
     if(codefilePath.isNull() || codefilePath.isEmpty())
     {
-        emit results(InResultUserCancelled);
+        emit results(InResultUserCancelled, QString::null, QString::null);
         return;
     }
 
@@ -107,7 +107,7 @@ void Input::TryLoad()
         messageBox->exec();
     }
 
-    emit results(InResultSuccess);
+    emit results(InResultSuccess, headerPath, codefilePath);
 }
 
 // Helper method for TryLoad: takes a path to a text file
@@ -128,7 +128,7 @@ bool Input::getFile(const QString &filePath, QString &fileContent)
         {
             // Don't bother hanging the computer trying to read
             // this file. It's way too big.
-            emit results(InResultErrorHugeFile);
+            emit results(InResultErrorHugeFile, QString::null, QString::null);
             return false;
         }
 
@@ -146,7 +146,7 @@ bool Input::getFile(const QString &filePath, QString &fileContent)
 
     if(!success)
     {
-        emit results(InResultFileError);
+        emit results(InResultFileError, QString::null, QString::null);
         return false;
     }
     else return true;

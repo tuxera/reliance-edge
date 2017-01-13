@@ -22,16 +22,47 @@
     distribution in any form.  Visit http://www.datalight.com/reliance-edge for
     more information.
 */
-#ifndef VERSION_H
-#define VERSION_H
+#include <stdio.h>
+#include <stdlib.h>
+#include <strings.h>
 
-#define CONFIG_VERSION      "2.0"
+#include <redfs.h>
+#include <redtests.h>
 
-// Hex representation of version above. Most significant byte is the
-// major version, etc.  The low byte should be left 00.  This is exported
-// with the configuration to allow Reliance Edge to print a more helpful
-// message if the configuration is too old.
-#define CONFIG_VERSION_VAL  0x02000000U
+#if POSIX_API_TEST_SUPPORTED == 1
 
-#endif // VERSION_H
 
+int main(
+    int     argc,
+    char   *argv[])
+{
+    int             iRet;
+    PARAMSTATUS     pstatus;
+    OSAPITESTPARAM  param;
+
+    pstatus = RedOsApiTestParseParams(argc, argv, &param, NULL);
+    if(pstatus == PARAMSTATUS_OK)
+    {
+        iRet = RedOsApiTestStart(&param);
+    }
+    else if(pstatus == PARAMSTATUS_HELP)
+    {
+        iRet = 0; /* Help request: do nothing but indicate success. */
+    }
+    else
+    {
+        iRet = 1; /* Bad parameters: indicate failure. */
+    }
+
+    return iRet;
+}
+
+#else
+
+int main(void)
+{
+    fprintf(stderr, "POSIX-like API test not supported in this configuration.\n");
+    return 1;
+}
+
+#endif

@@ -32,6 +32,7 @@
 
 #include <redfs.h>
 #include <redvolume.h>
+#endif
 
 
 typedef enum

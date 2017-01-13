@@ -215,6 +215,8 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     // Forwarded signals
     connect(ui->actionSave, SIGNAL(triggered()),
             this, SIGNAL(saveClicked()));
+    connect(ui->actionSave_As, SIGNAL(triggered()),
+            this, SIGNAL(saveAsClicked()));
     connect(ui->actionLoad, SIGNAL(triggered()),
             this, SIGNAL(loadClicked()));
 

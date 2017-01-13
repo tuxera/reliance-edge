@@ -86,6 +86,11 @@ signals:
     void saveClicked();
 
     ///
+    /// \brief  Invoked when <i>File -> Save As</i> is selected
+    ///
+    void saveAsClicked();
+
+    ///
     /// \brief  Invoked when <i>File -> Load</i> is selected
     ///
     void loadClicked();

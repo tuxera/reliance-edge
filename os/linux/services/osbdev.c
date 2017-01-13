@@ -704,6 +704,7 @@ static REDSTATUS FileDiskClose(uint8_t bVolNum)
     LINUXBDEV  *pDisk = &gaDisk[bVolNum];
     REDSTATUS   ret = 0;
 
+  #if REDCONF_READ_ONLY == 0
     /*  Flush before closing.  This is primarily for the tools, so that all the
         data is really committed to the media when the tool exits.
     */
@@ -711,6 +712,7 @@ static REDSTATUS FileDiskClose(uint8_t bVolNum)
     {
         ret = FileDiskFlush(bVolNum);
     }
+  #endif
 
     if(ret == 0)
     {

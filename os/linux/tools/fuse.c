@@ -564,6 +564,8 @@ static int fuse_red_open(
     int32_t                 iFd;
     int                     result = 0;
 
+    assert(pFileInfo != NULL);
+
     iFd = red_local_open(pszPath, pFileInfo->flags);
 
     if (iFd < 0)
@@ -592,8 +594,10 @@ static int fuse_red_read(
     (void)pszPath;
 
     assert(pFileInfo != NULL);
-    assert(offset >= 0);
-    assert(size <= INT_MAX);
+    if(offset < 0 || size > INT_MAX)
+    {
+        return -EINVAL;
+    }
 
     iFd = (int32_t)pFileInfo->fh;
 
@@ -629,8 +633,10 @@ static int fuse_red_write(
     (void)pszPath;
 
     assert(pFileInfo != NULL);
-    assert(offset >= 0);
-    assert(size <= INT_MAX);
+    if(offset < 0 || size > INT_MAX)
+    {
+        return -EINVAL;
+    }
 
     iFd = (int32_t)pFileInfo->fh;
 

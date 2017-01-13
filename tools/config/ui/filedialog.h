@@ -52,19 +52,25 @@ public:
     /// \brief  Shows this ::FileDialog, asking the user to choose a redconf.h
     ///         file.
     ///
+    /// \param defaultPath  A path to a file to be selected as a default, or
+    ///                     QString::null
+    ///
     /// \return Returns the path to the file chosen by the user, or
     ///         QString::null if no file was selected.
     ///
-    QString ShowGetHeader();
+    QString ShowGetHeader(const QString &defaultPath);
 
     ///
     /// \brief  Shows this ::FileDialog, asking the user to choose a redconf.c
     ///         file.
     ///
+    /// \param defaultPath  A path to a file to be selected as a default, or
+    ///                     QString::null
+    ///
     /// \return Returns the path to the file chosen by the user, or
     ///         QString::null if no file was selected.
     ///
-    QString ShowGetCodefile();
+    QString ShowGetCodefile(const QString &defaultPath);
 
 private:
     QString showFileDialog();

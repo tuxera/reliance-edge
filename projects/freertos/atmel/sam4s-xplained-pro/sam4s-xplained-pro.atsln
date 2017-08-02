@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Atmel Studio Solution File, Format Version 11.00
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "sam4s-xplained-pro", "sam4s-xplained-pro.cproj", "{0C1FBFE4-55A9-48D8-80AC-FBD5B9D75130}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM = Debug|ARM
+		Release|ARM = Release|ARM
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0C1FBFE4-55A9-48D8-80AC-FBD5B9D75130}.Debug|ARM.ActiveCfg = Debug|ARM
+		{0C1FBFE4-55A9-48D8-80AC-FBD5B9D75130}.Debug|ARM.Build.0 = Debug|ARM
+		{0C1FBFE4-55A9-48D8-80AC-FBD5B9D75130}.Release|ARM.ActiveCfg = Release|ARM
+		{0C1FBFE4-55A9-48D8-80AC-FBD5B9D75130}.Release|ARM.Build.0 = Release|ARM
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

@@ -190,7 +190,8 @@ typedef enum
 {
     TESTFS_RELEDGE, /* Datalight Reliance Edge */
     TESTFS_FATFS,   /* ChaN's FatFs */
-    TESTFS_FATSL    /* FreeRTOS+FAT SL */
+    TESTFS_FATSL,   /* FreeRTOS+FAT SL */
+    TESTFS_IPOSIX   /* INTEGRITY POSIX */
 } TESTFS;
 
 typedef struct
@@ -209,7 +210,8 @@ typedef struct
     uint32_t    ulRandomReadPasses;     /**< --rand-pass=r:w (r part) */
     uint32_t    ulRandomWritePasses;    /**< --rand-pass=r:w (w part) */
     uint32_t    ulMixedWritePasses;     /**< --mixed-pass */
-    int32_t     iFlushOnWriteRatio;     /**< --rand-fow */
+    int32_t     iRandFlushOnWriteRatio; /**< --rand-fow */
+    int32_t     iSeqFlushOnWriteRatio;  /**< --seq-fow */
     uint32_t    ulBufferMin;            /**< --start */
     uint32_t    ulBufferSize;           /**< --buffer-size */
     bool        fWriteVerify;           /**< --verify */

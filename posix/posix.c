@@ -2091,7 +2091,7 @@ int32_t red_closedir(
     volume that is unmounted, it resets to the root directory of that volume.
 
     @param pszPath  The path to the directory which will become the current
-	                working directory.
+                    working directory.
 
     @return On success, zero is returned.  On error, -1 is returned and
             #red_errno is set appropriately.

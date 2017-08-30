@@ -556,3 +556,25 @@ int32_t RedGetoptLong(
     return getopt_internal(nargc, nargv, options, long_options, idx, FLAG_PERMUTE);
 }
 
+
+/** @brief Reset the global state for option parsing.
+
+    This is necessary to use RedGetopt() or RedGetoptLong() more than once in
+    environments or situations where the global variables are not automatically
+    re-initialized.
+*/
+void RedGetoptReset(void)
+{
+    /*  Reset all mutable global variables to their original values.
+    */
+    red_opterr = 1;
+    red_optind = 1;
+    red_optopt = '?';
+    red_optreset = 0;
+    red_optarg = NULL;
+    place = EMSG;
+    nonopt_start = -1;
+    nonopt_end = -1;
+    dash_prefix = NO_PREFIX;
+}
+

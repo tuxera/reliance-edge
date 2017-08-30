@@ -64,6 +64,7 @@ typedef struct
 
 int32_t RedGetopt(int32_t nargc, char * const *nargv, const char *options);
 int32_t RedGetoptLong(int32_t nargc, char * const *nargv, const char *options, const REDOPTION *long_options, int32_t *idx);
+void RedGetoptReset(void);
 
 
 extern const char *red_optarg;

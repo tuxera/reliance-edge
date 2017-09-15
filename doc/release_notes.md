@@ -5,6 +5,50 @@ recent releases and a list of known issues.
 
 ## Release History and Changes
 
+### Reliance Edge v2.1, September 2017
+
+#### Common Code Changes
+- Added optional support for current working directories, relative paths, and
+  dot and dot-dot handling.  This includes the new red_chdir() and red_getcwd()
+  APIs.
+- A volume path prefix, by itself, is now a valid reference to the root
+  directory on that volume.  Assuming the path prefix is "VOL0:" and the path
+  separator character is '/', previously red_opendir("VOL0:/") would succeed and
+  red_opendir("VOL0:") would fail.  Now both will succeed.  This results in more
+  intuitive behavior when the volume path prefix is changed to look like a
+  directory, such as "/sdcard"; red_opendir("/sdcard") and red_chdir("/sdcard")
+  intuitively look like they should work, and now they do.
+- Updated the imgcopy utility to open files in binary mode.  When used on
+  Windows, this fixes a problem where Windows attempted to perform newline
+  conversion in binary files, corrupting the file data.
+- Fixed a bug in the POSIX-like API Test Suite which caused it to fail when run
+  on a volume other than volume zero.  Fixed another bug which caused it to
+  fail when the volume name was unusually long.
+- Added an option to FSIOTest to control flush frequency for the sequential
+  write and sequential rewrite tests.  Default behavior is unchanged.
+
+#### INTEGRITY Port Changes
+- Added support for the INTEGRITY RTOS in the commercial kit.  Reliance Edge
+  integrates into the INTEGRITY file system layer so that system calls like
+  open() or read() work with Reliance Edge; there is no need to update an
+  application to use Reliance Edge's POSIX-like API.
+- Example projects for the BeagleBone Black are provided.
+- For the time being, the osbdev.c implementation is only known to work with
+  the SD card driver supplied with the BeagleBone Black BSP.  It is known _not_
+  to work with the IDE driver used on x86 PCs.  Other storage drivers have not
+  been tested.
+- See the "INTEGRITY Integration" chapter of the _Developer's Guide_ for
+  further details on INTEGRITY support.  Please read this chapter before using
+  Reliance Edge on INTEGRITY.
+
+#### FreeRTOS Port Changes
+- Moved the several example implementations in osbdev.c into header files.
+- Added a "stub" example, which is now the default implementation for FreeRTOS,
+  and which deliberately does not compile.  This is to make it obvious that
+  FreeRTOS users need to make modifications to osbdev.c for their environment.
+- Added support for using Datalight FlashFX Tera as a block device.  This
+  support only exists in the commercial kit.
+
 ### Reliance Edge v2.0, January 2017
 
 - Added support for Linux as a host environment
@@ -48,7 +92,7 @@ recent releases and a list of known issues.
 
 - Added support for static memory allocation configuration in FreeRTOS
   version 9.  No common code changes.
-  
+
 ### Reliance Edge v1.0.2, February 2016
 
 #### Common Code Changes
@@ -72,7 +116,7 @@ recent releases and a list of known issues.
   Essentials API was selected in the configuration.
 - Fixed a bug which would have returned an uninitialized value from
   `RedOsBDevFlush()` for block devices that support flushing.
-  
+
 ### Reliance Edge v1.0.1, October 2015
 
 - Added MQX RTOS support in the commercial kit, with example projects for
@@ -82,7 +126,6 @@ recent releases and a list of known issues.
 ### Reliance Edge v1.0, July 2015
 
 #### Common Code Changes
-
 - First release of commercial kit and MISRA C:2012 Design Assurance Package.
   The commercial kit includes many new tools and tests which were not previously
   available.

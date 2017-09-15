@@ -11,6 +11,7 @@
 #
 # Ignore standard build artifacts
 #
+*.a
 *.o
 *.d
 *.obj

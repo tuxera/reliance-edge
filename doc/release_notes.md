@@ -48,6 +48,9 @@ recent releases and a list of known issues.
   FreeRTOS users need to make modifications to osbdev.c for their environment.
 - Added support for using Datalight FlashFX Tera as a block device.  This
   support only exists in the commercial kit.
+- The Atmel Studio projects for the SAM4E-EK and SAM4S Xplained Pro boards are
+  no longer included in the open source kit; they are still available in the
+  commercial kit.
 
 ### Reliance Edge v2.0, January 2017
 

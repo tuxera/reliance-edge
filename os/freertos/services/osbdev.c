@@ -91,8 +91,9 @@
     varieties of Atmel hardware.  This example assumes relatively minor
     modifications to the ASF SD/MMC driver to make it support multi-sector read
     and write requests, which greatly improves performance.  The modified driver
-    is distributed with Reliance Edge and is included in FreeRTOS Atmel projects
-    (such as in projects/freertos/atmel/sam4e-ek/src/ASF).
+    is distributed with the Reliance Edge commercial kit and is included in
+    FreeRTOS Atmel projects that come with the commercial kit (such as in
+    projects/freertos/atmel/sam4e-ek/src/ASF).
 
     This example can easily be modified to work with an unmodified version of
     the ASF SD/MMC driver.  Simply replace sd_mmc_mem_2_ram_multi() and

@@ -18,8 +18,8 @@ recent releases and a list of known issues.
 
 #### INTEGRITY Port Changes
 - Reliance Edge can now be used from more than one AddressSpace, via the new
-  client--server implementation.  For cases where only one AddressSpace is
-  using Reliance Edge and the client--server overhead is undesirable, a
+  client-server implementation.  For cases where only one AddressSpace is
+  using Reliance Edge and the client-server overhead is undesirable, a
   unified library is also offered; it runs in the same AddressSpace as the
   application, similar to the v2.1 release.
 - The block device implementation has been updated to support IDE/ATA/SATA

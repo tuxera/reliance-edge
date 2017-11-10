@@ -14,10 +14,10 @@ application.
 
 Getting Help
 
-You will find this section later in our readme as well - but we wanted
+You will find this section later in our readme as well -- but we wanted
 to tell you up front: DATALIGHT WANTS TO HEAR FROM YOU! Whether it's
 just to make comments about the product, to suggest new features, or to
-tell us what you don't like - reach out! All comments and inquiries can
+tell us what you don't like -- reach out! All comments and inquiries can
 be directed to RelianceEdgeSupport@datalight.com.
 
 

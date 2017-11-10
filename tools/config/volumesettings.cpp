@@ -35,6 +35,7 @@ VolumeSettings::Volume::Volume(QString name,
                                WarningBtn *wbtnPathPrefix,
                                WarningBtn *wbtnSectorSize,
                                WarningBtn *wbtnVolSize,
+                               WarningBtn *wbtnVolOff,
                                WarningBtn *wbtnInodeCount,
                                WarningBtn *wbtnAtomicWrite,
                                WarningBtn *wbtnDiscardSupport,
@@ -42,6 +43,7 @@ VolumeSettings::Volume::Volume(QString name,
     : stName("", name, validateVolName, wbtnPathPrefix),
       stSectorSize("", 512, validateVolSectorSize, wbtnSectorSize),
       stSectorCount("", 1024, validateVolSectorCount, wbtnVolSize),
+      stSectorOff("", 0, validateVolSectorOff, wbtnVolOff),
       stInodeCount("", 100, validateVolInodeCount, wbtnInodeCount),
       stAtomicWrite("", gpszUnsupported, validateSupportedUnsupported, wbtnAtomicWrite),
       stDiscardSupport("", gpszUnsupported, validateDiscardSupport, wbtnDiscardSupport),
@@ -50,6 +52,7 @@ VolumeSettings::Volume::Volume(QString name,
     Q_ASSERT(allSettings.sbsAllocatedBuffers != NULL);
     stSectorCount.notifyList.append(allSettings.sbsAllocatedBuffers);
     stSectorSize.notifyList.append(&stSectorCount);
+    stSectorSize.notifyList.append(&stSectorOff);
     stSectorCount.notifyList.append(&stInodeCount);
     stSectorSize.notifyList.append(&stInodeCount);
 }
@@ -67,6 +70,11 @@ IntSetting *VolumeSettings::Volume::GetStSectorSize()
 IntSetting *VolumeSettings::Volume::GetStSectorCount()
 {
     return &stSectorCount;
+}
+
+IntSetting *VolumeSettings::Volume::GetStSectorOff()
+{
+    return &stSectorOff;
 }
 
 IntSetting *VolumeSettings::Volume::GetStInodeCount()
@@ -121,6 +129,8 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
                                QComboBox *sectorSizeBox,
                                QSpinBox *volSizeBox,
                                QLabel *volSizeLabel,
+                               QSpinBox *volOffBox,
+                               QLabel *volOffLabel,
                                QSpinBox *inodeCountBox,
                                QComboBox *atomicWriteBox,
                                QComboBox *discardSupportBox,
@@ -134,6 +144,7 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
                                WarningBtn *pathPrefixWarn,
                                WarningBtn *sectorSizeWarn,
                                WarningBtn *volSizeWarn,
+                               WarningBtn *volOffWarn,
                                WarningBtn *inodeCountWarn,
                                WarningBtn *atomicWriteWarn,
                                WarningBtn *discardSupportWarn,
@@ -141,8 +152,10 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
     : stVolumeCount(macroNameVolumeCount, 1, validateVolumeCount),
       lePathPrefix(pathPrefixBox),
       sbVolSize(volSizeBox),
+      sbVolOff(volOffBox),
       sbInodeCount(inodeCountBox),
       labelVolSizeBytes(volSizeLabel),
+      labelVolOffBytes(volOffLabel),
       cmbSectorSize(sectorSizeBox),
       cmbAtomicWrite(atomicWriteBox),
       cmbDiscardSupport(discardSupportBox),
@@ -156,6 +169,7 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
       wbtnPathPrefix(pathPrefixWarn),
       wbtnSectorSize(sectorSizeWarn),
       wbtnVolSize(volSizeWarn),
+      wbtnVolOff(volOffWarn),
       wbtnInodeCount(inodeCountWarn),
       wbtnAtomicWrite(atomicWriteWarn),
       wbtnDiscardSupport(discardSupportWarn),
@@ -172,6 +186,8 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
             this, SLOT(lePathPrefix_textChanged(QString)));
     connect(sbVolSize, SIGNAL(valueChanged(QString)),
             this, SLOT(sbVolSize_valueChanged(QString)));
+    connect(sbVolOff, SIGNAL(valueChanged(QString)),
+            this, SLOT(sbVolOff_valueChanged(QString)));
     connect(sbInodeCount, SIGNAL(valueChanged(QString)),
             this, SLOT(sbInodeCount_valueChanged(QString)));
     connect(cmbSectorSize, SIGNAL(currentIndexChanged(int)),
@@ -192,6 +208,7 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
             this, SLOT(btnRemSelected_clicked()));
 
     updateVolSizeBytes();
+    updateVolOffBytes();
 }
 
 VolumeSettings::~VolumeSettings()
@@ -251,6 +268,7 @@ void VolumeSettings::SetActiveVolume(int index)
     // a null pointer.
     allSettings.cmisBlockSize->notifyList.append(volumes[index]->GetStSectorSize());
     allSettings.cmisBlockSize->notifyList.append(volumes[index]->GetStSectorCount());
+    allSettings.cmisBlockSize->notifyList.append(volumes[index]->GetStSectorOff());
     allSettings.cmisBlockSize->notifyList.append(volumes[index]->GetStInodeCount());
     allSettings.rbtnsUsePosix->notifyList.append(volumes[index]->GetStInodeCount());
     allSettings.rbtnsUsePosix->notifyList.append(volumes[index]->GetStName());
@@ -266,10 +284,12 @@ void VolumeSettings::SetActiveVolume(int index)
     lePathPrefix->setText(volumes[index]->GetStName()->GetValue());
 
     sbVolSize->setValue(volumes[index]->GetStSectorCount()->GetValue());
+    sbVolOff->setValue(volumes[index]->GetStSectorOff()->GetValue());
 
     sbInodeCount->setValue(volumes[index]->GetStInodeCount()->GetValue());
 
     // Volume size bytes label set by sbVolSize_valueChanged
+    // Volume offset bytes label set by sbVolOff_valueChanged
 
     // Use QLocale to add comma separators
     QLocale l(QLocale::English, QLocale::UnitedStates);
@@ -295,7 +315,7 @@ void VolumeSettings::AddVolume()
 {
     QString name = QString("VOL") + QString::number(volTick) + QString(":");
 
-    volumes.append(new Volume(name, wbtnPathPrefix, wbtnSectorSize, wbtnVolSize,
+    volumes.append(new Volume(name, wbtnPathPrefix, wbtnSectorSize, wbtnVolSize, wbtnVolOff,
                               wbtnInodeCount, wbtnAtomicWrite, wbtnDiscardSupport,
                               wbtnIoRetries));
     volTick++;
@@ -352,6 +372,7 @@ void VolumeSettings::GetErrors(QStringList &errors, QStringList &warnings)
         activeIndex = i;
         AllSettings::CheckError(volumes[i]->GetStName(), errors, warnings);
         AllSettings::CheckError(volumes[i]->GetStSectorCount(), errors, warnings);
+        AllSettings::CheckError(volumes[i]->GetStSectorOff(), errors, warnings);
         AllSettings::CheckError(volumes[i]->GetStInodeCount(), errors, warnings);
         AllSettings::CheckError(volumes[i]->GetStSectorSize(), errors, warnings);
         AllSettings::CheckError(volumes[i]->GetStAtomicWrite(), errors, warnings);
@@ -366,6 +387,7 @@ void VolumeSettings::GetErrors(QStringList &errors, QStringList &warnings)
         checkCurrentIndex();
         volumes[activeIndex]->GetStName()->Notify();
         volumes[activeIndex]->GetStSectorCount()->Notify();
+        volumes[activeIndex]->GetStSectorOff()->Notify();
         volumes[activeIndex]->GetStInodeCount()->Notify();
         volumes[activeIndex]->GetStSectorSize()->Notify();
         volumes[activeIndex]->GetStAtomicWrite()->Notify();
@@ -434,6 +456,8 @@ const VOLCONF gaRedVolConf[REDCONF_VOLUME_COUNT] =\n\
                 + QString("U, ")
                 + QString::number(volumes[i]->GetStSectorCount()->GetValue())
                 + QString("U, ")
+				+ QString::number(volumes[i]->GetStSectorOff()->GetValue())
+				+ QString("U, ")
                 + (QString::compare(volumes[i]->GetStAtomicWrite()->GetValue(),
                                     gpszSupported, Qt::CaseInsensitive) == 0
                    ? QString("true") : QString("false"))
@@ -574,6 +598,7 @@ void VolumeSettings::ParseCodefile(const QString &text,
                                      wbtnPathPrefix,
                                      wbtnSectorSize,
                                      wbtnVolSize,
+                                     wbtnVolOff,
                                      wbtnInodeCount,
                                      wbtnAtomicWrite,
                                      wbtnDiscardSupport,
@@ -583,13 +608,15 @@ void VolumeSettings::ParseCodefile(const QString &text,
                 pathPrefix + QString(" sector size"));
         parseAndSet(newVol->GetStSectorCount(), strValues[1], notParsed,
                 pathPrefix + QString(" sector count"));
+        parseAndSet(newVol->GetStSectorOff(), strValues[2], notParsed,
+                pathPrefix + QString(" sector offset"));
 
         // Special case parse and set
-        if(QString::compare(strValues[2], "true") == 0)
+        if(QString::compare(strValues[3], "true") == 0)
         {
             newVol->GetStAtomicWrite()->SetValue(gpszSupported);
         }
-        else if(QString::compare(strValues[2], "false") == 0)
+        else if(QString::compare(strValues[3], "false") == 0)
         {
             newVol->GetStAtomicWrite()->SetValue(gpszUnsupported);
         }
@@ -598,14 +625,14 @@ void VolumeSettings::ParseCodefile(const QString &text,
             notParsed += pathPrefix + QString(" atomic write supported");
         }
 
-        parseAndSet(newVol->GetStInodeCount(), strValues[3], notParsed,
+        parseAndSet(newVol->GetStInodeCount(), strValues[4], notParsed,
                 pathPrefix + QString(" inode count"));
 
         // Don't complain if I/O retries setting isn't found (see
         // comments above).
-        if(strValues.count() > 4)
+        if(strValues.count() > 5)
         {
-            parseAndSet(newVol->GetStBlockIoRetries(), strValues[4], notParsed,
+            parseAndSet(newVol->GetStBlockIoRetries(), strValues[5], notParsed,
                     pathPrefix + QString(" block I/O retries"));
         }
 
@@ -614,14 +641,14 @@ void VolumeSettings::ParseCodefile(const QString &text,
         // For now, it's safe to check strValues.count(), but in the
         // future we may need to check whether discards are globally
         // supported before parsing per-volume.
-        if(strValues.count() > 5)
+        if(strValues.count() > 6)
         {
             // Special case parse and set
-            if(QString::compare(strValues[5], "true") == 0)
+            if(QString::compare(strValues[6], "true") == 0)
             {
                 newVol->GetStDiscardSupport()->SetValue(gpszSupported);
             }
-            else if(QString::compare(strValues[5], "false") == 0)
+            else if(QString::compare(strValues[6], "false") == 0)
             {
                 newVol->GetStDiscardSupport()->SetValue(gpszUnsupported);
             }
@@ -736,6 +763,8 @@ void VolumeSettings::deselectVolume(int index)
     allSettings.cmisBlockSize->notifyList
             .removeOne(volumes[index]->GetStSectorCount());
     allSettings.cmisBlockSize->notifyList
+            .removeOne(volumes[index]->GetStSectorOff());
+    allSettings.cmisBlockSize->notifyList
             .removeOne(volumes[index]->GetStInodeCount());
     allSettings.rbtnsUsePosix->notifyList
             .removeOne(volumes[index]->GetStInodeCount());
@@ -838,6 +867,14 @@ void VolumeSettings::updateVolSizeBytes()
             * static_cast<qulonglong>(volumes[activeIndex]->GetStSectorCount()->GetValue())));
 }
 
+// Updates the label that reports the volume offset in bytes.
+void VolumeSettings::updateVolOffBytes()
+{
+    labelVolOffBytes->setText(FormatSize(
+            static_cast<qulonglong>(volumes[activeIndex]->GetStSectorSize()->GetValue())
+            * static_cast<qulonglong>(volumes[activeIndex]->GetStSectorOff()->GetValue())));
+}
+
 void VolumeSettings::lePathPrefix_textChanged(const QString &text)
 {
     // Asserts that the vol index is ok
@@ -872,6 +909,7 @@ void VolumeSettings::cmbSectorSize_currentIndexChanged(int index)
     }
 
     updateVolSizeBytes();
+    updateVolOffBytes();
 }
 
 void VolumeSettings::sbVolSize_valueChanged(const QString &value)
@@ -890,6 +928,24 @@ void VolumeSettings::sbVolSize_valueChanged(const QString &value)
     }
 
     updateVolSizeBytes();
+}
+
+void VolumeSettings::sbVolOff_valueChanged(const QString &value)
+{
+    // Asserts that the vol index is ok
+    if(!checkCurrentIndex()) return;
+
+    try
+    {
+        volumes[activeIndex]->GetStSectorOff()->ProcessInput(value);
+    }
+    catch(std::invalid_argument)
+    {
+        Q_ASSERT(false);
+        return;
+    }
+
+    updateVolOffBytes();
 }
 
 void VolumeSettings::sbInodeCount_valueChanged(const QString &value)

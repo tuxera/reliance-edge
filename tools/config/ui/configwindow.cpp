@@ -137,6 +137,8 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
                                         ui->cmbSectorSize,
                                         ui->sbVolSize,
                                         ui->labelVolSizeBytes,
+                                        ui->sbVolOff,
+                                        ui->labelVolOffBytes,
                                         ui->sbInodeCount,
                                         ui->cmbAtomicWrite,
                                         ui->cmbDiscardsSupported,
@@ -150,6 +152,7 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
                                         ui->wbtnPathPrefix,
                                         ui->wbtnSectorSize,
                                         ui->wbtnVolSize,
+                                        ui->wbtnVolOff,
                                         ui->wbtnInodeCount,
                                         ui->wbtnAtomicWrite,
                                         ui->wbtnDiscardsSupported,
@@ -167,6 +170,7 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     wbtns.append(ui->wbtnVolumeCtrls);
     wbtns.append(ui->wbtnSectorSize);
     wbtns.append(ui->wbtnVolSize);
+    wbtns.append(ui->wbtnVolOff);
     wbtns.append(ui->wbtnAtomicWrite);
     wbtns.append(ui->wbtnDiscardsSupported);
     wbtns.append(ui->wbtnInodeCount);

@@ -65,6 +65,7 @@ public:
                WarningBtn *wbtnPathPrefix,
                WarningBtn *wbtnSectorSize,
                WarningBtn *wbtnVolSize,
+               WarningBtn *wbtnVolOff,
                WarningBtn *wbtnInodeCount,
                WarningBtn *wbtnAtomicWrite,
                WarningBtn *wbtnDiscardSupport,
@@ -72,6 +73,7 @@ public:
         StrSetting *GetStName();
         IntSetting *GetStSectorSize();
         IntSetting *GetStSectorCount();
+        IntSetting *GetStSectorOff();
         IntSetting *GetStInodeCount();
         StrSetting *GetStAtomicWrite();
         StrSetting *GetStDiscardSupport();
@@ -81,6 +83,7 @@ public:
     private:
         StrSetting stName;
         IntSetting stSectorCount;
+        IntSetting stSectorOff;
         IntSetting stInodeCount;
         IntSetting stSectorSize;
         StrSetting stAtomicWrite;
@@ -97,6 +100,8 @@ public:
                    QComboBox *sectorSizeBox,
                    QSpinBox *volSizeBox,
                    QLabel *volSizeLabel,
+                   QSpinBox *volOffBox,
+                   QLabel *volOffLabel,
                    QSpinBox *inodeCountBox,
                    QComboBox *atomicWriteBox,
                    QComboBox *discardSupportBox,
@@ -110,6 +115,7 @@ public:
                    WarningBtn *pathPrefixWarn,
                    WarningBtn *sectorSizeWarn,
                    WarningBtn *volSizeWarn,
+                   WarningBtn *volOffWarn,
                    WarningBtn *inodeCountWarn,
                    WarningBtn *atomicWriteWarn,
                    WarningBtn *discardSupportWarn,
@@ -237,6 +243,7 @@ private:
     void checkSetVolumeCount();
     bool checkCurrentIndex();
     void updateVolSizeBytes();
+    void updateVolOffBytes();
 
     // Getter: GetStNumVolumes
     IntSetting stVolumeCount;
@@ -252,8 +259,10 @@ private:
 
     QLineEdit *lePathPrefix;
     QSpinBox *sbVolSize;
+    QSpinBox *sbVolOff;
     QSpinBox *sbInodeCount;
     QLabel *labelVolSizeBytes;
+    QLabel *labelVolOffBytes;
     QComboBox *cmbSectorSize;
     QComboBox *cmbAtomicWrite;
     QComboBox *cmbDiscardSupport;
@@ -267,6 +276,7 @@ private:
     WarningBtn *wbtnVolCount;
     WarningBtn *wbtnPathPrefix;
     WarningBtn *wbtnVolSize;
+    WarningBtn *wbtnVolOff;
     WarningBtn *wbtnInodeCount;
     WarningBtn *wbtnSectorSize;
     WarningBtn *wbtnAtomicWrite;
@@ -277,6 +287,7 @@ private slots:
     void lePathPrefix_textChanged(const QString &text);
     void cmbSectorSize_currentIndexChanged(int index);
     void sbVolSize_valueChanged(const QString &value);
+    void sbVolOff_valueChanged(const QString &value);
     void sbInodeCount_valueChanged(const QString &value);
     void cmbAtomicWrite_currentIndexChanged(int index);
     void cmbDiscardSupport_currentIndexChanged(int index);

@@ -33,7 +33,7 @@
 
     <!-- This macro is updated automatically: do not edit! -->
 */
-#define RED_BUILD_NUMBER "750"
+#define RED_BUILD_NUMBER "751"
 
 #define RED_KIT_GPL         0U  /* Open source GPL kit. */
 #define RED_KIT_COMMERCIAL  1U  /* Commercially-licensed kit. */
@@ -48,13 +48,13 @@
 
 /** @brief Version number to display in output.
 */
-#define RED_VERSION "v2.1"
+#define RED_VERSION "v2.2"
 
 /** @brief Version number in hex.
 
     The most significant byte is the major version number, etc.
 */
-#define RED_VERSION_VAL 0x02010000U
+#define RED_VERSION_VAL 0x02020000U
 
 /** @brief On-disk version number.
 

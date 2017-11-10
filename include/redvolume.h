@@ -48,6 +48,10 @@ typedef struct
     */
     uint64_t    ullSectorCount;
 
+    /** The number of sectors into the disk where this volume starts.
+    */
+    uint64_t    ullSectorOffset;
+
     /** Whether a sector write on the block device underlying the volume is
         atomic.  It is atomic if when the sector write is interrupted, the
         contents of the sector are guaranteed to be either all of the new data,

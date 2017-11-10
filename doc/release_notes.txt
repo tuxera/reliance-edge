@@ -9,6 +9,29 @@ course of recent releases and a list of known issues.
 
 Release History and Changes
 
+Reliance Edge v2.2, December 2017
+
+Common Code Changes
+
+-   The Reliance Edge Configuration Utility has been updated to support
+    specifying a sector offset for each volume. This allows Reliance
+    Edge to be used on partitioned storage devices without
+    osbdev.c customization. To upgrade an old redconf.c to be compatible
+    with this change, the sector offset must be manually added to the
+    entry for each volume in redconf.c, for example:
+    -   Before: { 512U, 65536U, false, 1024U, 0U, "VOL0:" }
+    -   After: { 512U, 65536U, 0U, false, 1024U, 0U, "VOL0:" }
+
+INTEGRITY Port Changes
+
+-   Reliance Edge can now be used from more than one AddressSpace, via
+    the new client--server implementation. For cases where only one
+    AddressSpace is using Reliance Edge and the client--server overhead
+    is undesirable, a unified library is also offered; it runs in the
+    same AddressSpace as the application, similar to the v2.1 release.
+-   The block device implementation has been updated to support
+    IDE/ATA/SATA devices.
+
 Reliance Edge v2.1, October 2017
 
 Common Code Changes

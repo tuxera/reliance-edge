@@ -53,6 +53,7 @@ Validity validateVolumeCount(unsigned long value, QString &msg);
 Validity validateVolName(QString value, QString &msg);
 Validity validateVolSectorSize(unsigned long value, QString &msg);
 Validity validateVolSectorCount(unsigned long value, QString &msg);
+Validity validateVolSectorOff(unsigned long value, QString &msg);
 Validity validateVolInodeCount(unsigned long value, QString &msg);
 Validity validateSupportedUnsupported(QString value, QString &msg);
 Validity validateDiscardSupport(QString value, QString &msg);

@@ -441,6 +441,35 @@ Validity validateVolSectorCount(unsigned long value, QString &msg)
 }
 
 ///
+/// \brief  Validator for a VolumeSettings::Volume::stSectorCount.
+///
+///         Assumes the validator is being run on the volume at
+///         volumeSettings::activeIndex. Requires ::allSettings and
+///         ::volumeSettings be initialized.
+///
+Validity validateVolSectorOff(unsigned long value, QString &msg)
+{
+    (void)value;
+    unsigned long sectorSize = volumeSettings
+                                ->GetVolumes()
+                                ->at(volumeSettings->GetCurrentIndex())
+                                ->GetStSectorSize()
+                                ->GetValue();
+    unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
+
+    // Avoid division by 0
+    if(blockSize == 0 || sectorSize == 0 || blockSize < sectorSize)
+    {
+        msg = "Invalid block or sector size; cannot validate volume size.";
+        return Warning;
+    }
+	else
+	{
+		return Valid;
+	}
+}
+
+///
 /// \brief  Validator for a VolumeSettings::Volume::stInodeCount
 ///
 ///         Assumes the validator is being run on the volume at

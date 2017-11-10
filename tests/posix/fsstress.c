@@ -1842,7 +1842,7 @@ static void check_f(int opno, long r)
         {
             int32_t ret2;
 
-            errno = -RedCoreVolCheck();
+            errno = -RedCoreVolCheck(stderr, NULL, 0U);
             if(errno != 0)
             {
                 ret = -1;

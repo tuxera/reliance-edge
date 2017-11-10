@@ -72,7 +72,7 @@ REDSTATUS RedIoRead(
     else
     {
         uint8_t  bSectorShift = gaRedVolume[bVolNum].bBlockSectorShift;
-        uint64_t ullSectorStart = (uint64_t)ulBlockStart << bSectorShift;
+        uint64_t ullSectorStart = ((uint64_t)ulBlockStart << bSectorShift) + gpRedVolConf->ullSectorOffset;
         uint32_t ulSectorCount = ulBlockCount << bSectorShift;
         uint8_t  bRetryIdx;
 
@@ -130,7 +130,7 @@ REDSTATUS RedIoWrite(
     else
     {
         uint8_t  bSectorShift = gaRedVolume[bVolNum].bBlockSectorShift;
-        uint64_t ullSectorStart = (uint64_t)ulBlockStart << bSectorShift;
+        uint64_t ullSectorStart = ((uint64_t)ulBlockStart << bSectorShift) + gpRedVolConf->ullSectorOffset;
         uint32_t ulSectorCount = ulBlockCount << bSectorShift;
         uint8_t  bRetryIdx;
 

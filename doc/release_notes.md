@@ -25,6 +25,13 @@ recent releases and a list of known issues.
 - The block device implementation has been updated to support IDE/ATA/SATA
   devices.
 
+#### U-Boot Port Changes
+- Added support for the Universal Boot Loader (U-Boot) in the open-source kit.
+  This allows a system using U-Boot to boot from an operating system image or
+  kernel image stored on a Reliance Edge file system volume.
+- See the "U-Boot Integration" chapter of the _Developer's Guide_ for further
+  details on U-Boot support.
+
 ### Reliance Edge v2.1, October 2017
 
 #### Common Code Changes

@@ -1,0 +1,79 @@
+diff -urN u-boot-2017.09.stock/fs/fs.c u-boot-2017.09/fs/fs.c
+--- u-boot-2017.09.stock/fs/fs.c	2017-09-11 11:10:40.000000000 -0700
++++ u-boot-2017.09/fs/fs.c	2017-11-20 12:37:04.568015768 -0800
+@@ -12,6 +12,7 @@
+ #include <ext4fs.h>
+ #include <fat.h>
+ #include <fs.h>
++#include <redfs_uboot.h>
+ #include <sandboxfs.h>
+ #include <ubifs_uboot.h>
+ #include <asm/io.h>
+@@ -114,6 +115,19 @@
+ 		.uuid = fs_uuid_unsupported,
+ 	},
+ #endif
++	{
++		.fstype = FS_TYPE_REDFS,
++		.name = "redfs",
++		.null_dev_desc_ok = false,
++		.probe = redfs_probe,
++		.close = redfs_close,
++		.ls = redfs_ls,
++		.exists = redfs_exists,
++		.size = redfs_size,
++		.read = redfs_read_file,
++		.write = fs_write_unsupported,
++		.uuid = fs_uuid_unsupported,
++	},
+ #ifdef CONFIG_FS_EXT4
+ 	{
+ 		.fstype = FS_TYPE_EXT,
+diff -urN u-boot-2017.09.stock/fs/Makefile u-boot-2017.09/fs/Makefile
+--- u-boot-2017.09.stock/fs/Makefile	2017-09-11 11:10:40.000000000 -0700
++++ u-boot-2017.09/fs/Makefile	2017-11-20 10:14:48.647403615 -0800
+@@ -23,3 +23,5 @@
+ obj-$(CONFIG_YAFFS2) += yaffs2/
+ obj-$(CONFIG_CMD_ZFS) += zfs/
+ endif
++obj-y += redfs/
++
+diff -urN u-boot-2017.09.stock/fs/redfs/Makefile u-boot-2017.09/fs/redfs/Makefile
+--- u-boot-2017.09.stock/fs/redfs/Makefile	1969-12-31 16:00:00.000000000 -0800
++++ u-boot-2017.09/fs/redfs/Makefile	2017-11-20 10:59:43.728836630 -0800
+@@ -0,0 +1,6 @@
++#
++
++include fs/redfs/red/projects/u-boot/Makefile
++
++obj-y	:= $(REDPROJOBJ)
++
+diff -urN u-boot-2017.09.stock/include/fs.h u-boot-2017.09/include/fs.h
+--- u-boot-2017.09.stock/include/fs.h	2017-09-11 11:10:40.000000000 -0700
++++ u-boot-2017.09/include/fs.h	2017-11-20 10:19:00.604710249 -0800
+@@ -13,6 +13,7 @@
+ #define FS_TYPE_EXT	2
+ #define FS_TYPE_SANDBOX	3
+ #define FS_TYPE_UBIFS	4
++#define FS_TYPE_REDFS	777
+
+ /*
+  * Tell the fs layer which block device an partition to use for future
+diff -urN u-boot-2017.09.stock/include/redfs_uboot.h u-boot-2017.09/include/redfs_uboot.h
+--- u-boot-2017.09.stock/include/redfs_uboot.h	1969-12-31 16:00:00.000000000 -0800
++++ u-boot-2017.09/include/redfs_uboot.h	2017-11-20 12:37:07.305790198 -0800
+@@ -0,0 +1,14 @@
++
++#ifndef REDFS_UBOOT_H
++#define REDFS_UBOOT_H
++
++
++int redfs_probe(struct blk_desc * fs_dev_desc, disk_partition_t * fs_partition);
++void redfs_close(void);
++int redfs_ls(const char * pszPath);
++int redfs_exists(const char * pszPath);
++int redfs_size(const char * pszPath, loff_t * pSize);
++int redfs_read_file(const char * pszPath, void * pBuffer, loff_t offset, loff_t len, loff_t * pActual);
++
++
++#endif /* #ifndef REDFS_UBOOT_H */

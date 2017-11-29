@@ -44,7 +44,7 @@ REDSTATUS RedCoreVolSetCurrent(uint8_t bVolNum);
 REDSTATUS RedCoreVolFormat(void);
 #endif
 #if REDCONF_CHECKER == 1
-REDSTATUS RedCoreVolCheck(FILE *pOutputFile, char *pszOutputBuffer, size_t nOutputBufferSize);
+REDSTATUS RedCoreVolCheck(FILE *pOutputFile, char *pszOutputBuffer, uint32_t nOutputBufferSize);
 #endif
 REDSTATUS RedCoreVolMount(void);
 REDSTATUS RedCoreVolUnmount(void);

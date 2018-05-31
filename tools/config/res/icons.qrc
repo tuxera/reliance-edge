@@ -1,7 +1,0 @@
-<RCC>
-    <qresource prefix="/icons">
-        <file alias="error.png">icon-error-16.png</file>
-        <file alias="warn.png">icon-warning-16.png</file>
-        <file alias="d-ic.png">d-ic-linux.png</file>
-    </qresource>
-</RCC>

@@ -326,24 +326,6 @@ static REDSTATUS DiskFlush(
 }
 
 
-#if REDCONF_DISCARDS == 1
-/** @brief Discard sectors on a disk.
-
-    @param bVolNum          The volume number of the volume whose block device
-                            is being accessed.
-    @param ullSectorStart   The starting sector number.
-    @param ullSectorCount   The number of sectors to discard.
-*/
-static void DiskDiscard(
-    uint8_t     bVolNum,
-    uint64_t    ullSectorStart,
-    uint64_t    ullSectorCount)
-{
-#error "STM32 SDIO block device implementation does not support discards."
-}
-#endif /* REDCONF_DISCARDS == 1 */
-
-
 #if SD_STATUS_TIMEOUT > 0U
 /** @brief Wait until BSP_SD_GetStatus returns SD_TRANSFER_OK.
 

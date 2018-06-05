@@ -242,33 +242,6 @@ REDSTATUS RedOsBDevFlush(
 {
     return -RED_EINVAL;
 }
-
-
-#if REDCONF_DISCARDS == 1
-/** @brief Discard (trim) sectors on a physical block device.
-
-    This function alerts the block device that the given sectors no longer
-    contain information that is important to the filesystem.
-
-    The behavior of calling this function is undefined if the block device is
-    closed or if it was opened with ::BDEV_O_RDONLY.
-
-    If discarding fails, the integrity of the volume should not be affected
-    and there is nothing that needs to be done to recover or report the error.
-    So no errors are returned from this function.
-
-    @param bVolNum          The volume number of the volume whose block device
-                            is being accessed.
-    @param ullSectorStart   The starting sector number.
-    @param ullSectorCount   The number of sectors to discard.
-*/
-void RedOsBDevDiscard(
-    uint8_t     bVolNum,
-    uint64_t    ullSectorStart,
-    uint64_t    ullSectorCount)
-{
-}
-#endif /* REDCONF_DISCARDS == 1 */
 #endif /* REDCONF_READ_ONLY == 0 */
 
 

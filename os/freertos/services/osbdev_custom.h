@@ -216,35 +216,6 @@ static REDSTATUS DiskFlush(
     return ret;
 }
 
-
-#if REDCONF_DISCARDS == 1
-/** @brief Discard sectors on a disk.
-
-    @param bVolNum          The volume number of the volume whose block device
-                            is being accessed.
-    @param ullSectorStart   The starting sector number.
-    @param ullSectorCount   The number of sectors to discard.
-*/
-static void DiskDiscard(
-    uint8_t     bVolNum,
-    uint64_t    ullSectorStart,
-    uint64_t    ullSectorCount)
-{
-    /*  Avoid warnings about unused function parameters.
-    */
-    (void)bVolNum;
-    (void)ullSectorStart;
-    (void)ullSectorCount;
-
-    /*  Insert code here to discard sectors to the block device.  If the block
-        device does not support discards, or if you do not wish to use discards,
-        then REDCONF_DISCARDS can be zero and this function does not need to be
-        implemented.
-    */
-    REDERROR();
-}
-#endif /* REDCONF_DISCARDS == 1 */
-
 #endif /* REDCONF_READ_ONLY == 0 */
 
 

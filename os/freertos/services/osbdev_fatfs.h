@@ -252,24 +252,6 @@ static REDSTATUS DiskFlush(
     return ret;
 }
 
-
-#if REDCONF_DISCARDS == 1
-/** @brief Discard sectors on a disk.
-
-    @param bVolNum          The volume number of the volume whose block device
-                            is being accessed.
-    @param ullSectorStart   The starting sector number.
-    @param ullSectorCount   The number of sectors to discard.
-*/
-static void DiskDiscard(
-    uint8_t     bVolNum,
-    uint64_t    ullSectorStart,
-    uint64_t    ullSectorCount)
-{
-#error "FatFs block device interface does not support discards."
-}
-#endif /* REDCONF_DISCARDS == 1 */
-
 #endif /* REDCONF_READ_ONLY == 0 */
 
 

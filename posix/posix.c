@@ -863,9 +863,9 @@ int32_t red_open(
             #red_errno is set appropriately.
 
     <b>Errno values</b>
-    - #RED_EBUSY: @p pszPath points to an inode with open handles and a link
-      count of one; or #REDCONF_API_POSIX_CWD is true and @p pszPath points to
-      the CWD of a task.
+    - #RED_EBUSY: @p pszPath names the root directory; or @p pszPath points to
+      an inode with open handles and a link count of one; or
+      #REDCONF_API_POSIX_CWD is true and @p pszPath points to the CWD of a task.
     - #RED_EINVAL: @p pszPath is `NULL`; or the volume containing the path is
       not mounted; or #REDCONF_API_POSIX_CWD is true and the path ends with dot
       or dot-dot.
@@ -943,7 +943,7 @@ int32_t red_mkdir(
             const char *pszName;
             uint32_t    ulPInode;
 
-            ret = RedPathToName(ulCwdInode, pszLocalPath, &ulPInode, &pszName);
+            ret = RedPathToName(ulCwdInode, pszLocalPath, -RED_EEXIST, &ulPInode, &pszName);
             if(ret == 0)
             {
                 uint32_t ulInode;
@@ -991,8 +991,9 @@ int32_t red_mkdir(
             #red_errno is set appropriately.
 
     <b>Errno values</b>
-    - #RED_EBUSY: @p pszPath points to a directory with open handles; or
-      #REDCONF_API_POSIX_CWD is true and @p pszPath points to the CWD of a task.
+    - #RED_EBUSY: @p pszPath names the root directory; or @p pszPath points to a
+      directory with open handles; or #REDCONF_API_POSIX_CWD is true and
+      @p pszPath points to the CWD of a task.
     - #RED_EINVAL: @p pszPath is `NULL`; or the volume containing the path is
       not mounted; or #REDCONF_API_POSIX_CWD is true and the path ends with dot
       or dot-dot.
@@ -1063,7 +1064,8 @@ int32_t red_rmdir(
             #red_errno is set appropriately.
 
     <b>Errno values</b>
-    - #RED_EBUSY: #REDCONF_RENAME_ATOMIC is true and either a) @p pszNewPath
+    - #RED_EBUSY: @p pszOldPath or @p pszNewPath names the root directory; or
+      #REDCONF_RENAME_ATOMIC is true and either a) @p pszNewPath
       points to an inode with open handles and a link count of one or b)
       #REDCONF_API_POSIX_CWD is true and the @p pszNewPath points to an inode
       which is the CWD of at least one task.
@@ -1124,13 +1126,13 @@ int32_t red_rename(
                 const char *pszOldName;
                 uint32_t    ulOldPInode;
 
-                ret = RedPathToName(ulOldCwdInode, pszOldLocalPath, &ulOldPInode, &pszOldName);
+                ret = RedPathToName(ulOldCwdInode, pszOldLocalPath, -RED_EBUSY, &ulOldPInode, &pszOldName);
                 if(ret == 0)
                 {
                     const char *pszNewName;
                     uint32_t    ulNewPInode;
 
-                    ret = RedPathToName(ulNewCwdInode, pszNewLocalPath, &ulNewPInode, &pszNewName);
+                    ret = RedPathToName(ulNewCwdInode, pszNewLocalPath, -RED_EBUSY, &ulNewPInode, &pszNewName);
 
                   #if REDCONF_RENAME_ATOMIC == 1
                     if(ret == 0)
@@ -1192,7 +1194,7 @@ int32_t red_rename(
     - #RED_EEXIST: @p pszHardLink resolves to an existing file.
     - #RED_EINVAL: @p pszPath or @p pszHardLink is `NULL`; or the volume
       containing the paths is not mounted; or #REDCONF_API_POSIX_CWD is true and
-      either path ends with dot or dot-dot.
+      @p pszHardLink ends with dot or dot-dot.
     - #RED_EIO: A disk I/O error occurred.
     - #RED_EMLINK: Creating the link would exceed the maximum link count of the
       inode named by @p pszPath.
@@ -1249,7 +1251,7 @@ int32_t red_link(
                     const char *pszLinkName;
                     uint32_t    ulLinkPInode;
 
-                    ret = RedPathToName(ulLinkCwdInode, pszLinkLocalPath, &ulLinkPInode, &pszLinkName);
+                    ret = RedPathToName(ulLinkCwdInode, pszLinkLocalPath, -RED_EEXIST, &ulLinkPInode, &pszLinkName);
                     if(ret == 0)
                     {
                         ret = RedCoreLink(ulLinkPInode, pszLinkName, ulInode);
@@ -2540,7 +2542,8 @@ REDSTATUS *red_errnoptr(void)
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
-    @retval -RED_EBUSY          @p pszPath points to an inode with open handles
+    @retval -RED_EBUSY          @p pszPath names the root directory; or
+                                @p pszPath points to an inode with open handles
                                 and a link count of one; or
                                 #REDCONF_API_POSIX_CWD is true and @p pszPath
                                 points to an inode which is the CWD of at least
@@ -2577,7 +2580,7 @@ static REDSTATUS UnlinkSub(
         const char *pszName;
         uint32_t    ulPInode;
 
-        ret = RedPathToName(ulCwdInode, pszLocalPath, &ulPInode, &pszName);
+        ret = RedPathToName(ulCwdInode, pszLocalPath, -RED_EBUSY, &ulPInode, &pszName);
         if(ret == 0)
         {
             uint32_t ulInode;
@@ -2808,7 +2811,7 @@ static REDSTATUS FildesOpen(
                     uint32_t    ulPInode;
                     const char *pszName;
 
-                    ret = RedPathToName(ulCwdInode, pszLocalPath, &ulPInode, &pszName);
+                    ret = RedPathToName(ulCwdInode, pszLocalPath, -RED_EISDIR, &ulPInode, &pszName);
                     if(ret == 0)
                     {
                         ret = RedCoreCreate(ulPInode, pszName, false, &ulInode);

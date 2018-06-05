@@ -12,6 +12,9 @@ recent releases and a list of known issues.
 - Fix bugs in the implementation of the sector offset feature added in Reliance
   Edge v2.2.  Anyone who set the sector offset to a value other than zero is
   strongly encouraged to upgrade.
+- Fix a minor bug in the POSIX-like API where operations which are not allowed
+  on the root directory -- such as deleting, renaming, or recreating it -- would
+  set `red_errno` to `RED_EINVAL` rather than the appropriate errno value.
 - Fix a bug in the POSIX-like API Test Suite which caused a link error if
   relative paths were enabled but rename was disabled.
 - Fix minor documentation issues.
@@ -234,12 +237,4 @@ The Reliance Edge Win32 port (used for the host tools and the Win32 test
 project) cannot be compiled by Visual Studio 2005.  This is not going to be
 fixed since VS2005 is an old toolset.  Newer versions of Visual Studio, starting
 with Visual Studio 2008, work just fine.
-
-### Root Directory Error Codes
-
-Certains operations in the POSIX-like API which are not allowed on the root
-directory -- such as deleting, renaming, or recreating it -- will set
-`red_errno` to `RED_EINVAL` rather than the documented ernno value.  To be
-clear, such operations should fail, and they do: the only problem is that the
-errno value is not correct.
 

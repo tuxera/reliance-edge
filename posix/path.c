@@ -35,7 +35,7 @@
 #include <redpath.h>
 
 
-static REDSTATUS PathWalk(uint32_t ulCwdInode, const char *pszLocalPath, uint32_t *pulPInode, const char **ppszName, uint32_t *pulInode);
+static REDSTATUS PathWalk(uint32_t ulCwdInode, const char *pszLocalPath, REDSTATUS rootDirError, uint32_t *pulPInode, const char **ppszName, uint32_t *pulInode);
 static bool IsRootDir(const char *pszLocalPath);
 static bool PathHasMoreComponents(const char *pszPathIdx);
 #if REDCONF_API_POSIX_CWD == 1
@@ -260,7 +260,7 @@ REDSTATUS RedPathLookup(
     }
     else
     {
-        ret = PathWalk(ulCwdInode, pszLocalPath, NULL, NULL, pulInode);
+        ret = PathWalk(ulCwdInode, pszLocalPath, 0, NULL, NULL, pulInode);
     }
 
     return ret;
@@ -276,6 +276,10 @@ REDSTATUS RedPathLookup(
                         `INODE_ROOTDIR`.
     @param pszLocalPath The path to examine; this is a local path, without any
                         volume prefix.
+    @param rootDirError Error to return if the path resolves to the root
+                        directory.  Must be nonzero, since this function cannot
+                        populate @p pulPInode or @p ppszName for the root
+                        directory.
     @param pulPInode    On successful return, populated with the inode number of
                         the parent directory of the last component in the path.
                         For example, with the path "a/b/c", populated with the
@@ -288,8 +292,8 @@ REDSTATUS RedPathLookup(
 
     @retval 0                   Operation was successful.
     @retval -RED_EINVAL         @p pszLocalPath is `NULL`; or @p pulPInode is
-                                `NULL`; or @p ppszName is `NULL`; or the path
-                                names the root directory; or
+                                `NULL`; or @p ppszName is `NULL`; or
+                                @p rootDirError is zero; or
                                 #REDCONF_API_POSIX_CWD is true and the last
                                 component of the path is dot or dot-dot.
     @retval -RED_EIO            A disk I/O error occurred.
@@ -299,23 +303,25 @@ REDSTATUS RedPathLookup(
                                 not a directory.
     @retval -RED_ENAMETOOLONG   The length of a component of @p pszLocalPath is
                                 longer than #REDCONF_NAME_MAX.
+    @retval rootDirError        The path names the root directory.
 */
 REDSTATUS RedPathToName(
     uint32_t        ulCwdInode,
     const char     *pszLocalPath,
+    REDSTATUS       rootDirError,
     uint32_t       *pulPInode,
     const char    **ppszName)
 {
     REDSTATUS       ret;
 
-    if((pulPInode == NULL) || (ppszName == NULL))
+    if((rootDirError == 0) || (pulPInode == NULL) || (ppszName == NULL))
     {
         REDERROR();
         ret = -RED_EINVAL;
     }
     else
     {
-        ret = PathWalk(ulCwdInode, pszLocalPath, pulPInode, ppszName, NULL);
+        ret = PathWalk(ulCwdInode, pszLocalPath, rootDirError, pulPInode, ppszName, NULL);
       #if REDCONF_API_POSIX_CWD == 1
         if(ret == 0)
         {
@@ -352,6 +358,9 @@ REDSTATUS RedPathToName(
                         `INODE_ROOTDIR`.
     @param pszLocalPath The path to examine; this is a local path, without any
                         volume prefix.
+    @param rootDirError Error to return if @p pulPInode is non-`NULL` and the
+                        path resolves to the root directory.  Must be nonzero
+                        unless @p pulPInode is `NULL`.
     @param pulPInode    On successful return, if non-NULL, populated with the
                         inode number of the parent directory of the last
                         component in the path.  For example, with the path
@@ -369,8 +378,11 @@ REDSTATUS RedPathToName(
 
     @retval 0                   Operation was successful.
     @retval -RED_EINVAL         @p pszLocalPath is `NULL`; or @p ulCwdInode is
-                                invalid; or the path names the root directory
-                                and the caller asked for the parent inode.
+                                invalid; or @p pulPInode is non-`NULL`,
+                                indicating the caller wanted the parent inode,
+                                but @p rootDirError is zero, which gives us no
+                                error to return if the path names the root
+                                directory (which has no parent inode).
     @retval -RED_EIO            A disk I/O error occurred.
     @retval -RED_ENOENT         A component of @p pszLocalPath does not exist
                                 (possibly excepting the last component,
@@ -379,10 +391,13 @@ REDSTATUS RedPathToName(
                                 not a directory.
     @retval -RED_ENAMETOOLONG   The length of a component of @p pszLocalPath is
                                 longer than #REDCONF_NAME_MAX.
+    @retval rootDirError        @p pulPInode is non-`NULL` and the path names
+                                the root directory.
 */
 static REDSTATUS PathWalk(
     uint32_t        ulCwdInode,
     const char     *pszLocalPath,
+    REDSTATUS       rootDirError,
     uint32_t       *pulPInode,
     const char    **ppszName,
     uint32_t       *pulInode)
@@ -395,7 +410,8 @@ static REDSTATUS PathWalk(
          #else
            (ulCwdInode != INODE_ROOTDIR)
          #endif
-        || (pszLocalPath == NULL))
+        || (pszLocalPath == NULL)
+        || ((pulPInode != NULL) && (rootDirError == 0)))
     {
         REDERROR();
         ret = -RED_EINVAL;
@@ -514,7 +530,7 @@ static REDSTATUS PathWalk(
                 /*  If we get here, the path resolved the root directory, which
                     has no parent inode.
                 */
-                ret = -RED_EINVAL;
+                ret = rootDirError;
             }
             else
             {

@@ -26,6 +26,12 @@ Common Code Changes
 
 INTEGRITY Port Changes
 
+-   Fix a bug in the block device code which would fail to report an
+    error and leave the sector size uninitialized, later causing a
+    memory violation.
+-   Update to support binary and text modes with fopen(), such as "w+b"
+    or "rt". Regardless of open mode, Reliance Edge, like the native
+    file systems, does not perform newline conversions.
 -   Minor fixes and enhancements to the INTEGRITY port documentation.
 -   Fix a path problem in the host/Makefile for the bbb-app-unified and
     bbb-app-clientserv example projects.

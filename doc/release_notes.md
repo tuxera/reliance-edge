@@ -41,6 +41,7 @@ recent releases and a list of known issues.
 #### Linux Port Changes
 
 - Add support for discards on compatible block devices (commercial kit only).
+- Add locking to the FUSE port to fix multithreading issues.
 
 ### Reliance Edge v2.2, December 2017
 

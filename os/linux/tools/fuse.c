@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2017 Datalight, Inc.
+                   Copyright (c) 2014-2018 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -39,15 +39,15 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #ifdef st_atime
   #define POSIX_2008_STAT
 
-  /*  These undefs are preset to remove the definitions for the
-      fields of the same name in the Posix time and stat code.
-      If these are not present, a very cryptic error message
-      will occur if this is compiled on a Linux (or other
-      Posix-based) system.
+  /*  These undefs are preset to remove the definitions for the fields of the
+      same name in the POSIX time and stat code.  If these are not present, a
+      very cryptic error message will occur if this is compiled on a Linux (or
+      other POSIX-based) system.
   */
   #undef st_atime
   #undef st_mtime
@@ -63,7 +63,8 @@
 #include <redvolume.h>
 
 
-typedef struct {
+typedef struct
+{
     const char *pszVolSpec;
     const char *pszBDevSpec;
     const bool  fFormat;
@@ -93,6 +94,7 @@ static void *fuse_red_init(struct fuse_conn_info *conn);
 static void fuse_red_destroy(void *context);
 static int fuse_red_ftruncate(const char *pszPath, off_t size, struct fuse_file_info *pFileInfo);
 static int fuse_red_fgetattr(const char *pszPath, struct stat *stbuf, struct fuse_file_info *pFileInfo);
+static int fgetattr_sub(struct stat *stbuf,  struct fuse_file_info *pFileInfo);
 static int fuse_reltr_utimens(const char *pszPath, const struct timespec tv[2]);
 static mode_t redmode_to_mode(uint16_t uRedMode);
 static int rederrno_to_errno(int32_t rederrno);
@@ -129,13 +131,18 @@ static struct fuse_operations red_oper =
 
 
 static uint8_t gbVolume;
-static const char * gpszVolume;
+static const char *gpszVolume;
+
+static pthread_mutex_t gFuseMutex = PTHREAD_MUTEX_INITIALIZER;
+#define REDFS_LOCK() (void)pthread_mutex_lock(&gFuseMutex)
+#define REDFS_UNLOCK() (void)pthread_mutex_unlock(&gFuseMutex)
 
 static REDOPTIONS gOptions;
 
 #define OPTION(t, p) { t, offsetof(REDOPTIONS, p), 1 }
 
-static const struct fuse_opt gOptionSpec[] = {
+static const struct fuse_opt gOptionSpec[] =
+{
     OPTION("--vol=%s", pszVolSpec),
     OPTION("--dev=%s", pszBDevSpec),
     OPTION("-D %s", pszBDevSpec),
@@ -146,7 +153,8 @@ static const struct fuse_opt gOptionSpec[] = {
 };
 
 
-static void show_help(const char *progname)
+static void show_help(
+    const char *progname)
 {
     fprintf(stderr, "usage: %s <mountpoint> [options]\n\n", progname);
     fprintf(stderr,
@@ -170,10 +178,10 @@ static void show_help(const char *progname)
     on Linux.  This allows a user to mount a Reliance Edge volume within a
     folder so that it appears like a native Linux file system.  The contents of
     the volume can then be accessed with a file browser or any other Linux
-    program.    
+    program.
 
     This function is a simple wrapper to parse Reliance Edge-specific options
-    before calling fuse_main. 
+    before calling fuse_main.
 */
 int main(
     int                 argc,
@@ -188,7 +196,8 @@ int main(
 
     /*  Initialize immediately to ensure the output is printed.
     */
-    if(red_init() != 0) {
+    if(red_init() != 0)
+    {
         fprintf(stderr, "Unexpected error %d from red_init()\n", (int)red_errno);
         return 1;
     }
@@ -208,7 +217,7 @@ int main(
 
     if(gOptions.pszBDevSpec == NULL)
     {
-        fprintf(stderr, "You need to specify a file name (option --dev) for Reliance\n\n");
+        fprintf(stderr, "You need to specify a file name (option --dev) for Reliance Edge\n\n");
         fShowHelp = true;
         goto ShowHelp;
     }
@@ -295,6 +304,8 @@ static int fuse_red_getattr(
     int             result;
     int32_t         iFd;
 
+    REDFS_LOCK();
+
     iFd = red_local_open(pszPath, O_RDONLY);
     if(iFd < 0)
     {
@@ -306,10 +317,12 @@ static int fuse_red_getattr(
 
         fileInfo.fh = (uint64_t)iFd;
 
-        result = fuse_red_fgetattr(pszPath, stbuf, &fileInfo);
+        result = fgetattr_sub(stbuf, &fileInfo);
 
         (void)red_close(iFd);
     }
+
+    REDFS_UNLOCK();
 
     return result;
 }
@@ -320,7 +333,7 @@ static int fuse_red_access(
     int         mask)
 {
     struct stat st;
-    int         result = 0;
+    int         result;
 
     result = fuse_red_getattr(pszPath, &st);
 
@@ -343,11 +356,13 @@ static int fuse_red_create(
 
     assert(pFileInfo != NULL);
 
+    REDFS_LOCK();
+
     (void)mode;
 
     iFd = red_local_open(pszPath, pFileInfo->flags | O_CREAT);
 
-    if (iFd < 0)
+    if(iFd < 0)
     {
         result = rederrno_to_errno(red_errno);
     }
@@ -355,6 +370,8 @@ static int fuse_red_create(
     {
         pFileInfo->fh = (uint64_t)iFd;
     }
+
+    REDFS_UNLOCK();
 
     return result;
 }
@@ -368,14 +385,19 @@ static int fuse_red_mkdir(
     int         result = 0;
     char        acRedPath[PATH_MAX];
 
+    REDFS_LOCK();
+
     if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
         result = -ENAMETOOLONG;
     }
-    else if(red_mkdir(acRedPath) != 0) {
+    else if(red_mkdir(acRedPath) != 0)
+    {
         result = rederrno_to_errno(red_errno);
     }
+
+    REDFS_UNLOCK();
 
     return result;
   #else
@@ -394,6 +416,8 @@ static int fuse_red_unlink(
     int         result = 0;
     char        acRedPath[PATH_MAX];
 
+    REDFS_LOCK();
+
     if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
@@ -403,6 +427,8 @@ static int fuse_red_unlink(
     {
         result = rederrno_to_errno(red_errno);
     }
+
+    REDFS_UNLOCK();
 
     return result;
   #else
@@ -420,14 +446,19 @@ static int fuse_red_rmdir(
     int         result = 0;
     char        acRedPath[PATH_MAX];
 
+    REDFS_LOCK();
+
     if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
         result = -ENAMETOOLONG;
     }
-    else if(red_rmdir(acRedPath) != 0) {
+    else if(red_rmdir(acRedPath) != 0)
+    {
         result = rederrno_to_errno(red_errno);
     }
+
+    REDFS_UNLOCK();
 
     return result;
   #else
@@ -448,19 +479,24 @@ static int fuse_red_rename(
     char        acOldRedPath[PATH_MAX];
     char        acNewRedPath[PATH_MAX];
 
+    REDFS_LOCK();
+
     if(snprintf(acOldRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath);
         result = -ENAMETOOLONG;
     }
-    if(snprintf(acNewRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath) >= PATH_MAX)
+    else if(snprintf(acNewRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath);
         result = -ENAMETOOLONG;
     }
-    else if(red_rename(acOldRedPath, acNewRedPath) != 0) {
+    else if(red_rename(acOldRedPath, acNewRedPath) != 0)
+    {
         result = rederrno_to_errno(red_errno);
     }
+
+    REDFS_UNLOCK();
 
     return result;
   #else
@@ -481,19 +517,24 @@ static int fuse_red_link(
     char        acOldRedPath[PATH_MAX];
     char        acNewRedPath[PATH_MAX];
 
+    REDFS_LOCK();
+
     if(snprintf(acOldRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath);
         result = -ENAMETOOLONG;
     }
-    if(snprintf(acNewRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath) >= PATH_MAX)
+    else if(snprintf(acNewRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath);
         result = -ENAMETOOLONG;
     }
-    else if(red_link(acOldRedPath, acNewRedPath) != 0) {
+    else if(red_link(acOldRedPath, acNewRedPath) != 0)
+    {
         result = rederrno_to_errno(red_errno);
     }
+
+    REDFS_UNLOCK();
 
     return result;
   #else
@@ -531,6 +572,8 @@ static int fuse_red_truncate(
         return -EINVAL;
     }
 
+    REDFS_LOCK();
+
     iFd = red_local_open(pszPath, O_WRONLY);
 
     if(iFd < 0)
@@ -546,6 +589,8 @@ static int fuse_red_truncate(
 
         (void)red_close(iFd);
     }
+
+    REDFS_UNLOCK();
 
     return result;
   #else
@@ -566,9 +611,11 @@ static int fuse_red_open(
 
     assert(pFileInfo != NULL);
 
+    REDFS_LOCK();
+
     iFd = red_local_open(pszPath, pFileInfo->flags);
 
-    if (iFd < 0)
+    if(iFd < 0)
     {
         result = rederrno_to_errno(red_errno);
     }
@@ -576,6 +623,8 @@ static int fuse_red_open(
     {
         pFileInfo->fh = (uint64_t)iFd;
     }
+
+    REDFS_UNLOCK();
 
     return result;
 }
@@ -599,6 +648,8 @@ static int fuse_red_read(
         return -EINVAL;
     }
 
+    REDFS_LOCK();
+
     iFd = (int32_t)pFileInfo->fh;
 
     if(red_lseek(iFd, offset, RED_SEEK_SET) == -1)
@@ -614,6 +665,8 @@ static int fuse_red_read(
             result = rederrno_to_errno(red_errno);
         }
     }
+
+    REDFS_UNLOCK();
 
     return result;
 }
@@ -638,6 +691,8 @@ static int fuse_red_write(
         return -EINVAL;
     }
 
+    REDFS_LOCK();
+
     iFd = (int32_t)pFileInfo->fh;
 
     if(red_lseek(iFd, offset, RED_SEEK_SET) == -1)
@@ -653,6 +708,8 @@ static int fuse_red_write(
             result = rederrno_to_errno(red_errno);
         }
     }
+
+    REDFS_UNLOCK();
 
     return result;
   #else
@@ -676,10 +733,15 @@ static int fuse_red_statfs(
 
     (void)pszPath;
 
+    REDFS_LOCK();
+
     result = red_statvfs(gpszVolume, &redstbuf);
-    if (result == -1) {
+    if(result == -1)
+    {
         result = rederrno_to_errno(red_errno);
-    } else {
+    }
+    else
+    {
         stbuf->f_bsize = redstbuf.f_bsize;
         stbuf->f_frsize = redstbuf.f_frsize;
         stbuf->f_blocks = redstbuf.f_blocks;
@@ -692,6 +754,8 @@ static int fuse_red_statfs(
         stbuf->f_flag = redstbuf.f_flag;
         stbuf->f_namemax = redstbuf.f_namemax;
     }
+
+    REDFS_UNLOCK();
 
     return result;
 }
@@ -707,10 +771,14 @@ static int fuse_red_release(
 
     (void)pszPath;
 
+    REDFS_LOCK();
+
     if(red_close((int32_t)pFileInfo->fh) != 0)
     {
         result = rederrno_to_errno(red_errno);
     }
+
+    REDFS_UNLOCK();
 
     return result;
 }
@@ -729,10 +797,14 @@ static int fuse_red_fsync(
     (void)pszPath;
     (void)type;
 
+    REDFS_LOCK();
+
     if(red_fsync((int32_t)pFileInfo->fh) != 0)
     {
         result = rederrno_to_errno(red_errno);
     }
+
+    REDFS_UNLOCK();
 
     return result;
   #else
@@ -761,6 +833,8 @@ static int fuse_red_readdir(
     (void)offset;
     (void)pFileInfo;
 
+    REDFS_LOCK();
+
     if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
     {
         fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
@@ -788,13 +862,16 @@ static int fuse_red_readdir(
             /*  Supplying 0 as the "offset" of all dirents lets filler() know
                 that it should read all directory entries at once.
             */
-            if (filler(pBuf, pDirent->d_name, &st, 0)) {
+            if(filler(pBuf, pDirent->d_name, &st, 0))
+            {
                 break;
             }
         }
 
         (void)red_closedir(pDir);
     }
+
+    REDFS_UNLOCK();
 
     return result;
   #else
@@ -820,6 +897,8 @@ static int fuse_red_fsyncdir(
     (void)type;
     (void)pFileInfo;
 
+    REDFS_LOCK();
+
     /*  Current implementation: transact if RED_TRANSACT_FSYNC is enabled,
         ignoring the file path given, since this is what red_fsync does
         internally.  This may need to change if the behavior of red_fsync
@@ -832,6 +911,8 @@ static int fuse_red_fsyncdir(
             result = rederrno_to_errno(red_errno);
         }
     }
+
+    REDFS_UNLOCK();
 
     return result;
   #else
@@ -849,6 +930,8 @@ static void *fuse_red_init(
 {
     (void)conn;
 
+    REDFS_LOCK();
+
     /*  We already called red_mount() in main(); call it again just in case
         fuse_red_destroy() has been called and we are re-mounting.  But ignore
         RED_EBUSY errors because the volume may already be mounted.
@@ -859,6 +942,8 @@ static void *fuse_red_init(
         exit(rederrno_to_errno(red_errno));
     }
 
+    REDFS_UNLOCK();
+
     return NULL;
 }
 
@@ -867,6 +952,8 @@ static void fuse_red_destroy(
     void *context)
 {
     (void)context;
+
+    REDFS_LOCK();
 
     if(red_umount(gpszVolume) != 0)
     {
@@ -878,6 +965,8 @@ static void fuse_red_destroy(
         There is nothing particularly bad about leaving the filesystem
         initialized until the task is aborted.
     */
+
+    REDFS_UNLOCK();
 }
 
 
@@ -892,10 +981,14 @@ static int fuse_red_ftruncate(
     (void)pszPath;
     assert(pFileInfo != NULL);
 
+    REDFS_LOCK();
+
     if(red_ftruncate((int32_t)pFileInfo->fh, (uint64_t)size) != 0)
     {
         result = rederrno_to_errno(red_errno);
     }
+
+    REDFS_UNLOCK();
 
     return result;
   #else
@@ -913,10 +1006,28 @@ static int fuse_red_fgetattr(
     struct stat            *stbuf,
     struct fuse_file_info  *pFileInfo)
 {
+    int                     result;
+
+    (void)pszPath;
+    assert(pFileInfo != NULL);
+
+    REDFS_LOCK();
+
+    result = fgetattr_sub(stbuf, pFileInfo);
+
+    REDFS_UNLOCK();
+
+    return result;
+}
+
+
+static int fgetattr_sub(
+    struct stat            *stbuf,
+    struct fuse_file_info  *pFileInfo)
+{
     int                     result = 0;
     REDSTAT                 redstbuf;
 
-    (void)pszPath;
     assert(pFileInfo != NULL);
 
     memset(stbuf, 0, sizeof(*stbuf));
@@ -976,10 +1087,13 @@ static mode_t redmode_to_mode(
         add hard-coded permissions here.
     */
 
-    if (RED_S_ISDIR(uRedMode)) {
+    if(RED_S_ISDIR(uRedMode))
+    {
         linuxMode = S_IFDIR;
         linuxMode |= S_IXUSR | S_IXGRP | S_IXOTH;
-    } else {
+    }
+    else
+    {
         linuxMode = S_IFREG;
     }
 
@@ -999,7 +1113,7 @@ static mode_t redmode_to_mode(
 static int rederrno_to_errno(
     int32_t rederrno)
 {
-    switch (rederrno)
+    switch(rederrno)
     {
         case 0:             return 0;
         case RED_EPERM:     return -EPERM;
@@ -1102,3 +1216,4 @@ int main(void)
 }
 
 #endif /* REDCONF_API_POSIX */
+

@@ -18,6 +18,9 @@ recent releases and a list of known issues.
 - Fix a bug in the POSIX-like API Test Suite which caused a link error if
   relative paths were enabled but rename was disabled.
 - Fix minor documentation issues.
+- Fix a test bug which was causing the simulated power interruption test in
+  projects/powerint to fail.  This test is only provided with the commercial
+  kit.
 
 #### INTEGRITY Port Changes
 

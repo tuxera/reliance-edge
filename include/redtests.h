@@ -148,6 +148,7 @@ typedef struct
     bool        fQuick;         /**< --quick */
     bool        fQuitOnFailure; /**< --quit-on-failure */
     bool        fDebugErrors;   /**< --debug */
+    bool        fNoCorrupt;     /**< --no-corrupt */
 } POSIXTESTPARAM;
 
 PARAMSTATUS RedPosixTestParseParams(int argc, char *argv[], POSIXTESTPARAM *pParam, uint8_t *pbVolNum, const char **ppszDevice);

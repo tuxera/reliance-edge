@@ -5,6 +5,7 @@ B_DEBUG ?= 1
 CC=cl
 P_OS ?= win32
 B_OBJEXT ?= obj
+SHELL=cmd
 
 INCLUDES=					\
 	/I $(P_BASEDIR)/include			\
@@ -22,7 +23,7 @@ else
 EXTRA_CFLAGS += /Od /DD_DEBUG /MTd /Od /Zi /RTC1
 endif
 
-ifeq (, $(shell where $(CC) 2>NUL))
+ifeq (, $(shell where $(CC)))
 $(error "No $(CC) in PATH. Make sure you are running from a Visual Studio Command Prompt or you have run vcvarsall.bat")
 endif
 
@@ -46,6 +47,6 @@ fsstress: $(P_PROJDIR)/fsstress_main.$(B_OBJEXT) $(P_BASEDIR)/os/win32/tools/win
 
 .phony: clean
 clean:
-	-cmd /c del /Q/F *.$(B_OBJEXT) *.pdb *.ilk *.exe
-	-cmd /c del /Q/F $(subst /,\,$(REDALLOBJ) $(REDPROJOBJ))
+	del /Q/F *.$(B_OBJEXT) *.pdb *.ilk *.exe
+	del /Q/F $(subst /,\,$(REDALLOBJ) $(REDPROJOBJ))
 

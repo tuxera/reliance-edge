@@ -17,7 +17,7 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 /*  Businesses and individuals that for commercial or other reasons cannot
-    comply with the terms of the GPLv2 license may obtain a commercial license
+    comply with the terms of the GPLv2 license must obtain a commercial license
     before incorporating Reliance Edge into proprietary software for
     distribution in any form.  Visit http://www.datalight.com/reliance-edge for
     more information.
@@ -229,20 +229,23 @@ int FSIOTestStart(const FSIOTESTPARAM *pParam);
 #if BDEVTEST_SUPPORTED
 typedef struct
 {
-    uint8_t     bDrvNum;        /**< Volume number (for sector size/count). */
-    bool        fSeqWrite;      /**< --seq:w */
-    bool        fSeqRead;       /**< --seq:r */
-    bool        fRandWrite;     /**< --rand:w */
-    bool        fRandRead;      /**< --rand:r */
-    uint32_t    ulSampleSecs;   /**< --sample-rate */
-    uint32_t    ulPasses;       /**< --passes */
-    uint32_t    ulMinIOSectors; /**< --count=min[:max] (min part) */
-    uint32_t    ulMaxIOSectors; /**< --count=min[:max] (max part) */
-    uint32_t    ulMaxSizeKB;    /**< --max */
-    uint32_t    ulTestSeconds;  /**< --time */
-    bool        fVerify;        /**< --verify */
-    bool        fAsyncWrites;   /**< --async */
-    uint64_t    ullSeed;        /**< --seed */
+    uint8_t     bDrvNum;            /**< Volume number (for sector size/count). */
+    bool        fSeqWrite;          /**< --seq:w */
+    bool        fSeqRead;           /**< --seq:r */
+    bool        fSeqDiscard;        /**< --seq:d */
+    bool        fRandWrite;         /**< --rand:w */
+    bool        fRandRead;          /**< --rand:r */
+    bool        fRandDiscard;       /**< --rand:d */
+    uint32_t    ulSampleSecs;       /**< --sample-rate */
+    uint32_t    ulPasses;           /**< --passes */
+    uint32_t    ulMinIOSectors;     /**< --count=min[:max] (min part) */
+    uint32_t    ulMaxIOSectors;     /**< --count=min[:max] (max part) */
+    uint32_t    ulMaxSizeKB;        /**< --max */
+    uint32_t    ulTestSeconds;      /**< --time */
+    bool        fVerify;            /**< --verify */
+    bool        fAsyncWrites;       /**< --async */
+    bool        fNoDiscardMedia;    /**< --no-wipe */
+    uint64_t    ullSeed;            /**< --seed */
 } BDEVTESTPARAM;
 
 PARAMSTATUS BDevTestParseParams(int argc, char *argv[], BDEVTESTPARAM *pParam, uint8_t *pbVolNum, const char **ppszDevice);

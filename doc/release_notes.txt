@@ -9,6 +9,22 @@ course of recent releases and a list of known issues.
 
 Release History and Changes
 
+Reliance Edge v2.3 (Beta), October 2018
+
+Common Code Changes
+
+-   Add discard testing to BDevTest (available in the commercial kit).
+-   Fix a bug in checker (available in the commercial kit): an array
+    indexing error would cause the wrong link count to be printed when
+    link count corruption was detected.
+
+INTEGRITY Port Changes
+
+-   Add support for the storage driver API introduced in INTEGRITY
+    v11.7.
+-   Add INTEGRITY v11.7.x-compatible example projects for the INTEGRITY
+    ARM Simulator and the Renesas R-Car H3 Starter Kit.
+
 Reliance Edge v2.2.1, June 2018
 
 Common Code Changes

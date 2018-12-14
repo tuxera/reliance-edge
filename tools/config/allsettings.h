@@ -147,10 +147,11 @@ struct AllSettings
     CbSetting *cbsTrUnlink;
     CbSetting *cbsTrWrite;
     CbSetting *cbsTrTruncate;
-    CbSetting *cbsTrSync;
+    CbSetting *cbsTrFSync;
     CbSetting *cbsTrClose;
     CbSetting *cbsTrVolFull;
     CbSetting *cbsTrUmount;
+    CbSetting *cbsTrSync;
 };
 
 extern const QString macroNameReadonly;
@@ -217,10 +218,11 @@ extern const QString macroNameTrLink;
 extern const QString macroNameTrUnlink;
 extern const QString macroNameTrWrite;
 extern const QString macroNameTrTruncate;
-extern const QString macroNameTrSync;
+extern const QString macroNameTrFSync;
 extern const QString macroNameTrClose;
 extern const QString macroNameTrVolFull;
 extern const QString macroNameTrUmount;
+extern const QString macroNameTrSync;
 
 // Mem & str management function names
 extern const QString cstdMemcpy;

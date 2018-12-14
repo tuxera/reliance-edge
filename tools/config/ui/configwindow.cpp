@@ -100,10 +100,11 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     allSettings.cbsTrUnlink = new CbSetting(macroNameTrUnlink, true, emptyBoolValidator, ui->cbTransactUnlink);
     allSettings.cbsTrWrite = new CbSetting(macroNameTrWrite, false, emptyBoolValidator, ui->cbTransactWrite);
     allSettings.cbsTrTruncate = new CbSetting(macroNameTrTruncate, false, emptyBoolValidator, ui->cbTransactTruncate);
-    allSettings.cbsTrSync = new CbSetting(macroNameTrSync, true, emptyBoolValidator, ui->cbTransactFSync);
+    allSettings.cbsTrFSync = new CbSetting(macroNameTrFSync, true, emptyBoolValidator, ui->cbTransactFSync);
     allSettings.cbsTrClose = new CbSetting(macroNameTrClose, true, emptyBoolValidator, ui->cbTransactClose);
     allSettings.cbsTrVolFull = new CbSetting(macroNameTrVolFull, true, validateTransactVolFull, ui->cbTransactVolFull, ui->wbtnTransactVolFull);
     allSettings.cbsTrUmount = new CbSetting(macroNameTrUmount, true, emptyBoolValidator, ui->cbTransactVolUnmount);
+    allSettings.cbsTrSync = new CbSetting(macroNameTrSync, true, emptyBoolValidator, ui->cbTransactSync);
 
     allSettings.cbsInodeBlockCount->notifyList.append(allSettings.sbsDirectPtrs);
     allSettings.cbsInodeBlockCount->notifyList.append(allSettings.sbsIndirectPtrs);
@@ -375,6 +376,8 @@ void ConfigWindow::rbtnUsePosix_toggled(bool selected)
     ui->cbTransactTruncate->setEnabled(
                 (selected && ui->cbPosixFtruncate->isChecked())
                 || (!selected && ui->cbFseTruncate->isChecked()));
+
+    ui->cbTransactSync->setEnabled(selected);
 }
 
 void ConfigWindow::cbPosixRename_toggled(bool selected)

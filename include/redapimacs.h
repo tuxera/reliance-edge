@@ -65,6 +65,9 @@
 /** Transact to free space in disk full situations. */
 #define RED_TRANSACT_VOLFULL    0x00000400U
 
+/** Transact after a successful os sync. */
+#define RED_TRANSACT_SYNC       0x00000800U
+
 #if REDCONF_READ_ONLY == 1
 
 /** Mask of all supported automatic transaction events. */

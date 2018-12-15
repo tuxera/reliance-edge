@@ -314,6 +314,72 @@ int32_t red_uninit(void)
 }
 
 
+#if REDCONF_READ_ONLY == 0
+/** @brief Commits file system updates.
+
+    Commits all changes on all file system volumes to permanent storage.  This
+    function will not return until the operation is complete.
+
+    If sync automatic transactions have been disabled for one or more volumes,
+    this function does not commit changes to those volumes, but will still
+    commit changes to any volumes for which automatic transactions are enabled.
+
+    If sync automatic transactions have been disabled on all volumes, this
+    function does nothing and returns success.
+
+    @return On success, zero is returned.  On error, -1 is returned and
+        #red_errno is set appropriately.
+
+    <b>Errno values</b>
+    - #RED_EIO: I/O error during the transaction point.
+    - #RED_EUSERS: Cannot become a file system user: too many users.
+*/
+int32_t red_sync(void)
+{
+    REDSTATUS ret;
+
+    ret = PosixEnter();
+    if(ret == 0)
+    {
+        uint8_t bVolNum;
+
+        for(bVolNum = 0U; bVolNum < REDCONF_VOLUME_COUNT; bVolNum++)
+        {
+            if(gaRedVolume[bVolNum].fMounted)
+            {
+                REDSTATUS err;
+
+              #if REDCONF_VOLUME_COUNT > 1U
+                err = RedCoreVolSetCurrent(bVolNum);
+
+                if(err == 0)
+              #endif
+                {
+                    uint32_t ulTransMask;
+
+                    err = RedCoreTransMaskGet(&ulTransMask);
+
+                    if((err == 0) && ((ulTransMask & RED_TRANSACT_SYNC) != 0U))
+                    {
+                        err = RedCoreVolTransact();
+                    }
+                }
+
+                if(err != 0)
+                {
+                    ret = err;
+                }
+            }
+        }
+
+        PosixLeave();
+    }
+
+    return PosixReturn(ret);
+}
+#endif
+
+
 /** @brief Mount a file system volume.
 
     Prepares the file system volume to be accessed.  Mount will fail if the
@@ -574,6 +640,7 @@ int32_t red_transact(
 
     The following events are available:
 
+    - #RED_TRANSACT_SYNC
     - #RED_TRANSACT_UMOUNT
     - #RED_TRANSACT_CREAT
     - #RED_TRANSACT_UNLINK

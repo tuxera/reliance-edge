@@ -148,6 +148,9 @@ int32_t red_settransmask(const char *pszVolume, uint32_t ulEventMask);
 #endif
 int32_t red_gettransmask(const char *pszVolume, uint32_t *pulEventMask);
 int32_t red_statvfs(const char *pszVolume, REDSTATFS *pStatvfs);
+#if REDCONF_READ_ONLY == 0
+int32_t red_sync(void);
+#endif
 int32_t red_open(const char *pszPath, uint32_t ulOpenMode);
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_UNLINK == 1)
 int32_t red_unlink(const char *pszPath);

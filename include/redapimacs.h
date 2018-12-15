@@ -79,6 +79,7 @@
 */
 #define RED_TRANSACT_MASK                                                   \
 (                                                                           \
+    RED_TRANSACT_SYNC                                                   |   \
     RED_TRANSACT_UMOUNT                                                 |   \
     RED_TRANSACT_CREAT                                                  |   \
     ((REDCONF_API_POSIX_UNLINK    == 1) ? RED_TRANSACT_UNLINK   : 0U)   |   \

@@ -13,12 +13,18 @@ recent releases and a list of known issues.
 - Fix a bug in checker (available in the commercial kit): an array indexing
   error would cause the wrong link count to be printed when link count
   corruption was detected.
+- Add support for red_sync() to the POSIX-like API, including the new
+  `RED_TRANSACT_SYNC` automatic transaction flag and requisite configuration
+  option in the Reliance Edge Configuration Utility.
 
 #### INTEGRITY Port Changes
 
 - Add support for the storage driver API introduced in INTEGRITY v11.7.
 - Add INTEGRITY v11.7.x-compatible example projects for the INTEGRITY ARM
   Simulator and the Renesas R-Car H3 Starter Kit.
+- Instead of unconditionally transacting all volumes, the INTEGRITY sync()
+  system call now calls red_sync().  Transactions will only be performed on
+  volumes which set the `RED_TRANSACT_SYNC` automatic transaction flag.
 
 ### Reliance Edge v2.2.1, June 2018
 

@@ -330,17 +330,17 @@ QString outputIfNotBlank(const QString &macroName, const QString &value,
 // helpful error message.
 static qint32 getMinCompatVer()
 {
-    if(volumeSettings->GetDiscardsSupported())
+    if(allSettings.rbtnsUsePosix->GetValue() && allSettings.cbsTrSync->GetValue())
     {
-        // Discard support added in v1.1; breaks backwards compatibility
-        // only if enabled.
-        return 0x01010000;
+        // sync support added in v2.3; breaks backwards compatibility only if
+        // enabled.
+        return 0x02030000;
     }
     else
     {
-        // Block I/O retries added in v1.0.2. Breaks backwards compatibility
-        // for all configurations.
-        return 0x01000200;
+        // Volume sector offset added in v2.2, which adds a member to the
+        // volume configuration, thus breaking backward compatibility.
+        return 0x02020000;
     }
 }
 

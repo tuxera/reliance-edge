@@ -549,6 +549,7 @@ REDSTATUS RedCoreVolStat(
 
     The following events are available when using the POSIX-like API:
 
+    - #RED_TRANSACT_SYNC
     - #RED_TRANSACT_UMOUNT
     - #RED_TRANSACT_CREAT
     - #RED_TRANSACT_UNLINK

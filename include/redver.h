@@ -33,7 +33,7 @@
 
     <!-- This macro is updated automatically: do not edit! -->
 */
-#define RED_BUILD_NUMBER "804"
+#define RED_BUILD_NUMBER "806"
 
 #define RED_KIT_GPL         0U  /* Open source GPL kit. */
 #define RED_KIT_COMMERCIAL  1U  /* Commercially-licensed kit. */
@@ -71,7 +71,7 @@
 
 /*  Specifies whether the product is in alpha stage, beta stage, or neither.
 */
-#if 1
+#if 0
   #if 0
     #define ALPHABETA   " (Alpha)"
   #else

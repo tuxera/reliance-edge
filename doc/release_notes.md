@@ -5,7 +5,7 @@ recent releases and a list of known issues.
 
 ## Release History and Changes
 
-### Reliance Edge v2.3 (Beta), October 2018
+### Reliance Edge v2.3, December 2018
 
 #### Common Code Changes
 
@@ -25,6 +25,7 @@ recent releases and a list of known issues.
 - Instead of unconditionally transacting all volumes, the INTEGRITY sync()
   system call now calls red_sync().  Transactions will only be performed on
   volumes which set the `RED_TRANSACT_SYNC` automatic transaction flag.
+- Fixed a bug which resulted in errors when mounting more than one volume.
 
 ### Reliance Edge v2.2.1, June 2018
 

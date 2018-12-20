@@ -26,6 +26,10 @@ recent releases and a list of known issues.
   system call now calls red_sync().  Transactions will only be performed on
   volumes which set the `RED_TRANSACT_SYNC` automatic transaction flag.
 - Fixed a bug which resulted in errors when mounting more than one volume.
+- An `EINVAL` error is now returned by `mount()` if the Reliance Edge mount
+  point does not start with "//".  Because of how INTEGRITY parses paths, the
+  "//" has always been required; and while this was documented, it was not
+  enforced in the code, which could lead to subtle errors.
 
 ### Reliance Edge v2.2.1, June 2018
 

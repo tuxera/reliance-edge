@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2018 Datalight, Inc.
+                   Copyright (c) 2014-2019 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -33,7 +33,7 @@
 
     <!-- This macro is updated automatically: do not edit! -->
 */
-#define RED_BUILD_NUMBER "814"
+#define RED_BUILD_NUMBER "815"
 
 #define RED_KIT_GPL         0U  /* Open source GPL kit. */
 #define RED_KIT_COMMERCIAL  1U  /* Commercially-licensed kit. */
@@ -88,7 +88,7 @@
 
 /** @brief Product copyright.
 */
-#define RED_PRODUCT_LEGAL "Copyright (c) 2014-2018 Datalight, Inc.  All Rights Reserved Worldwide."
+#define RED_PRODUCT_LEGAL "Copyright (c) 2014-2019 Datalight, Inc.  All Rights Reserved Worldwide."
 
 
 /** @brief Product patents.

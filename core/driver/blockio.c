@@ -72,14 +72,14 @@ REDSTATUS RedIoRead(
     else
     {
         uint8_t  bSectorShift = gaRedVolume[bVolNum].bBlockSectorShift;
-        uint64_t ullSectorStart = ((uint64_t)ulBlockStart << bSectorShift) + gpRedVolConf->ullSectorOffset;
+        uint64_t ullSectorStart = ((uint64_t)ulBlockStart << bSectorShift) + gaRedVolConf[bVolNum].ullSectorOffset;
         uint32_t ulSectorCount = ulBlockCount << bSectorShift;
         uint8_t  bRetryIdx;
 
         REDASSERT(bSectorShift < 32U);
         REDASSERT((ulSectorCount >> bSectorShift) == ulBlockCount);
 
-        for(bRetryIdx = 0U; bRetryIdx <= gpRedVolConf->bBlockIoRetries; bRetryIdx++)
+        for(bRetryIdx = 0U; bRetryIdx <= gaRedVolConf[bVolNum].bBlockIoRetries; bRetryIdx++)
         {
             ret = RedOsBDevRead(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
 
@@ -130,14 +130,14 @@ REDSTATUS RedIoWrite(
     else
     {
         uint8_t  bSectorShift = gaRedVolume[bVolNum].bBlockSectorShift;
-        uint64_t ullSectorStart = ((uint64_t)ulBlockStart << bSectorShift) + gpRedVolConf->ullSectorOffset;
+        uint64_t ullSectorStart = ((uint64_t)ulBlockStart << bSectorShift) + gaRedVolConf[bVolNum].ullSectorOffset;
         uint32_t ulSectorCount = ulBlockCount << bSectorShift;
         uint8_t  bRetryIdx;
 
         REDASSERT(bSectorShift < 32U);
         REDASSERT((ulSectorCount >> bSectorShift) == ulBlockCount);
 
-        for(bRetryIdx = 0U; bRetryIdx <= gpRedVolConf->bBlockIoRetries; bRetryIdx++)
+        for(bRetryIdx = 0U; bRetryIdx <= gaRedVolConf[bVolNum].bBlockIoRetries; bRetryIdx++)
         {
             ret = RedOsBDevWrite(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
 
@@ -179,7 +179,7 @@ REDSTATUS RedIoFlush(
     {
         uint8_t  bRetryIdx;
 
-        for(bRetryIdx = 0U; bRetryIdx <= gpRedVolConf->bBlockIoRetries; bRetryIdx++)
+        for(bRetryIdx = 0U; bRetryIdx <= gaRedVolConf[bVolNum].bBlockIoRetries; bRetryIdx++)
         {
             ret = RedOsBDevFlush(bVolNum);
 

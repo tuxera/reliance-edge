@@ -246,7 +246,7 @@ REDSTATUS RedVolMountMetaroot(void);
 REDSTATUS RedVolTransact(void);
 #endif
 void RedVolCriticalError(const char *pszFileName, uint32_t ulLineNum);
-REDSTATUS RedVolSeqNumIncrement(void);
+REDSTATUS RedVolSeqNumIncrement(uint8_t bVolNum);
 
 #if FORMAT_SUPPORTED
 REDSTATUS RedVolFormat(void);

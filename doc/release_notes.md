@@ -9,13 +9,16 @@ recent releases and a list of known issues.
 
 #### Common Code Changes
 
-- Add discard testing to BDevTest (available in the commercial kit).
-- Fix a bug in checker (available in the commercial kit): an array indexing
-  error would cause the wrong link count to be printed when link count
-  corruption was detected.
 - Add support for red_sync() to the POSIX-like API, including the new
   `RED_TRANSACT_SYNC` automatic transaction flag and requisite configuration
   option in the Reliance Edge Configuration Utility.
+- Add discard testing to BDevTest (available in the commercial kit).
+- Fix bugs affecting multivolume use cases caused by incorrect use of
+  "current volume" global variables.  These bugs could cause spurious I/O
+  errors and metadata corruption.
+- Fix a bug in checker (available in the commercial kit): an array indexing
+  error would cause the wrong link count to be printed when link count
+  corruption was detected.
 
 #### INTEGRITY Port Changes
 

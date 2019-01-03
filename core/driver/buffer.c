@@ -147,11 +147,11 @@ typedef struct
 } BUFFERCTX;
 
 
-static bool BufferIsValid(const uint8_t  *pbBuffer, uint16_t uFlags);
+static bool BufferIsValid(const uint8_t *pbBuffer, uint16_t uFlags);
 static bool BufferToIdx(const void *pBuffer, uint8_t *pbIdx);
 #if REDCONF_READ_ONLY == 0
 static REDSTATUS BufferWrite(uint8_t bIdx);
-static REDSTATUS BufferFinalize(uint8_t *pbBuffer, uint16_t uFlags);
+static REDSTATUS BufferFinalize(uint8_t *pbBuffer, uint8_t bVolNum, uint16_t uFlags);
 #endif
 static void BufferMakeLRU(uint8_t bIdx);
 static void BufferMakeMRU(uint8_t bIdx);
@@ -788,7 +788,7 @@ static REDSTATUS BufferWrite(
 
         if((pHead->uFlags & BFLAG_META) != 0U)
         {
-            ret = BufferFinalize(gBufCtx.b.aabBuffer[bIdx], pHead->uFlags);
+            ret = BufferFinalize(gBufCtx.b.aabBuffer[bIdx], pHead->bVolNum, pHead->uFlags);
         }
 
         if(ret == 0)
@@ -816,6 +816,7 @@ static REDSTATUS BufferWrite(
     though this is only truly needed if the buffer is new.
 
     @param pbBuffer Pointer to the metadata buffer to finalize.
+    @param bVolNum  The volume number for the metadata buffer.
     @param uFlags   The associated buffer flags.  Used to determine the expected
                     signature.
 
@@ -826,11 +827,12 @@ static REDSTATUS BufferWrite(
 */
 static REDSTATUS BufferFinalize(
     uint8_t    *pbBuffer,
+    uint8_t     bVolNum,
     uint16_t    uFlags)
 {
     REDSTATUS   ret = 0;
 
-    if((pbBuffer == NULL) || ((uFlags & BFLAG_MASK) != uFlags))
+    if((pbBuffer == NULL) || (bVolNum >= REDCONF_VOLUME_COUNT) || ((uFlags & BFLAG_MASK) != uFlags))
     {
         REDERROR();
         ret = -RED_EINVAL;
@@ -874,9 +876,9 @@ static REDSTATUS BufferFinalize(
         }
         else
         {
-            uint64_t ullSeqNum = gpRedVolume->ullSequence;
+            uint64_t ullSeqNum = gaRedVolume[bVolNum].ullSequence;
 
-            ret = RedVolSeqNumIncrement();
+            ret = RedVolSeqNumIncrement(bVolNum);
             if(ret == 0)
             {
                 uint32_t ulCrc;

@@ -4,10 +4,10 @@
 P_PROJDIR ?= $(shell pwd)
 P_BASEDIR ?= $(shell readlink -f $(P_PROJDIR)/../..)
 
-P_OS     ?= linux
+P_OS ?= linux
 B_OBJEXT ?= o
-B_DEBUG  ?= 1
-CC       ?= gcc
+B_DEBUG ?= 1
+CC ?= gcc
 
 INCLUDES=					\
 	-I $(P_BASEDIR)/include			\
@@ -30,7 +30,7 @@ ifneq ($(B_DEBUG),0)
 EXTRA_CFLAGS +=-g -DDEBUG
 endif
 
-all:    fsstress
+all: fsstress
 
 .c.o:
 	$(CC) $(EXTRA_CFLAGS) $(INCLUDES) -DD_DEBUG=$(B_DEBUG) -x c -c $< -o $@
@@ -40,9 +40,7 @@ include $(P_BASEDIR)/build/reliance.mk
 REDPROJOBJ=						\
 	$(P_PROJDIR)/fsstress_main.$(B_OBJEXT)
 
-$(P_PROJDIR)/fsstress_main.$(B_OBJEXT):  $(P_PROJDIR)/fsstress_main.c $(REDHDR)
-
-# The underscore makes this program easier to tell apart from fsstress.
+$(P_PROJDIR)/fsstress_main.$(B_OBJEXT):		$(P_PROJDIR)/fsstress_main.c $(REDHDR)
 
 fsstress: $(P_PROJDIR)/fsstress_main.$(B_OBJEXT) $(REDALLOBJ)
 	$(CC) $(EXTRA_CFLAGS) $^ -o $@

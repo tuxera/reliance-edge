@@ -81,6 +81,12 @@
      && (REDCONF_OUTPUT == 1) && (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) \
      && (REDCONF_API_POSIX_FORMAT == 1) && (REDCONF_API_POSIX_FTRUNCATE == 1))
 
+#define MVSTRESSTEST_SUPPORTED \
+   (    ((RED_KIT == RED_KIT_COMMERCIAL) || (RED_KIT == RED_KIT_SANDBOX)) \
+     && (REDCONF_OUTPUT == 1) && (REDCONF_READ_ONLY == 0) && (REDCONF_NAME_MAX >= 8U) \
+     && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FORMAT == 1) && (REDCONF_API_POSIX_FTRUNCATE == 1) \
+     && (REDCONF_API_POSIX_UNLINK == 1))
+
 
 typedef enum
 {
@@ -264,6 +270,30 @@ typedef struct
 PARAMSTATUS DiskFullTestParseParams(int argc, char *argv[], DISKFULLTESTPARAM *pParam, uint8_t *pbVolNum, const char **ppszDevice);
 void DiskFullTestDefaultParams(DISKFULLTESTPARAM *pParam);
 int DiskFullTestStart(const DISKFULLTESTPARAM *pParam);
+#endif
+
+#if MVSTRESSTEST_SUPPORTED
+typedef struct
+{
+    uint32_t    ulVolumeCount;  /**< Number of test volumes.  Max value of REDCONF_VOLUME_COUNT. */
+
+    /*  Only the first ulVolumeCount elements in these arrays need to be
+        populated.
+    */
+    const char *apszVolumes[REDCONF_VOLUME_COUNT];  /**< Array of volume names to test. */
+    uint8_t     abVolNum[REDCONF_VOLUME_COUNT];     /**< The volume number associated with the volume name. */
+    const char *apszDevices[REDCONF_VOLUME_COUNT];  /**< If non-NULL, the device string for the volume. */
+
+    uint32_t    ulFilesPerVol;  /**< --file-count*/
+    uint32_t    ulMaxFileSize;  /**< --file-size */
+    uint32_t    ulMaxOpSize;    /**< --buffer-size */
+    uint32_t    ulIterations;   /**< --iterations */
+    uint32_t    ulSeed;         /**< --seed */
+} MVSTRESSTESTPARAM;
+
+PARAMSTATUS MultiVolStressTestParseParams(int argc, char *argv[], MVSTRESSTESTPARAM *pParam);
+void MultiVolStressTestDefaultParams(MVSTRESSTESTPARAM *pParam);
+int MultiVolStressTestStart(const MVSTRESSTESTPARAM *pParam);
 #endif
 
 

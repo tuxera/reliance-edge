@@ -819,7 +819,7 @@ static void doproc(void)
     RedSNPrintf(buf, sizeof(buf), "p%x", procid);
     (void)mkdir(buf);
     if (chdir(buf) < 0 || stat64(".", &statbuf) < 0) {
-        perror(buf);
+        RedPrintf("error %d setting up test directory\n", (int)red_errno);
         _exit(1);
     }
     top_ino = statbuf.st_ino;

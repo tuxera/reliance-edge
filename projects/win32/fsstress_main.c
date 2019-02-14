@@ -91,13 +91,6 @@ int main(
             exit(red_errno);
         }
 
-        iErr = red_chdir(pszVolume);
-        if(iErr == -1)
-        {
-            fprintf(stderr, "Unexpected error %d from red_chdir()\n", (int)red_errno);
-            exit(red_errno);
-        }
-
         printf("fsstress begin...\n");
         iRet = FsstressStart(&param);
         printf("fsstress end, return %d\n", iRet);

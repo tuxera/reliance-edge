@@ -59,7 +59,7 @@ int main(
             fprintf(stderr, "Unexpected error %d from red_init()\n", (int)red_errno);
             exit(red_errno);
         }
-        
+
         if(pszDrive != NULL)
         {
             REDSTATUS   ret;
@@ -83,6 +83,13 @@ int main(
         if(iErr == -1)
         {
             fprintf(stderr, "Unexpected error %d from red_mount()\n", (int)red_errno);
+            exit(red_errno);
+        }
+
+        iErr = red_chdir(pszVolume);
+        if(iErr == -1)
+        {
+            fprintf(stderr, "Unexpected error %d from red_chdir()\n", (int)red_errno);
             exit(red_errno);
         }
 

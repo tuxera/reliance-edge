@@ -162,33 +162,23 @@ typedef struct
     bool        fCoordInited;   /**< True after the first seek. */
 
     INODE      *pInodeBuf;      /**< Pointer to the inode buffer. */
+    uint16_t    uInodeEntry;    /**< Which inode entry to traverse to reach ulLogicalBlock. */
+
   #if DINDIRS_EXIST
     DINDIR     *pDindir;        /**< Pointer to the double indirect node buffer. */
-  #endif
-  #if INDIRS_EXIST
-    INDIR      *pIndir;         /**< Pointer to the indirect node buffer. */
-  #endif
-    uint8_t    *pbData;         /**< Pointer to the data block buffer. */
-
-    /*  All the members below this point are part of the seek coordinates; see
-        SeekInode().
-    */
-    uint32_t    ulLogicalBlock; /**< Logical block offset into the inode. */
-  #if DINDIRS_EXIST
     uint32_t    ulDindirBlock;  /**< Physical block number of the double indirect node. */
-  #endif
-  #if INDIRS_EXIST
-    uint32_t    ulIndirBlock;   /**< Physical block number of the indirect node. */
-  #endif
-    uint32_t    ulDataBlock;    /**< Physical block number of the file data block. */
-
-    uint16_t    uInodeEntry;    /**< Which inode entry to traverse to reach ulLogicalBlock. */
-  #if DINDIRS_EXIST
     uint16_t    uDindirEntry;   /**< Which double indirect entry to traverse to reach ulLogicalBlock. */
   #endif
+
   #if INDIRS_EXIST
+    INDIR      *pIndir;         /**< Pointer to the indirect node buffer. */
+    uint32_t    ulIndirBlock;   /**< Physical block number of the indirect node. */
     uint16_t    uIndirEntry;    /**< Which indirect entry to traverse to reach ulLogicalBlock. */
   #endif
+
+    uint8_t    *pbData;         /**< Pointer to the data block buffer. */
+    uint32_t    ulDataBlock;    /**< Physical block number of the file data block. */
+    uint32_t    ulLogicalBlock; /**< Logical block offset into the inode. */
 } CINODE;
 
 #define CINODE_IS_MOUNTED(pInode)   (((pInode) != NULL) && INODE_IS_VALID((pInode)->ulInode) && ((pInode)->pInodeBuf != NULL))

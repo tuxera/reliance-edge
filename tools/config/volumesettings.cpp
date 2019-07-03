@@ -556,7 +556,7 @@ void VolumeSettings::ParseCodefile(const QString &text,
         // List of unparsed values of the settings of the current volume
         QStringList strValues;
 
-        for(int i = 0; i < 6; i++)
+        for(int i = 0; i < 7; i++)
         {
             rem = valueExp.match(currStr, currVolPos);
             if(!rem.hasMatch() || rem.lastCapturedIndex() < 2)

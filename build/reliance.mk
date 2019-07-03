@@ -54,7 +54,12 @@ REDTESTOBJ=								\
 REDTESTOBJ +=								\
 	$(P_BASEDIR)/tests/posix/fsstress.$(B_OBJEXT)
 
-REDALLOBJ=$(REDDRIVOBJ) $(REDTESTOBJ) $(REDTOOLOBJ)
+# The "sort" function is being used only for its side-effect of removing
+# duplicates.  A few object files are listed in more than one of these three
+# variables, but duplicates in REDALLOBJ are an issue when this makefile is
+# used in certain end-user build environments.
+REDALLOBJ=$(sort $(REDDRIVOBJ) $(REDTESTOBJ) $(REDTOOLOBJ))
+
 
 ##
 #  Part 2 - the compilation rules.

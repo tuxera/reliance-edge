@@ -830,9 +830,6 @@ static void doproc(void)
         namerand = random();
     for (opno = 0; opno < operations; opno++) {
         p = &ops[freq_table[random() % freq_table_size]];
-        if ((unsigned long)p->func < 4096)
-            abort();
-
         p->func(opno, random());
     }
     free(homedir);

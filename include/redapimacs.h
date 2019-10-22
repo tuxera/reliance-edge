@@ -29,6 +29,30 @@
 #define REDAPIMACS_H
 
 
+/** Mount the volume as read-only. */
+#define RED_MOUNT_READONLY  0x00000001U
+
+/** Mount the volume with automatic discards enabled. */
+#define RED_MOUNT_DISCARD   0x00000002U
+
+#if REDCONF_READ_ONLY == 0
+/** Mask of all supported mount flags. */
+#define RED_MOUNT_MASK      (RED_MOUNT_READONLY | RED_MOUNT_DISCARD)
+#else
+/** Mask of all supported mount flags. */
+#define RED_MOUNT_MASK      RED_MOUNT_READONLY
+#endif
+
+/** @brief Default mount flags.
+
+    These are the mount flags that are used when Reliance Edge is mounted via an
+    API which does not allow mount flags to be specified: viz., red_mount() or
+    RedFseMount().  If red_mount2() is used, the flags provided to it supersede
+    these flags.
+*/
+#define RED_MOUNT_DEFAULT   (RED_MOUNT_DISCARD & RED_MOUNT_MASK)
+
+
 /** Clear all events: manual transactions only. */
 #define RED_TRANSACT_MANUAL     0x00000000U
 
@@ -70,7 +94,7 @@
 
 #if REDCONF_READ_ONLY == 1
 
-/** Mask of all supported automatic transaction events. */
+/** @brief Mask of all supported automatic transaction events. */
 #define RED_TRANSACT_MASK       0U
 
 #elif REDCONF_API_POSIX == 1

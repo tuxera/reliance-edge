@@ -136,6 +136,7 @@ typedef struct
 int32_t red_init(void);
 int32_t red_uninit(void);
 int32_t red_mount(const char *pszVolume);
+int32_t red_mount2(const char *pszVolume, uint32_t ulFlags);
 int32_t red_umount(const char *pszVolume);
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_FORMAT == 1)
 int32_t red_format(const char *pszVolume);

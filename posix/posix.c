@@ -23,9 +23,8 @@
     more information.
 */
 /** @file
-    @brief Implementation of the the Reliance Edge POSIX-like API.
+    @brief Implementation of the Reliance Edge POSIX-like API.
 */
-
 #include <redfs.h>
 
 #if REDCONF_API_POSIX == 1
@@ -345,7 +344,7 @@ int32_t red_sync(void)
 
         for(bVolNum = 0U; bVolNum < REDCONF_VOLUME_COUNT; bVolNum++)
         {
-            if(gaRedVolume[bVolNum].fMounted)
+            if(gaRedVolume[bVolNum].fMounted && !gaRedVolume[bVolNum].fReadOnly)
             {
                 REDSTATUS err;
 
@@ -403,15 +402,55 @@ int32_t red_sync(void)
 int32_t red_mount(
     const char *pszVolume)
 {
+    return red_mount2(pszVolume, RED_MOUNT_DEFAULT);
+}
+
+
+/** @brief Mount a file system volume with flags.
+
+    Prepares the file system volume to be accessed.  Mount will fail if the
+    volume has never been formatted, or if the on-disk format is inconsistent
+    with the compile-time configuration.
+
+    An error is returned if the volume is already mounted.
+
+    The following mount flags are available:
+
+    - #RED_MOUNT_READONLY: If specified, the volume will be mounted read-only.
+      All write operations with fail, setting #red_errno to #RED_EROFS.
+    - #RED_MOUNT_DISCARD: If specified, and if the underlying block device
+      supports discards, discards will be issued for blocks that become free.
+      If the underlying block device does _not_ support discards, then this
+      flag has no effect.
+
+    The #RED_MOUNT_DEFAULT macro can be used to mount with the default mount
+    flags, which is equivalent to mounting with red_mount().
+
+    @param pszVolume    A path prefix identifying the volume to mount.
+    @param ulFlags      A bitwise-OR'd mask of mount flags.
+
+    @return On success, zero is returned.  On error, -1 is returned and
+            #red_errno is set appropriately.
+
+    <b>Errno values</b>
+    - #RED_EBUSY: Volume is already mounted.
+    - #RED_EINVAL: @p pszVolume is `NULL`; or the driver is uninitialized; or
+      @p ulFlags includes invalid mount flags.
+    - #RED_EIO: Volume not formatted, improperly formatted, or corrupt.
+    - #RED_ENOENT: @p pszVolume is not a valid volume path prefix.
+    - #RED_EUSERS: Cannot become a file system user: too many users.
+*/
+int32_t red_mount2(
+    const char *pszVolume,
+    uint32_t    ulFlags)
+{
     REDSTATUS   ret;
 
     ret = PosixEnter();
 
     if(ret == 0)
     {
-        uint8_t bVolNum;
-
-        ret = RedPathVolumeLookup(pszVolume, &bVolNum);
+        ret = RedPathVolumeLookup(pszVolume, NULL);
 
         /*  The core will return success if the volume is already mounted, so
             check for that condition here to propagate the error.
@@ -423,7 +462,7 @@ int32_t red_mount(
 
         if(ret == 0)
         {
-            ret = RedCoreVolMount();
+            ret = RedCoreVolMount(ulFlags);
         }
 
         if(ret == 0)
@@ -434,8 +473,8 @@ int32_t red_mount(
                 generations in the file descriptors, so we must wrap-around
                 manually.
             */
-            gauGeneration[bVolNum]++;
-            if(gauGeneration[bVolNum] > FD_GEN_MAX)
+            gauGeneration[gbRedVolNum]++;
+            if(gauGeneration[gbRedVolNum] > FD_GEN_MAX)
             {
                 /*  Wrap-around to one, rather than zero.  The generation is
                     stored in the top bits of the file descriptor, and doing
@@ -444,7 +483,7 @@ int32_t red_mount(
                     and 2 are never valid file descriptors, thereby avoiding
                     confusion with STDIN, STDOUT, and STDERR.
                 */
-                gauGeneration[bVolNum] = 1U;
+                gauGeneration[gbRedVolNum] = 1U;
             }
         }
 
@@ -3029,8 +3068,11 @@ static REDSTATUS FildesClose(
 
     /*  No core event for close, so this transaction flag needs to be
         implemented here.
+
+        If the volume is read-only, skip the close transaction.  This avoids
+        -RED_EROFS errors when closing files on a read-only volume.
     */
-    if(ret == 0)
+    if((ret == 0) && !gpRedVolume->fReadOnly)
     {
         uint32_t    ulTransMask;
 

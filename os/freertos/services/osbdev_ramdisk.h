@@ -62,6 +62,7 @@ static REDSTATUS DiskOpen(
             file system on a RAM disk.  Thus, having a sector offset would only
             waste memory by making the RAM disk bigger.
         */
+        REDERROR();
         ret = -RED_EINVAL;
     }
     else if(gapbRamDisk[bVolNum] == NULL)
@@ -99,6 +100,7 @@ static REDSTATUS DiskClose(
 
     if(gapbRamDisk[bVolNum] == NULL)
     {
+        REDERROR();
         ret = -RED_EINVAL;
     }
     else
@@ -138,6 +140,7 @@ static REDSTATUS DiskRead(
 
     if(gapbRamDisk[bVolNum] == NULL)
     {
+        REDERROR();
         ret = -RED_EINVAL;
     }
     else
@@ -179,6 +182,7 @@ static REDSTATUS DiskWrite(
 
     if(gapbRamDisk[bVolNum] == NULL)
     {
+        REDERROR();
         ret = -RED_EINVAL;
     }
     else
@@ -212,6 +216,7 @@ static REDSTATUS DiskFlush(
 
     if(gapbRamDisk[bVolNum] == NULL)
     {
+        REDERROR();
         ret = -RED_EINVAL;
     }
     else

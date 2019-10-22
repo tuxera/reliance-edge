@@ -152,7 +152,8 @@ static REDSTATUS DiskClose(
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
-    @retval 0   Operation was successful.
+    @retval 0           Operation was successful.
+    @retval -RED_EIO    A disk I/O error occurred.
 */
 static REDSTATUS DiskRead(
     uint8_t     bVolNum,
@@ -197,7 +198,8 @@ static REDSTATUS DiskRead(
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
-    @retval 0   Operation was successful.
+    @retval 0           Operation was successful.
+    @retval -RED_EIO    A disk I/O error occurred.
 */
 static REDSTATUS DiskWrite(
     uint8_t         bVolNum,
@@ -237,7 +239,8 @@ static REDSTATUS DiskWrite(
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
-    @retval 0   Operation was successful.
+    @retval 0           Operation was successful.
+    @retval -RED_EIO    A disk I/O error occurred.
 */
 static REDSTATUS DiskFlush(
     uint8_t     bVolNum)

@@ -1,0 +1,6 @@
+# Ignore executables created by this project.
+redchk
+redfmt
+redfuse
+redimgbld
+redimgcopy

@@ -69,6 +69,46 @@ Validity emptyStringValidator(QString value, QString &msg)
 }
 
 ///
+/// \brief  Validator for allSettings::cbAutomaticDiscards.
+///
+///         Requires that ::allSettings and ::volumeSettings be initialized.
+///
+///         Side effect: calls ::volumeSettings->SetDiscardsEnabled.
+///
+Validity validateAutomaticDiscards(bool value, QString &msg)
+{
+    Q_ASSERT(allSettings.cbsAutomaticDiscards != NULL);
+
+    if(!volumeSettings->GetDiscardsSupported() && value)
+    {
+        msg = QString("None of the defined volumes support discards.");
+        return Invalid;
+    }
+
+    return Valid;
+}
+
+///
+/// \brief  Validator for allSettings::cbPosixFstrim.
+///
+///         Requires that ::allSettings and ::volumeSettings be initialized.
+///
+///         Side effect: calls ::volumeSettings->SetDiscardsEnabled.
+///
+Validity validatePosixFstrim(bool value, QString &msg)
+{
+    Q_ASSERT(allSettings.cbsPosixFstrim != NULL);
+
+    if(!volumeSettings->GetDiscardsSupported() && value)
+    {
+        msg = QString("None of the defined volumes support discards.");
+        return Invalid;
+    }
+
+    return Valid;
+}
+
+///
 /// \brief  Validator for allSettings::rbtnsUsePosix.
 ///
 ///         Requires that ::allSettings and ::volumeSettings be initialized.

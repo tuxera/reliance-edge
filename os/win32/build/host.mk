@@ -2,6 +2,7 @@ CC=cl
 LD=link
 P_OS ?= win32
 B_OBJEXT ?= tobj
+SHELL=cmd
 
 INCLUDES=					\
 	/I $(P_PROJDIR)				\
@@ -18,7 +19,7 @@ EXTRA_CFLAGS += /Od /D_DEBUG /MTd /Od /Zi /RTC1
 LDFLAGS = /DEBUG
 endif
 
-ifeq (, $(shell where $(CC) 2>NUL))
+ifeq (, $(shell where $(CC)))
 $(error "No $(CC) in PATH. Make sure you are running from a Visual Studio Command Prompt or you have run vcvarsall.bat")
 endif
 
@@ -74,8 +75,8 @@ redimgbld: $(IMGBLDOBJ) $(REDDRIVOBJ) $(REDTOOLOBJ)
 
 .phony: clean
 clean:
-	del /f /q $(subst /,\,$(REDDRIVOBJ) $(REDTOOLOBJ) $(REDPROJOBJ)) 2>NUL
-	del /f /q $(subst /,\,$(P_BASEDIR)/os/win32/tools/*.$(B_OBJEXT)) 2>NUL
-	del /f /q $(subst /,\,$(P_BASEDIR)/tools/*.$(B_OBJEXT)) 2>NUL
-	del /f /q *.ilk *.pdb *.$(B_OBJEXT) *.exe 2>NUL
+	del /f /q $(subst /,\,$(REDDRIVOBJ) $(REDTOOLOBJ) $(REDPROJOBJ))
+	del /f /q $(subst /,\,$(P_BASEDIR)/os/win32/tools/*.$(B_OBJEXT))
+	del /f /q $(subst /,\,$(P_BASEDIR)/tools/*.$(B_OBJEXT))
+	del /f /q *.ilk *.pdb *.$(B_OBJEXT) *.exe
 

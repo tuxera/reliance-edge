@@ -102,12 +102,14 @@ signals:
 
 private slots:
     void cbReadonly_toggled(bool selected);
+    void cbAutomaticDiscards_toggled(bool selected);
     void rbtnUsePosix_toggled(bool selected);
     void cbPosixRename_toggled(bool selected);
     void cbPosixMkdir_toggled(bool selected);
     void cbPosixLink_toggled(bool selected);
     void cbPosixUnlink_toggled(bool selected);
     void cbPosixFtruncate_toggled(bool selected);
+    void cbPosixFstrim_toggled(bool selected);
     void cbFseTruncate_toggled(bool selected);
     void cbInodeTimestamps_toggled(bool selected);
     void rbtnMemUseCStd_toggled(bool selected);

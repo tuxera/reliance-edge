@@ -41,6 +41,9 @@ Validity emptyStringValidator(QString value, QString &msg);
 Validity validateUsePosixApi(bool value, QString &msg);
 Validity validateUseFseApi(bool value, QString &msg);
 
+Validity validateAutomaticDiscards(bool value, QString &msg);
+Validity validatePosixFstrim(bool value, QString &msg);
+
 Validity validateMaxNameLen(unsigned long value, QString &msg);
 Validity validatePathSepChar(QString value, QString &msg);
 Validity validateTaskCount(unsigned long value, QString &msg);

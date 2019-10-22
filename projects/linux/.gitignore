@@ -1,0 +1,10 @@
+# Ignore executables created by this project.
+bdevtest
+diskfull
+fse_stress
+fsetest
+fsiotest
+fsstress
+mvstresstest
+posixtest
+stochposix

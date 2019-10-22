@@ -239,9 +239,9 @@ REDSTATUS RedDirEntryRename(CINODE *pSrcPInode, const char *pszSrcName, CINODE *
 #endif
 #endif
 
-REDSTATUS RedVolMount(void);
+REDSTATUS RedVolMount(uint32_t ulFlags);
 REDSTATUS RedVolMountMaster(void);
-REDSTATUS RedVolMountMetaroot(void);
+REDSTATUS RedVolMountMetaroot(uint32_t ulFlags);
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedVolTransact(void);
 #endif

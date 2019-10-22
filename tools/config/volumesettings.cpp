@@ -55,6 +55,8 @@ VolumeSettings::Volume::Volume(QString name,
     stSectorSize.notifyList.append(&stSectorOff);
     stSectorCount.notifyList.append(&stInodeCount);
     stSectorSize.notifyList.append(&stInodeCount);
+    stDiscardSupport.notifyList.append(allSettings.cbsAutomaticDiscards);
+    stDiscardSupport.notifyList.append(allSettings.cbsPosixFstrim);
 }
 
 StrSetting *VolumeSettings::Volume::GetStName()
@@ -469,7 +471,7 @@ const VOLCONF gaRedVolConf[REDCONF_VOLUME_COUNT] =\n\
                 + QString("U");
 
         // Discards are only listed if REDCONF_DISCARDS is true.
-        if(GetDiscardsSupported())
+        if(allSettings.cbsAutomaticDiscards->GetValue() || allSettings.cbsPosixFstrim->GetValue())
         {
             toReturn += (QString::compare(volumes[i]->GetStDiscardSupport()->GetValue(),
                                 gpszSupported, Qt::CaseInsensitive) == 0

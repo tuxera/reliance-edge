@@ -220,5 +220,27 @@
 #define IS_ALIGNED_PTR(ptr) (((uintptr_t)(ptr) & (REDCONF_ALIGNMENT_SIZE - 1U)) == 0U)
 
 
+/** @brief Ignore the return value of a discard function (cast to void)
+
+    Usages of this macro deviate from MISRA C:2012 Directive 4.7, which states
+    that error information must be checked immediately after a function returns
+    potential error information.
+
+    Two discard mechanisms exist which share common code at the lowest levels.
+    One mechanism, run-time discards, is an optimization, and thus errors are
+    non-fatal.  The other mechanism, fstrim, is intended for use with a command
+    such as eMMC sanitize, with the goal of removing all previously deleted
+    data from the storage medium.  In the fstrim case, errors should _not_ be
+    ignored, because if any of the discards fail, the sanitize will not remove
+    everything which was supposed to be removed.  Since fstrim needs errors from
+    discards, the low-level discard routines return an error.  Those same
+    routines are also used by run-time discard code which uses this macro to
+    ignore the errors.
+
+    As Directive 4.7 is required, a separate deviation record is required.
+*/
+#define IGNORE_DISCARD_ERRORS(fn) ((void) (fn))
+
+
 #endif
 

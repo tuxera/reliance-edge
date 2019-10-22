@@ -308,7 +308,7 @@ int IbFseBuildFileList(
 
 
 #if REDCONF_API_FSE == 1
-/** @brief  Set the the given path to be relative to its parent path if it is
+/** @brief  Set the given path to be relative to its parent path if it is
             is not an absolute path.
 */
 int IbSetRelativePath(

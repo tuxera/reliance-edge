@@ -46,7 +46,7 @@ REDSTATUS RedCoreVolFormat(void);
 #if REDCONF_CHECKER == 1
 REDSTATUS RedCoreVolCheck(FILE *pOutputFile, char *pszOutputBuffer, uint32_t nOutputBufferSize);
 #endif
-REDSTATUS RedCoreVolMount(void);
+REDSTATUS RedCoreVolMount(uint32_t ulFlags);
 REDSTATUS RedCoreVolUnmount(void);
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedCoreVolTransact(void);

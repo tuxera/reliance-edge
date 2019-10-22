@@ -58,6 +58,12 @@ REDSTATUS RedVolFormat(void)
         MASTERBLOCK    *pMB;
         REDSTATUS       ret2;
 
+        /*  fReadOnly might still be true from the last time the volume was
+            mounted (or from the checker).  Clear it now to avoid assertions in
+            lower-level code.
+        */
+        gpRedVolume->fReadOnly = false;
+
         /*  Overwrite the master block with zeroes, so that if formatting is
             interrupted, the volume will not be mountable.
         */

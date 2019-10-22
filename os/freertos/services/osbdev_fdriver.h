@@ -50,6 +50,8 @@ static F_DRIVER *gapFDriver[REDCONF_VOLUME_COUNT];
 
     @retval 0           Operation was successful.
     @retval -RED_EIO    A disk I/O error occurred.
+    @retval -RED_EINVAL The block device is already open; or `gpfnRedOsBDevInit`
+                        is uninitialized.
 */
 static REDSTATUS DiskOpen(
     uint8_t         bVolNum,
@@ -116,7 +118,8 @@ static REDSTATUS DiskOpen(
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
-    @retval 0   Operation was successful.
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL The block device is not open.
 */
 static REDSTATUS DiskClose(
     uint8_t     bVolNum)
@@ -254,7 +257,8 @@ static REDSTATUS DiskWrite(
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
-    @retval 0   Operation was successful.
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL The block device is not open.
 */
 static REDSTATUS DiskFlush(
     uint8_t     bVolNum)

@@ -49,5 +49,11 @@
            || ((REDCONF_API_FSE == 1) && (REDCONF_API_FSE_FORMAT == 1)) \
            || (REDCONF_IMAGE_BUILDER == 1)))
 
+#define DISCARD_SUPPORTED \
+    ( \
+         (REDCONF_READ_ONLY == 0) \
+      && (    ((REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FSTRIM == 1)) \
+           || (REDCONF_DISCARDS == 1)))
+
 #endif
 

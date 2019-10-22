@@ -140,6 +140,8 @@ QString AllSettings::FormatHeaderOutput()
                            (posix && allSettings.cbsPosixDirOps->GetValue() ? str1 : str0));
     toReturn += outputLine(allSettings.cbsPosixCwd->GetMacroName(),
                            (posix && allSettings.cbsPosixCwd->GetValue() ? str1 : str0));
+    toReturn += outputLine(allSettings.cbsPosixFstrim->GetMacroName(),
+                           (posix && allSettings.cbsPosixFstrim->GetValue() ? str1 : str0));
 
     addIntSetting(toReturn, allSettings.sbsMaxNameLen);
 
@@ -275,9 +277,7 @@ QString AllSettings::FormatHeaderOutput()
             + QString("#define ") + macroNameExternalImap
             + (imapExternal ? QString(" 1\n\n") : QString(" 0\n\n"));
 
-    bool discardSupport = volumeSettings->GetDiscardsSupported();
-    toReturn += QString("#define ") + macroNameDiscardSupport
-            + (discardSupport ? QString(" 1\n\n") : QString(" 0\n\n"));
+    addBoolSetting(toReturn, allSettings.cbsAutomaticDiscards);
 
     toReturn += QString("#define REDCONF_IMAGE_BUILDER 0\n\n");
     toReturn += QString("#define REDCONF_CHECKER 0\n\n");
@@ -356,6 +356,7 @@ void AllSettings::GetErrors(QStringList &errors, QStringList &warnings)
 
     // "General" tab
     AllSettings::CheckError(allSettings.cbsReadonly, errors, warnings);
+    AllSettings::CheckError(allSettings.cbsAutomaticDiscards, errors, warnings);
     AllSettings::CheckError(allSettings.rbtnsUsePosix, errors, warnings);
     AllSettings::CheckError(allSettings.rbtnsUseFse, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixFormat, errors, warnings);
@@ -368,6 +369,7 @@ void AllSettings::GetErrors(QStringList &errors, QStringList &warnings)
     AllSettings::CheckError(allSettings.cbsPosixFtruncate, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixDirOps, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixCwd, errors, warnings);
+    AllSettings::CheckError(allSettings.cbsPosixFstrim, errors, warnings);
     AllSettings::CheckError(allSettings.sbsMaxNameLen, errors, warnings);
     AllSettings::CheckError(allSettings.pssPathSepChar, errors, warnings);
     AllSettings::CheckError(allSettings.sbsTaskCount, errors, warnings);
@@ -466,6 +468,7 @@ void AllSettings::ParseHeaderToSettings(const QString &text,
     }
 
     parseToSetting(text, allSettings.cbsReadonly, notFound, notParsed);
+    parseToSetting(text, allSettings.cbsAutomaticDiscards, notFound, notParsed);
     parseToSetting(text, allSettings.rbtnsUsePosix, notFound, notParsed);
     parseToSetting(text, allSettings.rbtnsUseFse, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixFormat, notFound, notParsed);
@@ -478,6 +481,7 @@ void AllSettings::ParseHeaderToSettings(const QString &text,
     parseToSetting(text, allSettings.cbsPosixFtruncate, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixDirOps, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixCwd, notFound, notParsed);
+    parseToSetting(text, allSettings.cbsPosixFstrim, notFound, notParsed);
     parseToSetting(text, allSettings.sbsMaxNameLen, notFound, notParsed);
     parseToSetting(text, allSettings.pssPathSepChar, notFound, notParsed);
     parseToSetting(text, allSettings.sbsTaskCount, notFound, notParsed);
@@ -578,7 +582,7 @@ void AllSettings::ParseHeaderToSettings(const QString &text,
     }
 }
 
-// Searches for the the given setting in the given tex. Parses the
+// Searches for the given setting in the given text. Parses the
 // value and loads it into setting. Appends humanName to notFound
 // or to notParsed if the setting was not found or could not be
 // parsed. Appends the setting's macro name if humanName is not
@@ -709,6 +713,7 @@ void AllSettings::ParseCodefileToSettings(const QString &text,
 void AllSettings::DeleteAll()
 {
     deleteAndNullify(&allSettings.cbsReadonly);
+    deleteAndNullify(&allSettings.cbsAutomaticDiscards);
     deleteAndNullify(&allSettings.rbtnsUsePosix);
     deleteAndNullify(&allSettings.rbtnsUseFse);
     deleteAndNullify(&allSettings.cbsPosixFormat);
@@ -721,6 +726,7 @@ void AllSettings::DeleteAll()
     deleteAndNullify(&allSettings.cbsPosixFtruncate);
     deleteAndNullify(&allSettings.cbsPosixDirOps);
     deleteAndNullify(&allSettings.cbsPosixCwd);
+    deleteAndNullify(&allSettings.cbsPosixFstrim);
     deleteAndNullify(&allSettings.sbsMaxNameLen);
     deleteAndNullify(&allSettings.pssPathSepChar);
     deleteAndNullify(&allSettings.sbsTaskCount);
@@ -775,6 +781,7 @@ void AllSettings::DeleteAll()
 
 
 const QString macroNameReadonly = "REDCONF_READ_ONLY";
+const QString macroNameAutomaticDiscards = "REDCONF_DISCARDS";
 const QString macroNameUsePosix = "REDCONF_API_POSIX";
 const QString macroNameUseFse = "REDCONF_API_FSE";
 const QString macroNamePosixFormat = "REDCONF_API_POSIX_FORMAT";
@@ -787,6 +794,7 @@ const QString macroNamePosixRenameAtomic = "REDCONF_RENAME_ATOMIC";
 const QString macroNamePosixFtruncate = "REDCONF_API_POSIX_FTRUNCATE";
 const QString macroNamePosixDirOps = "REDCONF_API_POSIX_READDIR";
 const QString macroNamePosixCwd = "REDCONF_API_POSIX_CWD";
+const QString macroNamePosixFstrim = "REDCONF_API_POSIX_FSTRIM";
 const QString macroNameMaxNameLen = "REDCONF_NAME_MAX";
 const QString macroNamePathSepChar = "REDCONF_PATH_SEPARATOR";
 const QString macroNameTaskCount = "REDCONF_TASK_COUNT";
@@ -815,7 +823,6 @@ const QString macroNameIndirectPtrs = "REDCONF_INDIRECT_POINTERS";
 // Not in UI
 const QString macroNameInlineImap = "REDCONF_IMAP_INLINE";
 const QString macroNameExternalImap = "REDCONF_IMAP_EXTERNAL";
-const QString macroNameDiscardSupport = "REDCONF_DISCARDS";
 
 // "Memory" tab
 const QString macroNameAllocatedBuffers = "REDCONF_BUFFER_COUNT";

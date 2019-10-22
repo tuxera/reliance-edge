@@ -106,6 +106,9 @@ typedef int32_t REDSTATUS;
 /** Too many users. */
 #define RED_EUSERS          87
 
+/** Operation is not supported. */
+#define RED_ENOTSUPP        524
+
 /** Nothing will be okay ever again. */
 #define RED_EFUBAR          RED_EINVAL
 

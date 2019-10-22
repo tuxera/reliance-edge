@@ -83,10 +83,13 @@
 #endif
 
 #define REDMIN(a, b) (((a) < (b)) ? (a) : (b))
+#define REDMAX(a, b) (((a) > (b)) ? (a) : (b))
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(ARRAY)   (sizeof(ARRAY) / sizeof((ARRAY)[0U]))
 #endif
+
+#define BITMAP_SIZE(bitcnt) (((bitcnt) + 7U) / 8U)
 
 #define INODE_INVALID       (0U) /* General-purpose invalid inode number (must be zero). */
 #define INODE_FIRST_VALID   (2U) /* First valid inode number. */

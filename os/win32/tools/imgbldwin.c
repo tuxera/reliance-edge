@@ -314,7 +314,7 @@ int IbFseBuildFileList(
 
 
 #if REDCONF_API_FSE == 1
-/** @brief  Set the the given path to be relative to its parent path if it is
+/** @brief  Set the given path to be relative to its parent path if it is
             is not an absolute path.
 */
 int IbSetRelativePath(
@@ -324,7 +324,7 @@ int IbSetRelativePath(
     int         ret;
 
     REDASSERT((pszPath != NULL) && (pszParentPath != NULL));
-    
+
     if(     (    ((pszPath[0U] >= 'A') && (pszPath[0U] <= 'Z'))
               || ((pszPath[0U] >= 'a') && (pszPath[0U] <= 'z')))
          && (pszPath[1U] == ':')
@@ -373,7 +373,7 @@ int IbSetRelativePath(
             }
         }
     }
-    
+
     return ret;
 }
 #endif

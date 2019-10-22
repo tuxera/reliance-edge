@@ -37,37 +37,53 @@ static void MetaRootEndianSwap(METAROOT *pMetaRoot);
 
 /** @brief Mount a file system volume.
 
+    @param ulFlags  A bitwise-OR'd mask of mount flags.
+
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
+    @retval -RED_EINVAL @p ulFlags includes invalid mount flags.
     @retval -RED_EIO    Volume not formatted, improperly formatted, or corrupt.
 */
-REDSTATUS RedVolMount(void)
+REDSTATUS RedVolMount(
+    uint32_t    ulFlags)
 {
-    REDSTATUS ret;
+    REDSTATUS   ret;
 
-  #if REDCONF_READ_ONLY == 0
-    ret = RedOsBDevOpen(gbRedVolNum, BDEV_O_RDWR);
-  #else
-    ret = RedOsBDevOpen(gbRedVolNum, BDEV_O_RDONLY);
-  #endif
-
-    if(ret == 0)
+    if(ulFlags != (ulFlags & RED_MOUNT_MASK))
     {
-        ret = RedVolMountMaster();
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        BDEVOPENMODE mode = BDEV_O_RDONLY;
+
+      #if REDCONF_READ_ONLY == 0
+        if((ulFlags & RED_MOUNT_READONLY) == 0U)
+        {
+            mode = BDEV_O_RDWR;
+        }
+      #endif
+
+        ret = RedOsBDevOpen(gbRedVolNum, mode);
 
         if(ret == 0)
         {
-            ret = RedVolMountMetaroot();
-        }
+            ret = RedVolMountMaster();
 
-        if(ret != 0)
-        {
-            /*  If we fail to mount, invalidate the buffers to prevent any
-                confusion that could be caused by stale or corrupt metadata.
-            */
-            (void)RedBufferDiscardRange(0U, gpRedVolume->ulBlockCount);
-            (void)RedOsBDevClose(gbRedVolNum);
+            if(ret == 0)
+            {
+                ret = RedVolMountMetaroot(ulFlags);
+            }
+
+            if(ret != 0)
+            {
+                /*  If we fail to mount, invalidate the buffers to prevent any
+                    confusion that could be caused by stale or corrupt metadata.
+                */
+                (void)RedBufferDiscardRange(0U, gpRedVolume->ulBlockCount);
+                (void)RedOsBDevClose(gbRedVolNum);
+            }
         }
     }
 
@@ -146,14 +162,17 @@ REDSTATUS RedVolMountMaster(void)
 
     This function also populates the volume contexts.
 
+    @param ulFlags  A bitwise-OR'd mask of mount flags.
+
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
     @retval -RED_EIO    Both metaroots are missing or corrupt.
 */
-REDSTATUS RedVolMountMetaroot(void)
+REDSTATUS RedVolMountMetaroot(
+    uint32_t    ulFlags)
 {
-    REDSTATUS ret;
+    REDSTATUS   ret;
 
     ret = RedIoRead(gbRedVolNum, BLOCK_NUM_FIRST_METAROOT, 1U, &gpRedCoreVol->aMR[0U]);
 
@@ -253,7 +272,7 @@ REDSTATUS RedVolMountMetaroot(void)
     {
         gpRedVolume->fMounted = true;
       #if REDCONF_READ_ONLY == 0
-        gpRedVolume->fReadOnly = false;
+        gpRedVolume->fReadOnly = (ulFlags & RED_MOUNT_READONLY) != 0U;
       #endif
 
       #if RESERVED_BLOCKS > 0U

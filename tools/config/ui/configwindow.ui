@@ -68,8 +68,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>345</width>
-             <height>614</height>
+             <width>350</width>
+             <height>790</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_11">
@@ -101,6 +101,53 @@
                  </property>
                  <property name="text">
                   <string>Enable readonly configuration</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QGroupBox" name="gbAutomaticDiscards">
+              <property name="layoutDirection">
+               <enum>Qt::LeftToRight</enum>
+              </property>
+              <property name="title">
+               <string>Automatic Discards</string>
+              </property>
+              <layout class="QHBoxLayout" name="horizontalLayout_23">
+               <item>
+                <widget class="QCheckBox" name="cbAutomaticDiscards">
+                 <property name="layoutDirection">
+                  <enum>Qt::LeftToRight</enum>
+                 </property>
+                 <property name="text">
+                  <string>Enable automatic discards</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="WarningBtn" name="wbtnAutomaticDiscards" native="true">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Fixed" vsizetype="Ignored">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>0</height>
+                  </size>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>18</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                 <property name="layoutDirection">
+                  <enum>Qt::LeftToRight</enum>
                  </property>
                 </widget>
                </item>
@@ -288,6 +335,42 @@
                           </property>
                           <property name="text">
                            <string>rmdir</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QHBoxLayout" name="horizontalLayout_8">
+                        <item>
+                         <widget class="QCheckBox" name="cbPosixFstrim">
+                          <property name="toolTip">
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the red_fstrim() API will be available.  Enabling this setting implicitly enables the block device discard mechanism.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to delete directories in your application, enable this setting; otherwise, disable it to reduce code size. red_rmdir() shares most of its code with red_unlink(), so the difference in code size is small unless both APIs are enabled or disabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          </property>
+                          <property name="text">
+                           <string>fstrim</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="WarningBtn" name="wbtnFstrim" native="true">
+                          <property name="sizePolicy">
+                           <sizepolicy hsizetype="Fixed" vsizetype="Ignored">
+                            <horstretch>0</horstretch>
+                            <verstretch>0</verstretch>
+                           </sizepolicy>
+                          </property>
+                          <property name="minimumSize">
+                           <size>
+                            <width>0</width>
+                            <height>0</height>
+                           </size>
+                          </property>
+                          <property name="maximumSize">
+                           <size>
+                            <width>18</width>
+                            <height>16777215</height>
+                           </size>
                           </property>
                          </widget>
                         </item>
@@ -937,8 +1020,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>362</width>
-             <height>504</height>
+             <width>366</width>
+             <height>489</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_14">
@@ -1595,6 +1678,9 @@
                      </item>
                      <item>
                       <widget class="QComboBox" name="cmbDiscardsSupported">
+                       <property name="enabled">
+                        <bool>false</bool>
+                       </property>
                        <property name="minimumSize">
                         <size>
                          <width>70</width>
@@ -1974,8 +2060,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>362</width>
-             <height>504</height>
+             <width>364</width>
+             <height>503</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_19">
@@ -2550,8 +2636,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>362</width>
-             <height>504</height>
+             <width>364</width>
+             <height>503</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_24">
@@ -2926,8 +3012,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>362</width>
-             <height>504</height>
+             <width>364</width>
+             <height>503</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -3202,8 +3288,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>362</width>
-             <height>504</height>
+             <width>364</width>
+             <height>503</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_10">

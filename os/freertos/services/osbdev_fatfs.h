@@ -231,7 +231,8 @@ static REDSTATUS DiskWrite(
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
-    @retval 0   Operation was successful.
+    @retval 0           Operation was successful.
+    @retval -RED_EIO    A disk I/O error occurred.
 */
 static REDSTATUS DiskFlush(
     uint8_t     bVolNum)

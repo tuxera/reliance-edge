@@ -383,14 +383,17 @@ REDSTATUS RedCoreVolFormat(void)
 
     If the volume is already mounted, the behavior is undefined.
 
+    @param ulFlags  A bitwise-OR'd mask of mount flags.
+
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
     @retval -RED_EIO    Volume not formatted, improperly formatted, or corrupt.
 */
-REDSTATUS RedCoreVolMount(void)
+REDSTATUS RedCoreVolMount(
+    uint32_t    ulFlags)
 {
-    return RedVolMount();
+    return RedVolMount(ulFlags);
 }
 
 

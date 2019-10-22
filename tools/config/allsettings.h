@@ -90,6 +90,7 @@ struct AllSettings
 
     // "General" tab
     CbSetting *cbsReadonly;
+    CbSetting *cbsAutomaticDiscards;
     RbtnSetting *rbtnsUsePosix;
     RbtnSetting *rbtnsUseFse;
     CbSetting *cbsPosixFormat;
@@ -102,6 +103,7 @@ struct AllSettings
     CbSetting *cbsPosixFtruncate;
     CbSetting *cbsPosixDirOps;
     CbSetting *cbsPosixCwd;
+    CbSetting *cbsPosixFstrim;
     SbSetting *sbsMaxNameLen;
     PathSepSetting *pssPathSepChar;
     SbSetting *sbsTaskCount;
@@ -155,6 +157,7 @@ struct AllSettings
 };
 
 extern const QString macroNameReadonly;
+extern const QString macroNameAutomaticDiscards;
 extern const QString macroNameUsePosix;
 extern const QString macroNameUseFse;
 extern const QString macroNamePosixFormat;
@@ -167,6 +170,7 @@ extern const QString macroNamePosixRenameAtomic;
 extern const QString macroNamePosixFtruncate;
 extern const QString macroNamePosixDirOps;
 extern const QString macroNamePosixCwd;
+extern const QString macroNamePosixFstrim;
 extern const QString macroNameMaxNameLen;
 extern const QString macroNamePathSepChar;
 extern const QString macroNameTaskCount;
@@ -195,7 +199,6 @@ extern const QString macroNameIndirectPtrs;
 // Not in UI:
 extern const QString macroNameInlineImap;
 extern const QString macroNameExternalImap;
-extern const QString macroNameDiscardSupport;
 
 // "Memory" tab
 extern const QString macroNameAllocatedBuffers;

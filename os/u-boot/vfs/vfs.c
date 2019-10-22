@@ -223,7 +223,7 @@ int redfs_exists(
 /** @brief Size of file or directory
 
     This function is called by u-boot fs interface to determine the size of
-    a a file or directory.
+    a file or directory.
 
     @param pszPath  Path to size.
 

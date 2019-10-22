@@ -28,6 +28,9 @@
 #define REDVOLUME_H
 
 
+#include "redexclude.h" /* for DISCARD_SUPPORTED */
+
+
 /** @brief Per-volume configuration structure.
 
     Contains the configuration values that may differ between volumes.  Must be

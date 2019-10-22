@@ -42,6 +42,7 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
 
     // "General" tab
     allSettings.cbsReadonly = new CbSetting(macroNameReadonly, false, emptyBoolValidator, ui->cbReadonly);
+    allSettings.cbsAutomaticDiscards = new CbSetting(macroNameAutomaticDiscards, false, validateAutomaticDiscards, ui->cbAutomaticDiscards, ui->wbtnAutomaticDiscards);
     allSettings.rbtnsUsePosix = new RbtnSetting(macroNameUsePosix, true, validateUsePosixApi, ui->rbtnUsePosix, ui->wbtnApiRbtns);
     allSettings.rbtnsUseFse = new RbtnSetting(macroNameUseFse, false, validateUseFseApi, ui->rbtnUseFse, ui->wbtnApiRbtns);
     allSettings.cbsPosixFormat = new CbSetting(macroNamePosixFormat, true, emptyBoolValidator, ui->cbPosixFormat);
@@ -54,6 +55,7 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     allSettings.cbsPosixFtruncate = new CbSetting(macroNamePosixFtruncate, true, emptyBoolValidator, ui->cbPosixFtruncate);
     allSettings.cbsPosixDirOps = new CbSetting(macroNamePosixDirOps, true, emptyBoolValidator, ui->cbPosixDirOps);
     allSettings.cbsPosixCwd = new CbSetting(macroNamePosixCwd, false, emptyBoolValidator, ui->cbPosixCwd);
+    allSettings.cbsPosixFstrim = new CbSetting(macroNamePosixFstrim, false, validatePosixFstrim, ui->cbPosixFstrim, ui->wbtnFstrim);
     allSettings.sbsMaxNameLen = new SbSetting(macroNameMaxNameLen, 12, validateMaxNameLen, ui->sbFileNameLen, ui->wbtnFileNameLen);
     allSettings.pssPathSepChar = new PathSepSetting(macroNamePathSepChar, "/", validatePathSepChar, ui->cmbPathChar, ui->lePathCharCustom, ui->wbtnPathChar);
     allSettings.cbsFseFormat = new CbSetting(macroNameFseFormat, false, emptyBoolValidator, ui->cbFseFormat);
@@ -128,6 +130,9 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     allSettings.cbsPosixRename->notifyList.append(allSettings.sbsAllocatedBuffers);
     allSettings.cbsPosixAtomicRename->notifyList.append(allSettings.sbsAllocatedBuffers);
 
+    allSettings.cbsAutomaticDiscards->notifyList.append(allSettings.cbsPosixFstrim);
+    allSettings.cbsPosixFstrim->notifyList.append(allSettings.cbsPosixFstrim);
+
     // Simulate toggling to init which transaction flags
     // are available
     rbtnUsePosix_toggled(allSettings.rbtnsUsePosix->GetValue());
@@ -159,6 +164,8 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
                                         ui->wbtnDiscardsSupported,
                                         ui->wbtnIoRetries);
 
+    wbtns.append(ui->wbtnAutomaticDiscards);
+    wbtns.append(ui->wbtnFstrim);
     wbtns.append(ui->wbtnTransactVolFull);
     wbtns.append(ui->wbtnTransactManual);
     wbtns.append(ui->wbtnAllocatedBuffers);
@@ -191,6 +198,8 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     }
     connect(ui->cbReadonly, SIGNAL(toggled(bool)),
             this, SLOT(cbReadonly_toggled(bool)));
+    connect(ui->cbAutomaticDiscards, SIGNAL(toggled(bool)),
+            this, SLOT(cbAutomaticDiscards_toggled(bool)));
     connect(ui->rbtnUsePosix, SIGNAL(toggled(bool)),
             this, SLOT(rbtnUsePosix_toggled(bool)));
     connect(ui->cbPosixRename, SIGNAL(toggled(bool)),
@@ -203,6 +212,8 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
             this, SLOT(cbPosixUnlink_toggled(bool)));
     connect(ui->cbPosixFtruncate, SIGNAL(toggled(bool)),
             this, SLOT(cbPosixFtruncate_toggled(bool)));
+    connect(ui->cbPosixFstrim, SIGNAL(toggled(bool)),
+            this, SLOT(cbPosixFstrim_toggled(bool)));
     connect(ui->cbFseTruncate, SIGNAL(toggled(bool)),
             this, SLOT(cbFseTruncate_toggled(bool)));
     connect(ui->cbInodeTimestamps, SIGNAL(toggled(bool)),
@@ -340,6 +351,7 @@ void ConfigWindow::timerEvent(QTimerEvent *event)
 
 void ConfigWindow::cbReadonly_toggled(bool selected)
 {
+    ui->cbAutomaticDiscards->setEnabled(!selected);
     ui->cbPosixFormat->setEnabled(!selected);
     ui->cbPosixLink->setEnabled(!selected);
     ui->cbPosixUnlink->setEnabled(!selected);
@@ -347,6 +359,7 @@ void ConfigWindow::cbReadonly_toggled(bool selected)
     ui->cbPosixRmDir->setEnabled(!selected);
     ui->framePosixRenames->setEnabled(!selected);
     ui->cbPosixFtruncate->setEnabled(!selected);
+    ui->cbPosixFstrim->setEnabled(!selected);
 
     ui->cbFseFormat->setEnabled(!selected);
     ui->cbFseSetMask->setEnabled(!selected);
@@ -358,6 +371,11 @@ void ConfigWindow::cbReadonly_toggled(bool selected)
 
     // Disable tr settings tab
     ui->tabWidget->setTabEnabled(4, !selected);
+}
+
+void ConfigWindow::cbAutomaticDiscards_toggled(bool selected)
+{
+    ui->cmbDiscardsSupported->setEnabled(ui->cbPosixFstrim->isChecked() || selected);
 }
 
 void ConfigWindow::rbtnUsePosix_toggled(bool selected)
@@ -409,6 +427,11 @@ void ConfigWindow::cbPosixFtruncate_toggled(bool selected)
     {
         ui->cbTransactTruncate->setEnabled(selected);
     }
+}
+
+void ConfigWindow::cbPosixFstrim_toggled(bool selected)
+{
+    ui->cmbDiscardsSupported->setEnabled(ui->cbAutomaticDiscards->isChecked() || selected);
 }
 
 void ConfigWindow::cbFseTruncate_toggled(bool selected)

@@ -173,7 +173,7 @@ REDSTATUS RedFseMount(
     {
         if(!gpRedVolume->fMounted)
         {
-            ret = RedCoreVolMount();
+            ret = RedCoreVolMount(RED_MOUNT_DEFAULT);
         }
 
         FseLeave();

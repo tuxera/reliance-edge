@@ -78,10 +78,22 @@ void LimitReporter::updateLimits()
         doubleIndirs = 0;
     }
 
-    qulonglong inodeDataBlocks =
-              static_cast<qulonglong>(dirPointers)                  // Direct blocks
-            + static_cast<qulonglong>(indirPointers) * indirEntries // Indir blocks
-            + doubleIndirs * indirEntries * indirEntries;           // Dindir blocks
+    qlonglong indirBlocks = static_cast<qulonglong>(indirPointers) * indirEntries;
+    qlonglong dindirEntries = indirEntries * indirEntries;
+    qlonglong dindirDataBlocksMax = 0xFFFFFFFF - (dirPointers + indirBlocks);
+    qlonglong dindirDataBlocks = doubleIndirs * dindirEntries;
+
+    if(dindirDataBlocks > dindirDataBlocksMax)
+    {
+        dindirDataBlocks = dindirDataBlocksMax;
+    }
+
+    qulonglong inodeDataBlocks = static_cast<qulonglong>(dirPointers) + indirBlocks + dindirDataBlocks;
+
+    // Inode size is restricted such that the block count will fit into an
+    // unsigned 32-bit integer.
+    if (inodeDataBlocks > 0xFFFFFFFF)
+        inodeDataBlocks = 0xFFFFFFFF;
 
     qlonglong inodeSizeMax = inodeDataBlocks * static_cast<qlonglong>(blockSize);
 

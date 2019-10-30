@@ -294,9 +294,9 @@ Validity validateHandleCount(unsigned long value, QString &msg)
 ///
 Validity validateBlockSize(unsigned long value, QString &msg)
 {
-    if(value < 256 || value > 65536)
+    if(value < 128 || value > 65536)
     {
-        msg = "Block size must be a power of 2 between 256 and 65536.";
+        msg = "Block size must be a power of 2 between 128 and 65536.";
         return Invalid;
     }
 
@@ -422,10 +422,10 @@ Validity validateVolSectorSize(unsigned long value, QString &msg)
 {
     Q_ASSERT(allSettings.cmisBlockSize != NULL);
     if(!isPowerOfTwo(value)
-            || value < 256
+            || value < 128
             || value > 65536) // 2^16. Same max in block size
     {
-        msg = "Sector size must be a power of 2 between 256 and 65536.";
+        msg = "Sector size must be a power of 2 between 128 and 65536.";
         return Invalid;
     }
 
@@ -936,14 +936,14 @@ qulonglong getVolSizeMaxBytes()
     qlonglong mrImapBits = (static_cast<qlonglong>(blockSize) - mrHeader) * 8;
     qlonglong imapBits = (static_cast<qlonglong>(blockSize) - 16) * 8;
 
-    qulonglong imapMax = mrImapBits * mrImapBits * static_cast<qulonglong>(blockSize);
+    qulonglong imapMax = mrImapBits * imapBits * static_cast<qulonglong>(blockSize);
 
     if(mrImapBits < 0 || imapBits < 0)
     {
         imapMax = 0;
     }
 
-    qulonglong blockMax_32bit = 4294967296ULL * static_cast<qlonglong>(blockSize);
+    qulonglong blockMax_32bit = 0xFFFFFFFFULL * static_cast<qlonglong>(blockSize);
 
     return (blockMax_32bit < imapMax) ? blockMax_32bit : imapMax;
 }

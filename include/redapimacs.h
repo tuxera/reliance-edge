@@ -35,7 +35,7 @@
 /** Mount the volume with automatic discards enabled. */
 #define RED_MOUNT_DISCARD   0x00000002U
 
-#if REDCONF_READ_ONLY == 0
+#if (REDCONF_READ_ONLY == 0) && (RED_KIT != RED_KIT_GPL)
 /** Mask of all supported mount flags. */
 #define RED_MOUNT_MASK      (RED_MOUNT_READONLY | RED_MOUNT_DISCARD)
 #else

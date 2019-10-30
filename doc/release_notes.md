@@ -5,16 +5,19 @@ recent releases and a list of known issues.
 
 ## Release History and Changes
 
-### Reliance Edge v2.4 (Beta), October 2019
-
-This is a preview release that contains a subset of the changes planned for
-Reliance Edge v2.4; when v2.4 is released it will supersede this beta release.
+### Reliance Edge v2.4, November 2019
 
 #### Common Code Changes
 
+- Fixed a bug which caused the maximum inode size to be miscalculated in some
+  configurations with larger block sizes (8 KB and up).
+- Add support for a sector size and block size of 128 bytes (the previous
+  minimum was 256 bytes).  This is primarily useful when small-capacity
+  nonvolatile RAM is used as the storage device.
+- red_sync() and red_close() have been fixed to work with read-only volumes.
 - Add red_mount2() to the POSIX-like API.  It is similar to red_mount() except
   that mount flags can be specified.  Flags are provided for mounting read-only
-  and to control whether discards are issued.
+  and (in the commercial kit) to control whether discards are issued.
 - Add red_fstrim() to the POSIX-like API (commercial kit only).  The API is used
   to discard free space, similar to the fstrim utility on Linux systems.
 - The `REDCONF_API_POSIX_FSTRIM` macro has been added to redconf.h to specify
@@ -22,7 +25,6 @@ Reliance Edge v2.4; when v2.4 is released it will supersede this beta release.
   updated by opening and saving them with the updated Configuration Utility.
 - RedOsBDevDiscard() (which only exists in the commercial kit) has been updated
   to return a `REDSTATUS` value, instead of returning `void`.
-- red_sync() and red_close() have been fixed to work with read-only volumes.
 - MVStressTest, a new stress test that can exercise multiple file system
   volumes, has been added to the commercial kit.
 

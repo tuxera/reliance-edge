@@ -49,10 +49,12 @@ void DindirReporter::Notify()
 {
     Q_ASSERT(allSettings.sbsDirectPtrs != NULL);
     Q_ASSERT(allSettings.sbsIndirectPtrs != NULL);
+    Q_ASSERT(allSettings.cmisBlockSize != NULL);
 
-    long dindirPtrs = (long) getInodeEntries()
-                        - (long) allSettings.sbsDirectPtrs->GetValue()
-                        - (long) allSettings.sbsIndirectPtrs->GetValue();
+    unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
+    unsigned long dirPointers = allSettings.sbsDirectPtrs->GetValue();
+    unsigned long indirPointers = allSettings.sbsIndirectPtrs->GetValue();
+    long dindirPtrs = (long) getInodeEntries() - dirPointers - indirPointers;
 
     if(dindirPtrs < 0)
     {
@@ -60,6 +62,17 @@ void DindirReporter::Notify()
     }
     else
     {
+        qlonglong indirEntries = (blockSize - 20) / 4;
+
+        qlonglong dindirEntries = indirEntries * indirEntries;
+        qlonglong dindirDataBlocks = static_cast<qlonglong>(dindirPtrs) * dindirEntries;
+        qlonglong dindirDataBlocksMax = 0xFFFFFFFF - (dirPointers + (indirEntries * indirPointers));
+
+        if(dindirDataBlocks > dindirDataBlocksMax)
+        {
+            dindirPtrs = (dindirDataBlocksMax + dindirEntries - 1) / dindirEntries;
+        }
+
         label->setText(QString::number(dindirPtrs));
     }
 }

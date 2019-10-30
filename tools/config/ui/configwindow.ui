@@ -1045,6 +1045,14 @@
                  </item>
                  <item>
                   <widget class="QComboBox" name="cmbBlockSize">
+                   <property name="currentIndex">
+                    <number>2</number>
+                   </property>
+                   <item>
+                    <property name="text">
+                     <string>128</string>
+                    </property>
+                   </item>
                    <item>
                     <property name="text">
                      <string>256</string>
@@ -1228,7 +1236,7 @@
                      <item>
                       <widget class="QLabel" name="label_17">
                        <property name="toolTip">
-                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This is the sector size of the storage medium underlying the volume being configured. The sector size is the unit for reads and writes to the storage medium; while the file system allocates in terms of blocks, the block numbers and counts are converted to sector numbers and counts before being passed into the block device service.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; The correct value here is the sector size of the storage medium. For example, if the storage medium underlying the volume has 512 byte sectors, this should be set to 512. The most common value here will be 512. If implementing a RAM disk, the sector size can be set to 1 so that the sector numbers and counts serve as byte offsets and lengths.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This is the sector size of the storage medium underlying the volume being configured. The sector size is the unit for reads and writes to the storage medium; while the file system allocates in terms of blocks, the block numbers and counts are converted to sector numbers and counts before being passed into the block device service.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; The correct value here is the sector size of the storage medium. For example, if the storage medium underlying the volume has 512 byte sectors, this should be set to 512. The most common value here will be 512.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                        </property>
                        <property name="text">
                         <string>Sector size:</string>
@@ -1237,6 +1245,14 @@
                      </item>
                      <item>
                       <widget class="QComboBox" name="cmbSectorSize">
+                       <property name="currentIndex">
+                        <number>2</number>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>128</string>
+                        </property>
+                       </item>
                        <item>
                         <property name="text">
                          <string>256</string>

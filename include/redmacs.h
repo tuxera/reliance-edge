@@ -58,9 +58,11 @@
 #define false (0)
 #endif
 
-#define SECTOR_SIZE_MIN (256U)
+#define SECTOR_SIZE_MIN (128U)
 
-#if   REDCONF_BLOCK_SIZE == 256U
+#if   REDCONF_BLOCK_SIZE == 128U
+#define BLOCK_SIZE_P2 7U
+#elif REDCONF_BLOCK_SIZE == 256U
 #define BLOCK_SIZE_P2 8U
 #elif REDCONF_BLOCK_SIZE == 512U
 #define BLOCK_SIZE_P2 9U
@@ -79,7 +81,7 @@
 #elif REDCONF_BLOCK_SIZE == 65536U
 #define BLOCK_SIZE_P2 16U
 #else
-#error "REDCONF_BLOCK_SIZE must be a power of two value between 256 and 65536"
+#error "REDCONF_BLOCK_SIZE must be a power of two value between 128 and 65536"
 #endif
 
 #define REDMIN(a, b) (((a) < (b)) ? (a) : (b))

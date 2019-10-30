@@ -37,7 +37,24 @@
 #define DINDIR_DATA_BLOCKS  (INDIR_ENTRIES * INDIR_ENTRIES)
 
 #define INODE_INDIR_BLOCKS  (REDCONF_INDIRECT_POINTERS * INDIR_ENTRIES)
+
+/*  With large block sizes, the number of data blocks that a double-indirect can
+    point to begins to approach UINT32_MAX.  The total number of data blocks
+    addressable by an inode is limited to UINT32_MAX, so it's possible to
+    configure the file system with more double-indirect pointers than can be
+    used.  The logic below ensures that the number of data blocks in the double-
+    indirect range results in at most UINT32_MAX total data blocks per inode.
+*/
+#define INODE_DINDIR_BLOCKS_MAX (UINT32_MAX - (REDCONF_DIRECT_POINTERS + INODE_INDIR_BLOCKS))
+#define DINDIR_POINTERS_MAX \
+    (   (INODE_DINDIR_BLOCKS_MAX / DINDIR_DATA_BLOCKS) \
+      + (((INODE_DINDIR_BLOCKS_MAX % DINDIR_DATA_BLOCKS) == 0U) ? 0U : 1U))
+#if DINDIR_POINTERS_MAX <= DINDIR_POINTERS
+#define INODE_DINDIR_BLOCKS INODE_DINDIR_BLOCKS_MAX
+#else
 #define INODE_DINDIR_BLOCKS (DINDIR_POINTERS * DINDIR_DATA_BLOCKS)
+#endif
+
 #define INODE_DATA_BLOCKS   (REDCONF_DIRECT_POINTERS + INODE_INDIR_BLOCKS + INODE_DINDIR_BLOCKS)
 #define INODE_SIZE_MAX      (UINT64_SUFFIX(1) * REDCONF_BLOCK_SIZE * INODE_DATA_BLOCKS)
 

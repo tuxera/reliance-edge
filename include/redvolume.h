@@ -42,8 +42,9 @@ typedef struct
 {
     /** The sector size for the block device underlying the volume: the basic
         unit for reading and writing to the storage media.  Commonly ranges
-        between 512 and 4096, but any power-of-two value not greater than the
-        block size will work.
+        between 512 and 4096; the full range of permitted values are the
+        powers-of-two between 128 and 65536 which are less than or equal to (<=)
+        #REDCONF_BLOCK_SIZE.
     */
     uint32_t    ulSectorSize;
 

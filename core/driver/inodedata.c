@@ -499,15 +499,27 @@ static REDSTATUS Shrink(
 
                 if(ret == 0)
                 {
+                    uint32_t ulDataBlocks;
+
                     if(fFreed)
                     {
                         pInode->pInodeBuf->aulEntries[uOrigInodeEntry] = BLOCK_SPARSE;
                     }
 
-                    /*  The next seek will go to the beginning of the next
-                        double indirect.
+                    /*  This is the number of blocks till the end of the double
+                        indirect.
                     */
-                    ulTruncBlock += (DINDIR_DATA_BLOCKS - (uOrigDindirEntry * INDIR_ENTRIES)) - uOrigIndirEntry;
+                    ulDataBlocks = (DINDIR_DATA_BLOCKS - (uOrigDindirEntry * INDIR_ENTRIES)) - uOrigIndirEntry;
+
+                    /*  In some cases, INODE_DATA_BLOCKS is UINT32_MAX, so make
+                        sure we do not increment above that.
+                    */
+                    ulDataBlocks = REDMIN(ulDataBlocks, INODE_DATA_BLOCKS - ulTruncBlock);
+
+                    /*  The next seek will go to the beginning of the next
+                        double indirect (or to the maximum inode size).
+                    */
+                    ulTruncBlock += ulDataBlocks;
                 }
             }
         }
@@ -585,8 +597,12 @@ static REDSTATUS TruncDindir(
         {
             uint32_t ulBlock = pInode->ulLogicalBlock;
             uint16_t uStart = pInode->uDindirEntry; /* pInode->uDindirEntry will change. */
+            uint32_t ulDindirOffset = (uint32_t)pInode->uIndirEntry + ((uint32_t)uStart * INDIR_ENTRIES);
+            uint32_t ulDindirDataBlock = ulBlock - ulDindirOffset;
+            uint32_t ulDindirEntriesMax = ((INODE_DATA_BLOCKS - ulDindirDataBlock) + (INDIR_ENTRIES - 1U)) / INDIR_ENTRIES;
+            uint32_t ulDindirEntries = REDMIN(INDIR_ENTRIES, ulDindirEntriesMax);
 
-            for(uEntry = uStart; uEntry < INDIR_ENTRIES; uEntry++)
+            for(uEntry = uStart; uEntry < ulDindirEntries; uEntry++)
             {
                 /*  Seek so that TruncIndir() has the correct indirect
                     buffer and indirect entry.
@@ -702,7 +718,10 @@ static REDSTATUS TruncIndir(
 
         if(ret == 0)
         {
-            for(uEntry = pInode->uIndirEntry; uEntry < INDIR_ENTRIES; uEntry++)
+            uint32_t ulIndirEntriesMax = INODE_DATA_BLOCKS - (pInode->ulLogicalBlock - pInode->uIndirEntry);
+            uint16_t uIndirEntries = (uint16_t)REDMIN(INDIR_ENTRIES, ulIndirEntriesMax);
+
+            for(uEntry = pInode->uIndirEntry; uEntry < uIndirEntries; uEntry++)
             {
                 ret = TruncDataBlock(pInode, &pInode->pIndir->aulEntries[uEntry], fBranch);
 

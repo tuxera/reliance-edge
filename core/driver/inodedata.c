@@ -599,10 +599,13 @@ static REDSTATUS TruncDindir(
             uint16_t uStart = pInode->uDindirEntry; /* pInode->uDindirEntry will change. */
             uint32_t ulDindirOffset = (uint32_t)pInode->uIndirEntry + ((uint32_t)uStart * INDIR_ENTRIES);
             uint32_t ulDindirDataBlock = ulBlock - ulDindirOffset;
-            uint32_t ulDindirEntriesMax = ((INODE_DATA_BLOCKS - ulDindirDataBlock) + (INDIR_ENTRIES - 1U)) / INDIR_ENTRIES;
-            uint32_t ulDindirEntries = REDMIN(INDIR_ENTRIES, ulDindirEntriesMax);
+            uint32_t ulBlocksTillMax = INODE_DATA_BLOCKS - ulDindirDataBlock;
+            uint32_t ulDindirEntriesMax = (ulBlocksTillMax / INDIR_ENTRIES)
+                /* Rounding up in this way avoids 32-bit overflow. */
+                + (((ulBlocksTillMax % INDIR_ENTRIES) != 0U) ? (uint32_t)1U : (uint32_t)0U);
+            uint16_t uDindirEntries = (uint16_t)REDMIN(INDIR_ENTRIES, ulDindirEntriesMax);
 
-            for(uEntry = uStart; uEntry < ulDindirEntries; uEntry++)
+            for(uEntry = uStart; uEntry < uDindirEntries; uEntry++)
             {
                 /*  Seek so that TruncIndir() has the correct indirect
                     buffer and indirect entry.

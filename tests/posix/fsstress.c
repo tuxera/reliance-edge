@@ -608,7 +608,10 @@ int FsstressStart(
     make_freq_table();
 
     while ((loopcntr <= loops) || (loops == 0)) {
-        RedSNPrintf(buf, sizeof(buf), "fss%x", getpid());
+        if (RedSNPrintf(buf, sizeof(buf), "fss%x", getpid()) < 0) {
+            RedPrintf("%s: error building name\n", __func__);
+            _exit(1);
+        }
         fd = creat(buf, 0666);
         maxfsize = (off64_t) MAXFSIZE;
         dcache_init();
@@ -816,7 +819,10 @@ static void doproc(void)
     int opno;
     opdesc_t *p;
 
-    RedSNPrintf(buf, sizeof(buf), "p%x", procid);
+    if (RedSNPrintf(buf, sizeof(buf), "p%x", procid) < 0) {
+        RedPrintf("%s: error building name\n", __func__);
+        _exit(1);
+    }
     (void)mkdir(buf);
     if (chdir(buf) < 0 || stat64(".", &statbuf) < 0) {
         RedPrintf("error %d setting up test directory\n", (int)red_errno);
@@ -849,6 +855,10 @@ static void fent_to_name(pathname_t *name, flist_t *flp, fent_t *fep)
         append_pathname(name, "/");
     }
     i = RedSNPrintf(buf, sizeof(buf), "%c%x", flp->tag, fep->id);
+    if (i < 0) {
+        RedPrintf("%s: error building name\n", __func__);
+        _exit(1);
+    }
     namerandpad(fep->id, buf, i);
     append_pathname(name, buf);
 }
@@ -887,21 +897,25 @@ static int generate_fname(fent_t *fep, int ft, pathname_t *name, int *idp, int *
 
     flp = &flist[ft];
     len = RedSNPrintf(buf, sizeof(buf), "%c%x", flp->tag, id = nameseq++);
-    namerandpad(id, buf, len);
-    if (fep) {
-        fent_to_name(name, &flist[FT_DIR], fep);
-        append_pathname(name, "/");
-    }
-    append_pathname(name, buf);
-    *idp = id;
-    *v = verbose;
-    for (j = 0; !*v && j < ilistlen; j++) {
-        if (ilist[j] == id) {
-            *v = 1;
-            break;
+    if (len < 0) {
+        return 0;
+    } else {
+        namerandpad(id, buf, len);
+        if (fep) {
+            fent_to_name(name, &flist[FT_DIR], fep);
+            append_pathname(name, "/");
         }
+        append_pathname(name, buf);
+        *idp = id;
+        *v = verbose;
+        for (j = 0; !*v && j < ilistlen; j++) {
+            if (ilist[j] == id) {
+                *v = 1;
+                break;
+            }
+        }
+        return 1;
     }
-    return 1;
 }
 
 static int

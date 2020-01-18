@@ -143,7 +143,7 @@ static char *fsstress_getcwd(
     char   *pszBuf,
     size_t  nSize)
 {
-    char   *pszRet;
+    char   *pszRet = NULL;
 
     /*  red_getcwd() does not support a NULL buffer argument, so implement that
         here.

@@ -609,7 +609,7 @@ int FsstressStart(
 
     while ((loopcntr <= loops) || (loops == 0)) {
         if (RedSNPrintf(buf, sizeof(buf), "fss%x", getpid()) < 0) {
-            RedPrintf("%s: error building name\n", __func__);
+            RedPrintf("FsstressStart: error building name\n");
             _exit(1);
         }
         fd = creat(buf, 0666);
@@ -820,7 +820,7 @@ static void doproc(void)
     opdesc_t *p;
 
     if (RedSNPrintf(buf, sizeof(buf), "p%x", procid) < 0) {
-        RedPrintf("%s: error building name\n", __func__);
+        RedPrintf("doproc: error building name\n");
         _exit(1);
     }
     (void)mkdir(buf);
@@ -856,7 +856,7 @@ static void fent_to_name(pathname_t *name, flist_t *flp, fent_t *fep)
     }
     i = RedSNPrintf(buf, sizeof(buf), "%c%x", flp->tag, fep->id);
     if (i < 0) {
-        RedPrintf("%s: error building name\n", __func__);
+        RedPrintf("fent_to_name: error building name\n");
         _exit(1);
     }
     namerandpad(fep->id, buf, i);
@@ -899,23 +899,23 @@ static int generate_fname(fent_t *fep, int ft, pathname_t *name, int *idp, int *
     len = RedSNPrintf(buf, sizeof(buf), "%c%x", flp->tag, id = nameseq++);
     if (len < 0) {
         return 0;
-    } else {
-        namerandpad(id, buf, len);
-        if (fep) {
-            fent_to_name(name, &flist[FT_DIR], fep);
-            append_pathname(name, "/");
-        }
-        append_pathname(name, buf);
-        *idp = id;
-        *v = verbose;
-        for (j = 0; !*v && j < ilistlen; j++) {
-            if (ilist[j] == id) {
-                *v = 1;
-                break;
-            }
-        }
-        return 1;
     }
+
+    namerandpad(id, buf, len);
+    if (fep) {
+        fent_to_name(name, &flist[FT_DIR], fep);
+        append_pathname(name, "/");
+    }
+    append_pathname(name, buf);
+    *idp = id;
+    *v = verbose;
+    for (j = 0; !*v && j < ilistlen; j++) {
+        if (ilist[j] == id) {
+            *v = 1;
+            break;
+        }
+    }
+    return 1;
 }
 
 static int

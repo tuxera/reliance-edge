@@ -482,6 +482,39 @@ REDSTATUS RedCoreVolTransact(void)
 
     return ret;
 }
+
+/** @brief Rollback to a previous transaction point.
+
+    Reliance Edge is a transactional file system.  All modifications, of both
+    metadata and filedata, are initially working state.  This call allows to
+    discard the current working state and get back to the last commited state.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL The volume is not mounted.
+    @retval -RED_EBUSY  A discaded block is still referenced
+    @retval -RED_EROFS  The file system volume is read-only.
+*/
+REDSTATUS RedCoreVolRollback(void)
+{
+    REDSTATUS ret;
+
+    if(!gpRedVolume->fMounted)
+    {
+        ret = -RED_EINVAL;
+    }
+    else if(gpRedVolume->fReadOnly)
+    {
+        ret = -RED_EROFS;
+    }
+    else
+    {
+        ret = RedVolRollback();
+    }
+
+    return ret;
+}
 #endif /* REDCONF_READ_ONLY == 0 */
 
 

@@ -50,6 +50,7 @@ REDSTATUS RedCoreVolMount(uint32_t ulFlags);
 REDSTATUS RedCoreVolUnmount(void);
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedCoreVolTransact(void);
+REDSTATUS RedCoreVolRollback(void);
 #endif
 #if REDCONF_API_POSIX == 1
 REDSTATUS RedCoreVolStat(REDSTATFS *pStatFS);

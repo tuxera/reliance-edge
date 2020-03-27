@@ -374,6 +374,8 @@ REDSTATUS RedVolTransact(void)
 {
     REDSTATUS ret = 0;
 
+    REDASSERT(gpRedVolume->fMounted); /* Should be checked by caller. */
+
     REDASSERT(!gpRedVolume->fReadOnly); /* Should be checked by caller. */
 
     if(gpRedCoreVol->fBranched)
@@ -458,6 +460,45 @@ REDSTATUS RedVolTransact(void)
 
             gpRedMR = &gpRedCoreVol->aMR[gpRedCoreVol->bCurMR];
 
+            gpRedCoreVol->fBranched = false;
+        }
+
+        CRITICAL_ASSERT(ret == 0);
+    }
+
+    return ret;
+}
+
+/** @brief Rollback to the previous transaction point.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EBUSY  A discarded block is still referenced.
+*/
+REDSTATUS RedVolRollback(void)
+{
+    REDSTATUS ret = 0;
+
+    REDASSERT(gpRedVolume->fMounted); /* Should be checked by caller. */
+
+    REDASSERT(!gpRedVolume->fReadOnly); /* Should be checked by caller. */
+
+    if(gpRedCoreVol->fBranched)
+    {
+        ret = RedBufferDiscardRange(0U, gpRedVolume->ulBlockCount);
+
+        if(ret == 0) {
+            ret = RedVolMountMaster();
+        }
+
+        if(ret == 0)
+        {
+            ret = RedVolMountMetaroot(RED_MOUNT_DEFAULT);
+        }
+
+        if(ret == 0)
+        {
             gpRedCoreVol->fBranched = false;
         }
 

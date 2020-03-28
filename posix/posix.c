@@ -647,10 +647,10 @@ int32_t red_format(
 
     <b>Errno values</b>
     - #RED_EINVAL: Volume is not mounted; or @p pszVolume is `NULL`.
-    - #RED_EIO:    I/O error during the transaction point.
+    - #RED_EIO: I/O error during the transaction point.
     - #RED_ENOENT: @p pszVolume is not a valid volume path prefix.
     - #RED_EUSERS: Cannot become a file system user: too many users.
-    - #RED_EROFS:  The file system volume is read-only.
+    - #RED_EROFS: The file system volume is read-only.
 */
 int32_t red_transact(
     const char *pszVolume)
@@ -673,7 +673,8 @@ int32_t red_transact(
     return PosixReturn(ret);
 }
 
-/** @brief Rollback to the previous committed state
+
+/** @brief Rollback to the previous committed state.
 
     Reliance Edge is a transactional file system.  All modifications, of both
     metadata and filedata, are initially working state.  A transaction point
@@ -682,8 +683,8 @@ int32_t red_transact(
     mounted, including after power loss, the state of the file system after
     mount is the most recent committed state.  Nothing from the committed
     state is ever missing, and nothing from the working state is ever included.
-    This call cancel all modifications of the working state and get back to
-    the last commited state.
+    This call cancels all modifications in the working state and reverts to
+    the last committed state.
 
     @param pszVolume    A path prefix identifying the volume to rollback.
 
@@ -692,11 +693,11 @@ int32_t red_transact(
 
     <b>Errno values</b>
     - #RED_EINVAL: Volume is not mounted; or @p pszVolume is `NULL`.
-    - #RED_EBUSY:  A discarded block is still referenced.
+    - #RED_EBUSY: A discarded block is still referenced.
     - #RED_ENOENT: @p pszVolume is not a valid volume path prefix.
     - #RED_EUSERS: Cannot become a file system user: too many users.
-    - #RED_EBUSY:  There are still open handles for this file system volume.
-    - #RED_EROFS:  The file system volume is read-only.
+    - #RED_EBUSY: There are still open handles for this file system volume.
+    - #RED_EROFS: The file system volume is read-only.
 */
 int32_t red_rollback(
     const char *pszVolume)
@@ -733,12 +734,24 @@ int32_t red_rollback(
             ret = RedCoreVolRollback();
         }
 
+      #if REDCONF_API_POSIX_CWD == 1
+        /*  After reverting to the committed state, it's possible that the
+            working directories on this volume have ceased to exist.  To avoid
+            unexpected behavior, reset the CWD for any task whose CWD was on the
+            volume which was rolled back.
+        */
+        if(ret == 0)
+        {
+            CwdResetVol(bVolNum);
+        }
+      #endif
+
         PosixLeave();
     }
 
     return PosixReturn(ret);
 }
-#endif
+#endif /* REDCONF_READ_ONLY == 0 */
 
 
 #if REDCONF_READ_ONLY == 0

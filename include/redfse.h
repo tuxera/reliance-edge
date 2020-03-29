@@ -92,6 +92,7 @@ REDSTATUS RedFseTransMaskGet(uint8_t bVolNum, uint32_t *pulEventMask);
 #endif
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedFseTransact(uint8_t bVolNum);
+REDSTATUS RedFseRollback(uint8_t bVolNum);
 #endif
 
 #endif /* REDCONF_API_FSE == 1 */

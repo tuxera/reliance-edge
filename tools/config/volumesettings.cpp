@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -106,30 +106,113 @@ bool VolumeSettings::Volume::NeedsExternalImap()
     Q_ASSERT(allSettings.rbtnsUsePosix != NULL);
     Q_ASSERT(allSettings.cmisBlockSize != NULL);
 
-    unsigned long metarootHeaderSize = 16
-            + (allSettings.rbtnsUsePosix->GetValue() ?
-                   16 : 12);
-    unsigned long metarootEntries =
-            (allSettings.cmisBlockSize->GetValue()
-             - metarootHeaderSize)
-            * 8;
+    unsigned long sectorSize = stSectorSize.GetValue();
+    unsigned long sectorCount = stSectorCount.GetValue();
+    unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
 
-    unsigned volSectorShift = 0;
-    while((stSectorSize.GetValue() << volSectorShift)
-          < allSettings.cmisBlockSize->GetValue())
+    if(IsAutoSectorCount())
     {
-        volSectorShift++;
+        // If the sector count is unknown, both imaps must be included.
+        return true;
     }
+    else
+    {
+        unsigned long metarootHeaderSize = 16
+                + (allSettings.rbtnsUsePosix->GetValue() ?
+                       16 : 12);
+        unsigned long metarootEntries = (blockSize - metarootHeaderSize) * 8;
 
-    unsigned long volBlockCount = stSectorCount.GetValue() >> volSectorShift;
+        unsigned volSectorShift = 0;
 
-    return (volBlockCount - 3 > metarootEntries);
+        // If the sector size isn't known, assume the sector and block sizes are
+        // the same, which will result in the maximum number of blocks.  This is
+        // pessimistic and may result in the unnecessary inclusion of the external
+        // imap, but will not result in its erroneous exclusion.
+        if(!IsAutoSectorSize())
+        {
+            while((sectorSize << volSectorShift) < blockSize)
+            {
+                volSectorShift++;
+            }
+        }
+
+        unsigned long volBlockCount = sectorCount >> volSectorShift;
+
+        return (volBlockCount > metarootEntries + 3);
+    }
 }
 
 
+bool VolumeSettings::Volume::NeedsInternalImap()
+{
+    // Formulas taken from RedCoreInit
+
+    Q_ASSERT(allSettings.rbtnsUsePosix != NULL);
+    Q_ASSERT(allSettings.cmisBlockSize != NULL);
+
+    unsigned long sectorSize = stSectorSize.GetValue();
+    unsigned long sectorCount = stSectorCount.GetValue();
+    unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
+
+    if(IsAutoSectorCount())
+    {
+        // If the sector count is unknown, both imaps must be included.
+        return true;
+    }
+    else
+    {
+        unsigned long metarootHeaderSize = 16
+                + (allSettings.rbtnsUsePosix->GetValue() ?
+                       16 : 12);
+        unsigned long metarootEntries = (blockSize - metarootHeaderSize) * 8;
+
+        unsigned volSectorShift = 0;
+
+        // If the sector size isn't known, assume the sector will be the minimum
+        // valid size.  This is pessimistic and may result in the unnecessary
+        // inclusion of the internal imap, but will not result in its erroneous
+        // exclusion.
+        if(IsAutoSectorSize())
+        {
+            sectorSize = 128;
+        }
+
+        while((sectorSize << volSectorShift) < blockSize)
+        {
+            volSectorShift++;
+        }
+
+        unsigned long volBlockCount = sectorCount >> volSectorShift;
+
+        return (volBlockCount <= metarootEntries + 3);
+    }
+}
+
+bool VolumeSettings::Volume::IsAutoSectorSize()
+{
+	return fAutoSectorSize;
+}
+
+bool VolumeSettings::Volume::IsAutoSectorCount()
+{
+	return fAutoSectorCount;
+}
+
+void VolumeSettings::Volume::SetAutoSectorSize(bool value)
+{
+	fAutoSectorSize = value;
+}
+
+void VolumeSettings::Volume::SetAutoSectorCount(bool value)
+{
+	fAutoSectorCount = value;
+}
+
 VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
                                QComboBox *sectorSizeBox,
+                               QCheckBox *sectorSizeAuto,
                                QSpinBox *volSizeBox,
+                               QCheckBox *volSizeAuto,
                                QLabel *volSizeLabel,
                                QSpinBox *volOffBox,
                                QLabel *volOffLabel,
@@ -154,11 +237,13 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
     : stVolumeCount(macroNameVolumeCount, 1, validateVolumeCount),
       lePathPrefix(pathPrefixBox),
       sbVolSize(volSizeBox),
+      cbVolSizeAuto(volSizeAuto),
       sbVolOff(volOffBox),
       sbInodeCount(inodeCountBox),
       labelVolSizeBytes(volSizeLabel),
       labelVolOffBytes(volOffLabel),
       cmbSectorSize(sectorSizeBox),
+      cbSectorSizeAuto(sectorSizeAuto),
       cmbAtomicWrite(atomicWriteBox),
       cmbDiscardSupport(discardSupportBox),
       cbEnableRetries(enableRetriesCheck),
@@ -188,12 +273,16 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
             this, SLOT(lePathPrefix_textChanged(QString)));
     connect(sbVolSize, SIGNAL(valueChanged(QString)),
             this, SLOT(sbVolSize_valueChanged(QString)));
+    connect(cbVolSizeAuto, SIGNAL(stateChanged(int)),
+            this, SLOT(cbVolSizeAuto_stateChanged(int)));
     connect(sbVolOff, SIGNAL(valueChanged(QString)),
             this, SLOT(sbVolOff_valueChanged(QString)));
     connect(sbInodeCount, SIGNAL(valueChanged(QString)),
             this, SLOT(sbInodeCount_valueChanged(QString)));
     connect(cmbSectorSize, SIGNAL(currentIndexChanged(int)),
             this, SLOT(cmbSectorSize_currentIndexChanged(int)));
+    connect(cbSectorSizeAuto, SIGNAL(stateChanged(int)),
+            this, SLOT(cbSectorSizeAuto_stateChanged(int)));
     connect(cmbAtomicWrite, SIGNAL(currentIndexChanged(int)),
             this, SLOT(cmbAtomicWrite_currentIndexChanged(int)));
     connect(cmbDiscardSupport, SIGNAL(currentIndexChanged(int)),
@@ -285,7 +374,20 @@ void VolumeSettings::SetActiveVolume(int index)
 
     lePathPrefix->setText(volumes[index]->GetStName()->GetValue());
 
+	//  Update the auto sector count check box
+	if(volumes[index]->IsAutoSectorCount())
+	{
+		cbVolSizeAuto->setCheckState(Qt::CheckState::Checked);
+	}
+	else
+	{
+		cbVolSizeAuto->setCheckState(Qt::CheckState::Unchecked);
+	}
+
+	//  Update the volume size spin box
     sbVolSize->setValue(volumes[index]->GetStSectorCount()->GetValue());
+
+	//  Update the volume offset spin box
     sbVolOff->setValue(volumes[index]->GetStSectorOff()->GetValue());
 
     sbInodeCount->setValue(volumes[index]->GetStInodeCount()->GetValue());
@@ -295,8 +397,20 @@ void VolumeSettings::SetActiveVolume(int index)
 
     // Use QLocale to add comma separators
     QLocale l(QLocale::English, QLocale::UnitedStates);
-    cmbSectorSize->setCurrentText(l.toString(
-            static_cast<qlonglong>(volumes[index]->GetStSectorSize()->GetValue())));
+
+	//  Update the auto sector size check box
+	if(volumes[index]->IsAutoSectorSize())
+	{
+		cbSectorSizeAuto->setCheckState(Qt::CheckState::Checked);
+	}
+	else
+	{
+		cbSectorSizeAuto->setCheckState(Qt::CheckState::Unchecked);
+	}
+
+	//  Update the sector size combo box
+	cmbSectorSize->setCurrentText(l.toString(
+			static_cast<qlonglong>(volumes[index]->GetStSectorSize()->GetValue())));
 
     cmbAtomicWrite->setCurrentText(volumes[index]->GetStAtomicWrite()->GetValue());
 
@@ -409,7 +523,8 @@ void VolumeSettings::GetImapRequirements(bool &imapInline, bool &imapExternal)
         {
             imapExternal = true;
         }
-        else
+
+        if(volumes[i]->NeedsInternalImap())
         {
             imapInline = true;
         }
@@ -453,11 +568,31 @@ const VOLCONF gaRedVolConf[REDCONF_VOLUME_COUNT] =\n\
 
     for(int i = 0; i < volumes.count(); i++)
     {
+		QString sectorSize;
+		QString sectorCount;
+
+		if(volumes[i]->IsAutoSectorSize())
+		{
+			sectorSize = QString("SECTOR_SIZE_AUTO");
+		}
+		else
+		{
+			sectorSize = QString::number(volumes[i]->GetStSectorSize()->GetValue()) + QString("U");
+		}
+		if(volumes[i]->IsAutoSectorCount())
+		{
+			sectorCount = QString("SECTOR_COUNT_AUTO");
+		}
+		else
+		{
+			sectorCount = QString::number(volumes[i]->GetStSectorCount()->GetValue()) + QString("U");
+		}
+
         toReturn += QString("    { ")
-                + QString::number(volumes[i]->GetStSectorSize()->GetValue())
-                + QString("U, ")
-                + QString::number(volumes[i]->GetStSectorCount()->GetValue())
-                + QString("U, ")
+                + sectorSize
+                + QString(", ")
+                + sectorCount
+                + QString(", ")
 				+ QString::number(volumes[i]->GetStSectorOff()->GetValue())
 				+ QString("U, ")
                 + (QString::compare(volumes[i]->GetStAtomicWrite()->GetValue(),
@@ -606,10 +741,28 @@ void VolumeSettings::ParseCodefile(const QString &text,
                                      wbtnDiscardSupport,
                                      wbtnIoRetries);
 
-        parseAndSet(newVol->GetStSectorSize(), strValues[0], notParsed,
-                pathPrefix + QString(" sector size"));
-        parseAndSet(newVol->GetStSectorCount(), strValues[1], notParsed,
-                pathPrefix + QString(" sector count"));
+		if((QString::compare(strValues[0], "SECTOR_SIZE_AUTO") == 0) ||
+			(QString::compare(strValues[0], "0U") == 0) ||
+			(QString::compare(strValues[0], "0") == 0))
+		{
+			newVol->SetAutoSectorSize(true);
+		}
+		else
+		{
+			parseAndSet(newVol->GetStSectorSize(), strValues[0], notParsed,
+					pathPrefix + QString(" sector size"));
+		}
+        if((QString::compare(strValues[1], "SECTOR_COUNT_AUTO") == 0) ||
+            (QString::compare(strValues[1], "0U") == 0) ||
+            (QString::compare(strValues[1], "0") == 0))
+		{
+			newVol->SetAutoSectorCount(true);
+		}
+		else
+		{
+			parseAndSet(newVol->GetStSectorCount(), strValues[1], notParsed,
+					pathPrefix + QString(" sector count"));
+		}
         parseAndSet(newVol->GetStSectorOff(), strValues[2], notParsed,
                 pathPrefix + QString(" sector offset"));
 
@@ -864,9 +1017,18 @@ bool VolumeSettings::checkCurrentIndex()
 // Updates the label that reports the volume size in bytes.
 void VolumeSettings::updateVolSizeBytes()
 {
-    labelVolSizeBytes->setText(FormatSize(
-            static_cast<qulonglong>(volumes[activeIndex]->GetStSectorSize()->GetValue())
-            * static_cast<qulonglong>(volumes[activeIndex]->GetStSectorCount()->GetValue())));
+    // If either the size or count of sectors is automatically-detected, the
+    // volume size cannot be computed.
+    if(volumes[activeIndex]->IsAutoSectorCount() || volumes[activeIndex]->IsAutoSectorSize())
+    {
+        labelVolSizeBytes->setText(QString("Auto Detect"));
+    }
+    else
+    {
+        labelVolSizeBytes->setText(FormatSize(
+                static_cast<qulonglong>(volumes[activeIndex]->GetStSectorSize()->GetValue())
+                * static_cast<qulonglong>(volumes[activeIndex]->GetStSectorCount()->GetValue())));
+    }
 }
 
 // Updates the label that reports the volume offset in bytes.
@@ -895,6 +1057,15 @@ void VolumeSettings::lePathPrefix_textChanged(const QString &text)
     }
 }
 
+void VolumeSettings::cbSectorSizeAuto_stateChanged(int state)
+{
+	volumes[activeIndex]->SetAutoSectorSize(state == Qt::Checked);
+    cmbSectorSize->setEnabled(state == Qt::Unchecked);
+
+    updateVolSizeBytes();
+    updateVolOffBytes();
+}
+
 void VolumeSettings::cmbSectorSize_currentIndexChanged(int index)
 {
     // Asserts that the vol index is ok
@@ -909,6 +1080,15 @@ void VolumeSettings::cmbSectorSize_currentIndexChanged(int index)
         Q_ASSERT(false);
         return;
     }
+
+    updateVolSizeBytes();
+    updateVolOffBytes();
+}
+
+void VolumeSettings::cbVolSizeAuto_stateChanged(int state)
+{
+	volumes[activeIndex]->SetAutoSectorCount(state == Qt::Checked);
+    sbVolSize->setEnabled(state == Qt::Unchecked);
 
     updateVolSizeBytes();
     updateVolOffBytes();

@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -28,6 +28,7 @@
 #include <redfs.h>
 #include <redcoreapi.h>
 #include <redcore.h>
+#include <redbdev.h>
 
 #if FORMAT_SUPPORTED
 
@@ -50,12 +51,11 @@ REDSTATUS RedVolFormat(void)
     }
     else
     {
-        ret = RedOsBDevOpen(gbRedVolNum, BDEV_O_RDWR);
+        ret = RedBDevOpen(gbRedVolNum, BDEV_O_RDWR);
     }
 
     if(ret == 0)
     {
-        MASTERBLOCK    *pMB;
         REDSTATUS       ret2;
 
         /*  fReadOnly might still be true from the last time the volume was
@@ -64,16 +64,23 @@ REDSTATUS RedVolFormat(void)
         */
         gpRedVolume->fReadOnly = false;
 
-        /*  Overwrite the master block with zeroes, so that if formatting is
-            interrupted, the volume will not be mountable.
-        */
-        ret = RedBufferGet(BLOCK_NUM_MASTER, BFLAG_NEW | BFLAG_DIRTY, CAST_VOID_PTR_PTR(&pMB));
+        ret = RedVolInitGeometry();
 
         if(ret == 0)
         {
-            ret = RedBufferFlush(BLOCK_NUM_MASTER, 1U);
+            MASTERBLOCK *pMB;
 
-            RedBufferDiscard(pMB);
+            /*  Overwrite the master block with zeroes, so that if formatting is
+                interrupted, the volume will not be mountable.
+            */
+            ret = RedBufferGet(BLOCK_NUM_MASTER, BFLAG_NEW | BFLAG_DIRTY, CAST_VOID_PTR_PTR(&pMB));
+
+            if(ret == 0)
+            {
+                ret = RedBufferFlush(BLOCK_NUM_MASTER, 1U);
+
+                RedBufferDiscard(pMB);
+            }
         }
 
         if(ret == 0)
@@ -180,37 +187,38 @@ REDSTATUS RedVolFormat(void)
         */
         if(ret == 0)
         {
+            MASTERBLOCK *pMB;
+
             ret = RedBufferGet(BLOCK_NUM_MASTER, (uint16_t)((uint32_t)BFLAG_META_MASTER | BFLAG_NEW | BFLAG_DIRTY), CAST_VOID_PTR_PTR(&pMB));
-        }
+            if(ret == 0)
+            {
+                pMB->ulVersion = RED_DISK_LAYOUT_VERSION;
+                RedStrNCpy(pMB->acBuildNum, RED_BUILD_NUMBER, sizeof(pMB->acBuildNum));
+                pMB->ulFormatTime = RedOsClockGetTime();
+                pMB->ulInodeCount = gpRedVolConf->ulInodeCount;
+                pMB->ulBlockCount = gpRedVolume->ulBlockCount;
+                pMB->uMaxNameLen = REDCONF_NAME_MAX;
+                pMB->uDirectPointers = REDCONF_DIRECT_POINTERS;
+                pMB->uIndirectPointers = REDCONF_INDIRECT_POINTERS;
+                pMB->bBlockSizeP2 = BLOCK_SIZE_P2;
 
-        if(ret == 0)
-        {
-            pMB->ulVersion = RED_DISK_LAYOUT_VERSION;
-            RedStrNCpy(pMB->acBuildNum, RED_BUILD_NUMBER, sizeof(pMB->acBuildNum));
-            pMB->ulFormatTime = RedOsClockGetTime();
-            pMB->ulInodeCount = gpRedVolConf->ulInodeCount;
-            pMB->ulBlockCount = gpRedVolume->ulBlockCount;
-            pMB->uMaxNameLen = REDCONF_NAME_MAX;
-            pMB->uDirectPointers = REDCONF_DIRECT_POINTERS;
-            pMB->uIndirectPointers = REDCONF_INDIRECT_POINTERS;
-            pMB->bBlockSizeP2 = BLOCK_SIZE_P2;
+              #if REDCONF_API_POSIX == 1
+                pMB->bFlags |= MBFLAG_API_POSIX;
+              #endif
+              #if REDCONF_INODE_TIMESTAMPS == 1
+                pMB->bFlags |= MBFLAG_INODE_TIMESTAMPS;
+              #endif
+              #if REDCONF_INODE_BLOCKS == 1
+                pMB->bFlags |= MBFLAG_INODE_BLOCKS;
+              #endif
+              #if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_LINK == 1)
+                pMB->bFlags |= MBFLAG_INODE_NLINK;
+              #endif
 
-          #if REDCONF_API_POSIX == 1
-            pMB->bFlags |= MBFLAG_API_POSIX;
-          #endif
-          #if REDCONF_INODE_TIMESTAMPS == 1
-            pMB->bFlags |= MBFLAG_INODE_TIMESTAMPS;
-          #endif
-          #if REDCONF_INODE_BLOCKS == 1
-            pMB->bFlags |= MBFLAG_INODE_BLOCKS;
-          #endif
-          #if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_LINK == 1)
-            pMB->bFlags |= MBFLAG_INODE_NLINK;
-          #endif
+                ret = RedBufferFlush(BLOCK_NUM_MASTER, 1U);
 
-            ret = RedBufferFlush(BLOCK_NUM_MASTER, 1U);
-
-            RedBufferPut(pMB);
+                RedBufferPut(pMB);
+            }
         }
 
         if(ret == 0)
@@ -218,7 +226,7 @@ REDSTATUS RedVolFormat(void)
             ret = RedIoFlush(gbRedVolNum);
         }
 
-        ret2 = RedOsBDevClose(gbRedVolNum);
+        ret2 = RedBDevClose(gbRedVolNum);
         if(ret == 0)
         {
             ret = ret2;

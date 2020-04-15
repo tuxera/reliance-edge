@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -40,7 +40,23 @@ typedef enum
     BDEV_O_RDWR     /**< Open block device for read and write access. */
 } BDEVOPENMODE;
 
+/** @brief Block device geometry information.
+*/
+typedef struct
+{
+    /** The sector size for the block device: the basic unit for reading and
+        writing to the storage media.  This value is either taken from the
+        #VOLCONF, or queried from the block device.
+    */
+    uint32_t    ulSectorSize;
+
+    /** The number of sectors in this block device.
+    */
+    uint64_t    ullSectorCount;
+} BDEVINFO;
+
 REDSTATUS RedOsBDevOpen(uint8_t bVolNum, BDEVOPENMODE mode);
+REDSTATUS RedOsBDevGetGeometry(uint8_t bVolNum, BDEVINFO *pInfo);
 REDSTATUS RedOsBDevClose(uint8_t bVolNum);
 REDSTATUS RedOsBDevRead(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, void *pBuffer);
 
@@ -60,6 +76,7 @@ REDSTATUS RedOsMutexUninit(void);
 void RedOsMutexAcquire(void);
 void RedOsMutexRelease(void);
 #endif
+
 #if (REDCONF_TASK_COUNT > 1U) && (REDCONF_API_POSIX == 1)
 uint32_t RedOsTaskId(void);
 #endif

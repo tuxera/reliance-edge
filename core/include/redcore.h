@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -121,12 +121,18 @@ REDSTATUS RedImapBlockState(uint32_t ulBlock, ALLOCSTATE *pState);
 
 #if REDCONF_IMAP_INLINE == 1
 REDSTATUS RedImapIBlockGet(uint8_t bMR, uint32_t ulBlock, bool *pfAllocated);
+#if REDCONF_READ_ONLY == 0
 REDSTATUS RedImapIBlockSet(uint32_t ulBlock, bool fAllocated);
+REDSTATUS RedImapIBlockFindFree(uint32_t ulBlock, uint32_t *pulFreeBlock);
+#endif
 #endif
 
 #if REDCONF_IMAP_EXTERNAL == 1
 REDSTATUS RedImapEBlockGet(uint8_t bMR, uint32_t ulBlock, bool *pfAllocated);
+#if REDCONF_READ_ONLY == 0
 REDSTATUS RedImapEBlockSet(uint32_t ulBlock, bool fAllocated);
+REDSTATUS RedImapEBlockFindFree(uint32_t ulBlock, uint32_t *pulFreeBlock);
+#endif
 uint32_t RedImapNodeBlock(uint8_t bMR, uint32_t ulImapNode);
 #endif
 
@@ -155,7 +161,7 @@ typedef struct
     uint8_t    *pbData;         /**< Pointer to the data block buffer. */
 
     /*  All the members below this point are part of the seek coordinates; see
-        RedInodeDataSeek().
+        SeekInode().
     */
     uint32_t    ulLogicalBlock; /**< Logical block offset into the inode. */
   #if DINDIR_POINTERS > 0U
@@ -193,7 +199,6 @@ REDSTATUS RedInodeBranch(CINODE *pInode);
 REDSTATUS RedInodeCreate(CINODE *pInode, uint32_t ulPInode, uint16_t uMode);
 #endif
 #if DELETE_SUPPORTED
-REDSTATUS RedInodeDelete(CINODE *pInode);
 REDSTATUS RedInodeLinkDec(CINODE *pInode);
 #endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1)
@@ -208,10 +213,12 @@ void RedInodePutDindir(CINODE *pInode);
 void RedInodePutIndir(CINODE *pInode);
 #endif
 void RedInodePutData(CINODE *pInode);
-#if ((REDCONF_READ_ONLY == 0) && ((REDCONF_API_POSIX == 1) || FORMAT_SUPPORTED)) || (REDCONF_CHECKER == 1)
+#if REDCONF_CHECKER == 1
 REDSTATUS RedInodeIsFree(uint32_t ulInode, bool *pfFree);
 #endif
+#if REDCONF_CHECKER == 1
 REDSTATUS RedInodeBitGet(uint8_t bMR, uint32_t ulInode, uint8_t bWhich, bool *pfAllocated);
+#endif
 
 REDSTATUS RedInodeDataRead(CINODE *pInode, uint64_t ullStart, uint32_t *pulLen, void *pBuffer);
 #if REDCONF_READ_ONLY == 0
@@ -221,7 +228,6 @@ REDSTATUS RedInodeDataTruncate(CINODE *pInode, uint64_t ullSize);
 #endif
 #endif
 REDSTATUS RedInodeDataSeekAndRead(CINODE *pInode, uint32_t ulBlock);
-REDSTATUS RedInodeDataSeek(CINODE *pInode, uint32_t ulBlock);
 
 #if REDCONF_API_POSIX == 1
 #if REDCONF_READ_ONLY == 0
@@ -239,9 +245,12 @@ REDSTATUS RedDirEntryRename(CINODE *pSrcPInode, const char *pszSrcName, CINODE *
 #endif
 #endif
 
+REDSTATUS RedVolInitGeometry(void);
 REDSTATUS RedVolMount(uint32_t ulFlags);
+#if REDCONF_CHECKER == 1
 REDSTATUS RedVolMountMaster(void);
 REDSTATUS RedVolMountMetaroot(uint32_t ulFlags);
+#endif
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedVolTransact(void);
 #endif

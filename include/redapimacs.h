@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -53,10 +53,20 @@
 #define RED_MOUNT_DEFAULT   (RED_MOUNT_DISCARD & RED_MOUNT_MASK)
 
 
+/** Force unmount, closing all open handles. */
+#define RED_UMOUNT_FORCE    0x00000001U
+
+/** Mask of all supported unmount flags. */
+#define RED_UMOUNT_MASK     RED_UMOUNT_FORCE
+
+/** Defualt unmount flags. */
+#define RED_UMOUNT_DEFAULT  0U
+
+
 /** Clear all events: manual transactions only. */
 #define RED_TRANSACT_MANUAL     0x00000000U
 
-/** Transact prior to unmounting in red_umount() or RedFseUnmount(). */
+/** Transact prior to unmounting in red_umount(), red_umount2(), or RedFseUnmount(). */
 #define RED_TRANSACT_UMOUNT     0x00000001U
 
 /** Transact after a successful red_open() which created a file. */

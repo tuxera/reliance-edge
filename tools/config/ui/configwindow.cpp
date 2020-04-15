@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -141,7 +141,9 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     // Must be initialized after allSettings.cmisBlockSize
     volumeSettings = new VolumeSettings(ui->lePathPrefix,
                                         ui->cmbSectorSize,
+                                        ui->cbSectorSizeAuto,
                                         ui->sbVolSize,
+                                        ui->cbVolSizeAuto,
                                         ui->labelVolSizeBytes,
                                         ui->sbVolOff,
                                         ui->labelVolOffBytes,

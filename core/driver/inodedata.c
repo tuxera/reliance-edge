@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -66,6 +66,7 @@ static REDSTATUS TruncDataBlock(const CINODE *pInode, uint32_t *pulBlock, bool f
 #endif
 static REDSTATUS ExpandPrepare(CINODE *pInode);
 #endif
+static REDSTATUS SeekInode(CINODE *pInode, uint32_t ulBlock);
 static void SeekCoord(CINODE *pInode, uint32_t ulBlock);
 static REDSTATUS ReadUnaligned(CINODE *pInode, uint64_t ullStart, uint32_t ulLen, uint8_t *pbBuffer);
 static REDSTATUS ReadAligned(CINODE *pInode, uint32_t ulBlockStart, uint32_t ulBlockCount, uint8_t *pbBuffer);
@@ -454,7 +455,7 @@ static REDSTATUS Shrink(
       #if REDCONF_INDIRECT_POINTERS > 0U
         while((ret == 0) && (ulTruncBlock < (REDCONF_DIRECT_POINTERS + INODE_INDIR_BLOCKS)))
         {
-            ret = RedInodeDataSeek(pInode, ulTruncBlock);
+            ret = SeekInode(pInode, ulTruncBlock);
 
             if((ret == 0) || (ret == -RED_ENODATA))
             {
@@ -481,7 +482,7 @@ static REDSTATUS Shrink(
       #if DINDIR_POINTERS > 0U
         while((ret == 0) && (ulTruncBlock < INODE_DATA_BLOCKS))
         {
-            ret = RedInodeDataSeek(pInode, ulTruncBlock);
+            ret = SeekInode(pInode, ulTruncBlock);
 
             if((ret == 0) || (ret == -RED_ENODATA))
             {
@@ -610,7 +611,7 @@ static REDSTATUS TruncDindir(
                 /*  Seek so that TruncIndir() has the correct indirect
                     buffer and indirect entry.
                 */
-                ret = RedInodeDataSeek(pInode, ulBlock);
+                ret = SeekInode(pInode, ulBlock);
 
                 if(ret == -RED_ENODATA)
                 {
@@ -847,7 +848,7 @@ static REDSTATUS ExpandPrepare(
 
         if(ulOldSizeByteInBlock != 0U)
         {
-            ret = RedInodeDataSeek(pInode, (uint32_t)(pInode->pInodeBuf->ullSize >> BLOCK_SIZE_P2));
+            ret = SeekInode(pInode, (uint32_t)(pInode->pInodeBuf->ullSize >> BLOCK_SIZE_P2));
 
             if(ret == -RED_ENODATA)
             {
@@ -895,7 +896,7 @@ REDSTATUS RedInodeDataSeekAndRead(
 {
     REDSTATUS   ret;
 
-    ret = RedInodeDataSeek(pInode, ulBlock);
+    ret = SeekInode(pInode, ulBlock);
 
     if((ret == 0) && (pInode->pbData == NULL))
     {
@@ -926,7 +927,7 @@ REDSTATUS RedInodeDataSeekAndRead(
                             mounted cached inode pointer.
     @retval -RED_EIO        A disk I/O error occurred.
 */
-REDSTATUS RedInodeDataSeek(
+static REDSTATUS SeekInode(
     CINODE     *pInode,
     uint32_t    ulBlock)
 {
@@ -1319,7 +1320,7 @@ static REDSTATUS WriteUnaligned(
     }
     else
     {
-        ret = RedInodeDataSeek(pInode, (uint32_t)(ullStart >> BLOCK_SIZE_P2));
+        ret = SeekInode(pInode, (uint32_t)(ullStart >> BLOCK_SIZE_P2));
 
         if((ret == 0) || (ret == -RED_ENODATA))
         {
@@ -1376,7 +1377,7 @@ static REDSTATUS WriteAligned(
         */
         for(ulBlockIndex = 0U; (ulBlockIndex < ulBlockCount) && !fFull; ulBlockIndex++)
         {
-            ret = RedInodeDataSeek(pInode, ulBlockStart + ulBlockIndex);
+            ret = SeekInode(pInode, ulBlockStart + ulBlockIndex);
 
             if((ret == 0) || (ret == -RED_ENODATA))
             {
@@ -1479,7 +1480,7 @@ static REDSTATUS GetExtent(
     }
     else
     {
-        ret = RedInodeDataSeek(pInode, ulBlockStart);
+        ret = SeekInode(pInode, ulBlockStart);
 
         if(ret == 0)
         {
@@ -1489,7 +1490,7 @@ static REDSTATUS GetExtent(
 
             while((ret == 0) && (ulRunLen < ulExtentLen))
             {
-                ret = RedInodeDataSeek(pInode, ulBlockStart + ulRunLen);
+                ret = SeekInode(pInode, ulBlockStart + ulRunLen);
 
                 /*  The extent ends when we find a sparse data block or when the
                     data block is not contiguous with the preceding data block.
@@ -1775,7 +1776,7 @@ static REDSTATUS BranchOneBlock(
 
 /** @brief Compute the free space cost of branching a block.
 
-    The caller must first use RedInodeDataSeek() to the block to be branched.
+    The caller must first use SeekInode() to the block to be branched.
 
     @param pInode   A pointer to the cached inode structure, whose coordinates
                     indicate the block to be branched.

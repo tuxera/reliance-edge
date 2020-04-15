@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -44,11 +44,14 @@ typedef struct
         unit for reading and writing to the storage media.  Commonly ranges
         between 512 and 4096; the full range of permitted values are the
         powers-of-two between 128 and 65536 which are less than or equal to (<=)
-        #REDCONF_BLOCK_SIZE.
+        #REDCONF_BLOCK_SIZE.  A value of #SECTOR_SIZE_AUTO (0) indicates that
+        the sector size should be queried from the block device.
     */
     uint32_t    ulSectorSize;
 
-    /** The number of sectors in this file system volume.
+    /** The number of sectors in this file system volume.  A value of
+        #SECTOR_COUNT_AUTO (0) indicates that the sector count should be queried
+        from the block device.
     */
     uint64_t    ullSectorCount;
 

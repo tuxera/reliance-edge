@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -37,6 +37,7 @@
 */
 #include <redfs.h>
 #include <redcore.h>
+#include <redbdev.h>
 
 
 /** @brief Read a range of logical blocks.
@@ -81,7 +82,7 @@ REDSTATUS RedIoRead(
 
         for(bRetryIdx = 0U; bRetryIdx <= gaRedVolConf[bVolNum].bBlockIoRetries; bRetryIdx++)
         {
-            ret = RedOsBDevRead(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
+            ret = RedBDevRead(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
 
             if(ret == 0)
             {
@@ -139,7 +140,7 @@ REDSTATUS RedIoWrite(
 
         for(bRetryIdx = 0U; bRetryIdx <= gaRedVolConf[bVolNum].bBlockIoRetries; bRetryIdx++)
         {
-            ret = RedOsBDevWrite(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
+            ret = RedBDevWrite(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
 
             if(ret == 0)
             {
@@ -181,7 +182,7 @@ REDSTATUS RedIoFlush(
 
         for(bRetryIdx = 0U; bRetryIdx <= gaRedVolConf[bVolNum].bBlockIoRetries; bRetryIdx++)
         {
-            ret = RedOsBDevFlush(bVolNum);
+            ret = RedBDevFlush(bVolNum);
 
             if(ret == 0)
             {

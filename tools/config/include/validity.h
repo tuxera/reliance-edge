@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -38,6 +38,10 @@ enum Validity {
     /// The value is not valid
     Invalid
 };
+
+
+#define SECTOR_SIZE_AUTO    (0U)
+#define SECTOR_COUNT_AUTO   (0U)
 
 
 #endif // VALIDITY_H

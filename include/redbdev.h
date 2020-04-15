@@ -23,46 +23,23 @@
     more information.
 */
 /** @file
-    @brief Implements task functions.
 */
-#include <FreeRTOS.h>
-#include <task.h>
+#ifndef REDBDEV_H
+#define REDBDEV_H
 
-#include <redfs.h>
 
-#if (REDCONF_TASK_COUNT > 1U) && (REDCONF_API_POSIX == 1)
+extern BDEVINFO gaRedBdevInfo[REDCONF_VOLUME_COUNT];
 
-#include <redosdeviations.h>
 
-#if INCLUDE_xTaskGetCurrentTaskHandle != 1
-  #error "INCLUDE_xTaskGetCurrentTaskHandle must be 1 when REDCONF_TASK_COUNT > 1 and REDCONF_API_POSIX == 1"
+REDSTATUS RedBDevOpen(uint8_t bVolNum, BDEVOPENMODE mode);
+REDSTATUS RedBDevClose(uint8_t bVolNum);
+REDSTATUS RedBDevRead(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, void *pBuffer);
+
+#if REDCONF_READ_ONLY == 0
+REDSTATUS RedBDevWrite(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, const void *pBuffer);
+REDSTATUS RedBDevFlush(uint8_t bVolNum);
 #endif
 
-
-/** @brief Get the current task ID.
-
-    This task ID must be unique for all tasks using the file system.
-
-    @return The task ID.  Must not be 0.
-*/
-uint32_t RedOsTaskId(void)
-{
-    /*  Simply casting the xTaskGetCurrentTaskHandle() return value results in
-        warnings from some compilers, so use variables.
-    */
-    TaskHandle_t    xTask = xTaskGetCurrentTaskHandle();
-    uintptr_t       taskptr = CAST_TASK_PTR_TO_UINTPTR(xTask);
-    uint32_t        ulTaskPtr = (uint32_t)taskptr;
-
-    /*  Assert no information was lost casting from uintptr_t to uint32_t.
-    */
-    REDASSERT(ulTaskPtr == taskptr);
-
-    /*  NULL is a valid task handle in FreeRTOS, so add one to all task IDs.
-    */
-    REDASSERT((ulTaskPtr + 1U) != 0U);
-    return ulTaskPtr + 1U;
-}
 
 #endif
 

@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -29,11 +29,17 @@
 #include <redcore.h>
 
 
+#if DELETE_SUPPORTED
+static REDSTATUS InodeDelete(CINODE *pInode);
+#endif
 #if REDCONF_READ_ONLY == 0
 static REDSTATUS InodeIsBranched(uint32_t ulInode, bool *pfIsBranched);
 #endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1)
 static REDSTATUS InodeFindFree(uint32_t *pulInode);
+#endif
+#if (REDCONF_READ_ONLY == 0) && ((REDCONF_API_POSIX == 1) || FORMAT_SUPPORTED) && (REDCONF_CHECKER == 0)
+static REDSTATUS RedInodeIsFree(uint32_t ulInode, bool *pfFree);
 #endif
 #if REDCONF_READ_ONLY == 0
 static REDSTATUS InodeGetWriteableCopy(uint32_t ulInode, uint8_t *pbWhich);
@@ -43,6 +49,9 @@ static REDSTATUS InodeGetCurrentCopy(uint32_t ulInode, uint8_t *pbWhich);
 static REDSTATUS InodeBitSet(uint32_t ulInode, uint8_t bWhich, bool fAllocated);
 #endif
 static uint32_t InodeBlock(uint32_t ulInode, uint8_t bWhich);
+#if REDCONF_CHECKER == 0
+static REDSTATUS RedInodeBitGet(uint8_t bMR, uint32_t ulInode, uint8_t bWhich, bool *pfAllocated);
+#endif
 
 
 /** @brief Mount an existing inode.
@@ -295,6 +304,8 @@ REDSTATUS RedInodeCreate(
             pInode->pInodeBuf->uNLink = 1U;
           #endif
             pInode->pInodeBuf->ulPInode = ulPInode;
+
+            pInode->fDirectory = RED_S_ISDIR(uMode);
           #else
             (void)ulPInode;
           #endif
@@ -314,43 +325,6 @@ REDSTATUS RedInodeCreate(
 
 
 #if DELETE_SUPPORTED
-/** @brief Delete an inode.
-
-    @param pInode   Pointer to the cached inode structure.
-
-    @return A negated ::REDSTATUS code indicating the operation result.
-
-    @retval 0           Operation was successful.
-    @retval -RED_EBADF  The inode is free.
-    @retval -RED_EINVAL @p pInode is `NULL`; or pInode->pBuffer is `NULL`.
-    @retval -RED_EIO    A disk I/O error occurred.
-*/
-REDSTATUS RedInodeDelete(
-    CINODE     *pInode)
-{
-    REDSTATUS   ret = 0;
-
-    if(!CINODE_IS_MOUNTED(pInode))
-    {
-        ret = -RED_EINVAL;
-    }
-    else
-    {
-        if(pInode->pInodeBuf->ullSize != 0U)
-        {
-            ret = RedInodeDataTruncate(pInode, UINT64_SUFFIX(0));
-        }
-
-        if(ret == 0)
-        {
-            ret = RedInodeFree(pInode);
-        }
-    }
-
-    return ret;
-}
-
-
 /** @brief Decrement an inode link count and delete the inode if the link count
            falls to zero.
 
@@ -384,11 +358,49 @@ REDSTATUS RedInodeLinkDec(
   #endif
     else
     {
-        ret = RedInodeDelete(pInode);
+        ret = InodeDelete(pInode);
     }
 
     return ret;
 }
+
+
+/** @brief Delete an inode.
+
+    @param pInode   Pointer to the cached inode structure.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EBADF  The inode is free.
+    @retval -RED_EINVAL @p pInode is `NULL`; or pInode->pBuffer is `NULL`.
+    @retval -RED_EIO    A disk I/O error occurred.
+*/
+static REDSTATUS InodeDelete(
+    CINODE     *pInode)
+{
+    REDSTATUS   ret = 0;
+
+    if(!CINODE_IS_MOUNTED(pInode))
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        if(pInode->pInodeBuf->ullSize != 0U)
+        {
+            ret = RedInodeDataTruncate(pInode, UINT64_SUFFIX(0));
+        }
+
+        if(ret == 0)
+        {
+            ret = RedInodeFree(pInode);
+        }
+    }
+
+    return ret;
+}
+
 #endif /* DELETE_SUPPORTED */
 
 
@@ -855,6 +867,9 @@ static REDSTATUS InodeFindFree(
                         number.
     @retval -RED_EIO    A disk I/O error occurred.
 */
+#if REDCONF_CHECKER == 0
+static
+#endif
 REDSTATUS RedInodeIsFree(
     uint32_t    ulInode,
     bool       *pfFree)
@@ -1042,6 +1057,9 @@ static REDSTATUS InodeGetCurrentCopy(
                         `NULL`.
     @retval -RED_EIO    A disk I/O error occurred.
 */
+#if REDCONF_CHECKER == 0
+static
+#endif
 REDSTATUS RedInodeBitGet(
     uint8_t     bMR,
     uint32_t    ulInode,

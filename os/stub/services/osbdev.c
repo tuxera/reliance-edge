@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -27,6 +27,7 @@
 */
 #include <redfs.h>
 #include <redvolume.h>
+#include <redbdev.h>
 
 
 /** @brief Initialize a block device.
@@ -88,7 +89,7 @@ REDSTATUS RedOsBDevOpen(
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
-    @retval 0       Operation was successful.
+    @retval 0           Operation was successful.
     @retval -RED_EINVAL @p bVolNum is an invalid volume number.
 */
 REDSTATUS RedOsBDevClose(
@@ -97,6 +98,44 @@ REDSTATUS RedOsBDevClose(
     REDSTATUS   ret;
 
     if(bVolNum >= REDCONF_VOLUME_COUNT)
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        REDERROR();
+        ret = -RED_ENOSYS;
+    }
+
+    return ret;
+}
+
+
+/** @brief Return the block device geometry.
+
+    The behavior of calling this function is undefined if the block device is
+    closed.
+
+    @param bVolNum  The volume number of the volume whose block device geometry
+                    is being queried.
+    @param pInfo    On successful return, populated with the geometry of the
+                    block device.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0               Operation was successful.
+    @retval -RED_EINVAL     @p bVolNum is an invalid volume number, or @p pInfo
+                            is `NULL`.
+    @retval -RED_EIO        A disk I/O error occurred.
+    @retval -RED_ENOTSUPP   The geometry cannot be queried on this block device.
+*/
+REDSTATUS RedOsBDevGetGeometry(
+    uint8_t     bVolNum,
+    BDEVINFO   *pInfo)
+{
+    REDSTATUS   ret;
+
+    if((bVolNum >= REDCONF_VOLUME_COUNT) || (pInfo == NULL))
     {
         ret = -RED_EINVAL;
     }

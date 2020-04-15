@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -27,12 +27,143 @@
 */
 #include <redfs.h>
 #include <redcore.h>
+#include <redbdev.h>
 
 
+/*  Minimum number of blocks needed for metadata on any volume: the master
+    block (1), the two metaroots (2), and one doubly-allocated inode (2),
+    resulting in 1 + 2 + 2 = 5.
+*/
+#define MINIMUM_METADATA_BLOCKS (5U)
+
+
+#if REDCONF_CHECKER == 0
+static REDSTATUS RedVolMountMaster(void);
+static REDSTATUS RedVolMountMetaroot(uint32_t ulFlags);
+#endif
 static bool MetarootIsValid(METAROOT *pMR, bool *pfSectorCRCIsValid);
 #ifdef REDCONF_ENDIAN_SWAP
 static void MetaRootEndianSwap(METAROOT *pMetaRoot);
 #endif
+
+
+/** @brief Populate and validate the volume geometry.
+
+    The sector size and/or count will be queried from the block device if
+    the volume configuration specifies that one or both are to be detected
+    automatically.  Otherwise, the values in the volume configuration are used.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL Volume geometry is invalid.
+*/
+REDSTATUS RedVolInitGeometry(void)
+{
+    REDSTATUS       ret = 0;
+    const BDEVINFO *pBdevInfo = &gaRedBdevInfo[gbRedVolNum];
+
+    if(    (pBdevInfo->ulSectorSize < SECTOR_SIZE_MIN)
+        || ((REDCONF_BLOCK_SIZE % pBdevInfo->ulSectorSize) != 0U)
+        || ((UINT64_MAX - gpRedVolConf->ullSectorOffset) < pBdevInfo->ullSectorCount)) /* SectorOffset + SectorCount must not wrap */
+    {
+        REDERROR();
+        ret = -RED_EINVAL;
+    }
+
+    if(ret == 0)
+    {
+        gpRedVolume->bBlockSectorShift = 0U;
+        while((pBdevInfo->ulSectorSize << gpRedVolume->bBlockSectorShift) < REDCONF_BLOCK_SIZE)
+        {
+            gpRedVolume->bBlockSectorShift++;
+        }
+
+        /*  This should always be true since the block size is confirmed to
+            be a power of two (checked at compile time) and above we ensured
+            that (REDCONF_BLOCK_SIZE % pVolConf->ulSectorSize) == 0.
+        */
+        REDASSERT((pBdevInfo->ulSectorSize << gpRedVolume->bBlockSectorShift) == REDCONF_BLOCK_SIZE);
+
+        gpRedVolume->ulBlockCount = (uint32_t)(pBdevInfo->ullSectorCount >> gpRedVolume->bBlockSectorShift);
+
+        if(gpRedVolume->ulBlockCount < MINIMUM_METADATA_BLOCKS)
+        {
+            ret = -RED_EINVAL;
+        }
+        else
+        {
+            gpRedVolume->ullMaxInodeSize = INODE_SIZE_MAX;
+
+            /*  To understand the following code, note that the fixed-
+                location metadata is located at the start of the disk, in
+                the following order:
+
+                - Master block (1 block)
+                - Metaroots (2 blocks)
+                - External imap blocks (variable * 2 blocks)
+                - Inode blocks (pVolConf->ulInodeCount * 2 blocks)
+            */
+
+            /*  The imap needs bits for all inode and allocable blocks.  If
+                that bitmap will fit into the metaroot, the inline imap is
+                used and there are no imap nodes on disk.  The minus 3 is
+                there since the imap does not include bits for the master
+                block or metaroots.
+            */
+            gpRedCoreVol->fImapInline = (gpRedVolume->ulBlockCount - 3U) <= METAROOT_ENTRIES;
+
+            if(gpRedCoreVol->fImapInline)
+            {
+              #if REDCONF_IMAP_INLINE == 1
+                gpRedCoreVol->ulInodeTableStartBN = 3U;
+              #else
+                REDERROR();
+                ret = -RED_EINVAL;
+              #endif
+            }
+            else
+            {
+              #if REDCONF_IMAP_EXTERNAL == 1
+                gpRedCoreVol->ulImapStartBN = 3U;
+
+                /*  The imap does not include bits for itself, so add two to
+                    the number of imap entries for the two blocks of each
+                    imap node.  This allows us to divide up the remaining
+                    space, making sure to round up so all data blocks are
+                    covered.
+                */
+                gpRedCoreVol->ulImapNodeCount =
+                    ((gpRedVolume->ulBlockCount - 3U) + ((IMAPNODE_ENTRIES + 2U) - 1U)) / (IMAPNODE_ENTRIES + 2U);
+
+                gpRedCoreVol->ulInodeTableStartBN = gpRedCoreVol->ulImapStartBN + (gpRedCoreVol->ulImapNodeCount * 2U);
+              #else
+                REDERROR();
+                ret = -RED_EINVAL;
+              #endif
+            }
+        }
+    }
+
+    if(ret == 0)
+    {
+        gpRedCoreVol->ulFirstAllocableBN = gpRedCoreVol->ulInodeTableStartBN + (gpRedVolConf->ulInodeCount * 2U);
+
+        if(gpRedCoreVol->ulFirstAllocableBN > gpRedVolume->ulBlockCount)
+        {
+            /*  We can get here if there is not enough space for the number
+                of configured inodes.
+            */
+            ret = -RED_EINVAL;
+        }
+        else
+        {
+            gpRedVolume->ulBlocksAllocable = gpRedVolume->ulBlockCount - gpRedCoreVol->ulFirstAllocableBN;
+        }
+    }
+
+    return ret;
+}
 
 
 /** @brief Mount a file system volume.
@@ -65,11 +196,16 @@ REDSTATUS RedVolMount(
         }
       #endif
 
-        ret = RedOsBDevOpen(gbRedVolNum, mode);
+        ret = RedBDevOpen(gbRedVolNum, mode);
 
         if(ret == 0)
         {
-            ret = RedVolMountMaster();
+            ret = RedVolInitGeometry();
+
+            if(ret == 0)
+            {
+                ret = RedVolMountMaster();
+            }
 
             if(ret == 0)
             {
@@ -82,7 +218,7 @@ REDSTATUS RedVolMount(
                     confusion that could be caused by stale or corrupt metadata.
                 */
                 (void)RedBufferDiscardRange(0U, gpRedVolume->ulBlockCount);
-                (void)RedOsBDevClose(gbRedVolNum);
+                (void)RedBDevClose(gbRedVolNum);
             }
         }
     }
@@ -99,6 +235,9 @@ REDSTATUS RedVolMount(
     @retval -RED_EIO    Master block missing, corrupt, or inconsistent with the
                         compile-time driver settings.
 */
+#if REDCONF_CHECKER == 0
+static
+#endif
 REDSTATUS RedVolMountMaster(void)
 {
     REDSTATUS       ret;
@@ -169,6 +308,9 @@ REDSTATUS RedVolMountMaster(void)
     @retval 0           Operation was successful.
     @retval -RED_EIO    Both metaroots are missing or corrupt.
 */
+#if REDCONF_CHECKER == 0
+static
+#endif
 REDSTATUS RedVolMountMetaroot(
     uint32_t    ulFlags)
 {
@@ -326,6 +468,7 @@ static bool MetarootIsValid(
     else
     {
         const uint8_t  *pbMR = CAST_VOID_PTR_TO_CONST_UINT8_PTR(pMR);
+        uint32_t        ulSectorSize = gaRedBdevInfo[gbRedVolNum].ulSectorSize;
         uint32_t        ulSectorCRC = pMR->ulSectorCRC;
         uint32_t        ulCRC;
 
@@ -338,17 +481,14 @@ static bool MetarootIsValid(
         */
         pMR->ulSectorCRC = 0U;
 
-        ulCRC = RedCrc32Update(0U, &pbMR[8U], gpRedVolConf->ulSectorSize - 8U);
+        ulCRC = RedCrc32Update(0U, &pbMR[8U], ulSectorSize - 8U);
 
         fRet = ulCRC == ulSectorCRC;
         *pfSectorCRCIsValid = fRet;
 
         if(fRet)
         {
-            if(gpRedVolConf->ulSectorSize < REDCONF_BLOCK_SIZE)
-            {
-                ulCRC = RedCrc32Update(ulCRC, &pbMR[gpRedVolConf->ulSectorSize], REDCONF_BLOCK_SIZE - gpRedVolConf->ulSectorSize);
-            }
+            ulCRC = RedCrc32Update(ulCRC, &pbMR[ulSectorSize], REDCONF_BLOCK_SIZE - ulSectorSize);
 
           #ifdef REDCONF_ENDIAN_SWAP
             ulCRC = RedRev32(ulCRC);
@@ -394,6 +534,7 @@ REDSTATUS RedVolTransact(void)
         if(ret == 0)
         {
             const uint8_t  *pbMR = CAST_VOID_PTR_TO_CONST_UINT8_PTR(gpRedMR);
+            uint32_t        ulSectorSize = gaRedBdevInfo[gbRedVolNum].ulSectorSize;
             uint32_t        ulSectorCRC;
 
           #ifdef REDCONF_ENDIAN_SWAP
@@ -402,11 +543,11 @@ REDSTATUS RedVolTransact(void)
 
             gpRedMR->ulSectorCRC = 0U;
 
-            ulSectorCRC = RedCrc32Update(0U, &pbMR[8U], gpRedVolConf->ulSectorSize - 8U);
+            ulSectorCRC = RedCrc32Update(0U, &pbMR[8U], ulSectorSize - 8U);
 
-            if(gpRedVolConf->ulSectorSize < REDCONF_BLOCK_SIZE)
+            if(ulSectorSize < REDCONF_BLOCK_SIZE)
             {
-                gpRedMR->hdr.ulCRC = RedCrc32Update(ulSectorCRC, &pbMR[gpRedVolConf->ulSectorSize], REDCONF_BLOCK_SIZE - gpRedVolConf->ulSectorSize);
+                gpRedMR->hdr.ulCRC = RedCrc32Update(ulSectorCRC, &pbMR[ulSectorSize], REDCONF_BLOCK_SIZE - ulSectorSize);
             }
             else
             {

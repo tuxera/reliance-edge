@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -35,6 +35,7 @@
 #include <QListWidget>
 #include <QList>
 
+#include "settings/cbsetting.h"
 #include "settings/intsetting.h"
 #include "settings/strsetting.h"
 #include "ui/warningbtn.h"
@@ -79,6 +80,11 @@ public:
         StrSetting *GetStDiscardSupport();
         IntSetting *GetStBlockIoRetries();
         bool NeedsExternalImap();
+        bool NeedsInternalImap();
+        bool IsAutoSectorSize();
+        bool IsAutoSectorCount();
+        void SetAutoSectorSize(bool);
+        void SetAutoSectorCount(bool);
 
     private:
         StrSetting stName;
@@ -89,6 +95,8 @@ public:
         StrSetting stAtomicWrite;
         StrSetting stDiscardSupport;
         IntSetting stBlockIoRetries;
+        bool fAutoSectorSize = false;
+        bool fAutoSectorCount = false;
     };
 
     ///
@@ -98,7 +106,9 @@ public:
     ///
     VolumeSettings(QLineEdit *pathPrefixBox,
                    QComboBox *sectorSizeBox,
+                   QCheckBox *sectorSizeAuto,
                    QSpinBox *volSizeBox,
+                   QCheckBox *volSizeAuto,
                    QLabel *volSizeLabel,
                    QSpinBox *volOffBox,
                    QLabel *volOffLabel,
@@ -261,6 +271,8 @@ private:
     QSpinBox *sbVolSize;
     QSpinBox *sbVolOff;
     QSpinBox *sbInodeCount;
+    QCheckBox *cbVolSizeAuto;
+    QCheckBox *cbSectorSizeAuto;
     QLabel *labelVolSizeBytes;
     QLabel *labelVolOffBytes;
     QComboBox *cmbSectorSize;
@@ -286,6 +298,8 @@ private:
 private slots:
     void lePathPrefix_textChanged(const QString &text);
     void cmbSectorSize_currentIndexChanged(int index);
+    void cbSectorSizeAuto_stateChanged(int state);
+    void cbVolSizeAuto_stateChanged(int state);
     void sbVolSize_valueChanged(const QString &value);
     void sbVolOff_valueChanged(const QString &value);
     void sbInodeCount_valueChanged(const QString &value);

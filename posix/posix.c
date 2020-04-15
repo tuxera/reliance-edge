@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -530,14 +530,57 @@ int32_t red_mount2(
 int32_t red_umount(
     const char *pszVolume)
 {
+    return red_umount2(pszVolume, RED_UMOUNT_DEFAULT);
+}
+
+
+/** @brief Unmount a file system volume with flags.
+
+    This function is the same as red_umount(), except that it accepts a flags
+    parameter which can change the unmount behavior.
+
+    The following unmount flags are available:
+
+    - #RED_UMOUNT_FORCE: If specified, if the volume has open handles, the
+      handles will be closed.  Without this flag, the behavior is to return an
+      #RED_EBUSY error if the volume has open handles.
+
+    The #RED_UMOUNT_DEFAULT macro can be used to unmount with the default
+    unmount flags, which is equivalent to unmounting with red_umount().
+
+    @param pszVolume    A path prefix identifying the volume to unmount.
+    @param ulFlags      A bitwise-OR'd mask of unmount flags.
+
+    @return On success, zero is returned.  On error, -1 is returned and
+            #red_errno is set appropriately.
+
+    <b>Errno values</b>
+    - #RED_EBUSY: There are still open handles for this file system volume and
+      the #RED_UMOUNT_FORCE flag was _not_ specified.
+    - #RED_EINVAL: @p pszVolume is `NULL`; or @p ulFlags includes invalid
+      unmount flags; or the driver is uninitialized; or the volume is already
+      unmounted.
+    - #RED_EIO: I/O error during unmount automatic transaction point.
+    - #RED_ENOENT: @p pszVolume is not a valid volume path prefix.
+    - #RED_EUSERS: Cannot become a file system user: too many users.
+*/
+int32_t red_umount2(
+    const char *pszVolume,
+    uint32_t    ulFlags)
+{
     REDSTATUS   ret;
 
     ret = PosixEnter();
     if(ret == 0)
     {
-        uint8_t bVolNum;
-
-        ret = RedPathVolumeLookup(pszVolume, &bVolNum);
+        if(ulFlags != (ulFlags & RED_UMOUNT_MASK))
+        {
+            ret = -RED_EINVAL;
+        }
+        else
+        {
+            ret = RedPathVolumeLookup(pszVolume, NULL);
+        }
 
         /*  The core will return success if the volume is already unmounted, so
             check for that condition here to propagate the error.
@@ -551,16 +594,25 @@ int32_t red_umount(
         {
             uint16_t    uHandleIdx;
 
-            /*  Do not unmount the volume if it still has open handles.
+            /*  If the volume has open handles, return an error -- unless the
+                force flag was specified, in which case all open handles are
+                closed.
             */
             for(uHandleIdx = 0U; uHandleIdx < REDCONF_HANDLE_COUNT; uHandleIdx++)
             {
-                const REDHANDLE *pHandle = &gaHandle[uHandleIdx];
+                REDHANDLE *pHandle = &gaHandle[uHandleIdx];
 
-                if((pHandle->ulInode != INODE_INVALID) && (pHandle->bVolNum == bVolNum))
+                if((pHandle->ulInode != INODE_INVALID) && (pHandle->bVolNum == gbRedVolNum))
                 {
-                    ret = -RED_EBUSY;
-                    break;
+                    if((ulFlags & RED_UMOUNT_FORCE) != 0U)
+                    {
+                        pHandle->ulInode = INODE_INVALID;
+                    }
+                    else
+                    {
+                        ret = -RED_EBUSY;
+                        break;
+                    }
                 }
             }
         }
@@ -575,7 +627,7 @@ int32_t red_umount(
         */
         if(ret == 0)
         {
-            CwdResetVol(bVolNum);
+            CwdResetVol(gbRedVolNum);
         }
       #endif
 
@@ -896,37 +948,36 @@ int32_t red_open(
     int32_t     iFildes = -1;   /* Init'd to quiet warnings. */
     REDSTATUS   ret;
 
-  #if REDCONF_READ_ONLY == 1
-    if(ulOpenMode != RED_O_RDONLY)
-    {
-        ret = -RED_EROFS;
-    }
-  #else
-    if(    (ulOpenMode != (ulOpenMode & RED_O_MASK))
-        || ((ulOpenMode & (RED_O_RDONLY|RED_O_WRONLY|RED_O_RDWR)) == 0U)
-        || (((ulOpenMode & RED_O_RDONLY) != 0U) && ((ulOpenMode & (RED_O_WRONLY|RED_O_RDWR)) != 0U))
-        || (((ulOpenMode & RED_O_WRONLY) != 0U) && ((ulOpenMode & (RED_O_RDONLY|RED_O_RDWR)) != 0U))
-        || (((ulOpenMode & RED_O_RDWR) != 0U) && ((ulOpenMode & (RED_O_RDONLY|RED_O_WRONLY)) != 0U))
-        || (((ulOpenMode & (RED_O_TRUNC|RED_O_CREAT|RED_O_EXCL)) != 0U) && ((ulOpenMode & RED_O_RDONLY) != 0U))
-        || (((ulOpenMode & RED_O_EXCL) != 0U) && ((ulOpenMode & RED_O_CREAT) == 0U)))
-    {
-        ret = -RED_EINVAL;
-    }
-  #if REDCONF_API_POSIX_FTRUNCATE == 0
-    else if((ulOpenMode & RED_O_TRUNC) != 0U)
-    {
-        ret = -RED_EINVAL;
-    }
-  #endif
-  #endif
-    else
-    {
-        ret = PosixEnter();
-    }
-
+    ret = PosixEnter();
     if(ret == 0)
     {
-        ret = FildesOpen(pszPath, ulOpenMode, FTYPE_EITHER, &iFildes);
+      #if REDCONF_READ_ONLY == 1
+        if(ulOpenMode != RED_O_RDONLY)
+        {
+            ret = -RED_EROFS;
+        }
+      #else
+        if(    (ulOpenMode != (ulOpenMode & RED_O_MASK))
+            || ((ulOpenMode & (RED_O_RDONLY|RED_O_WRONLY|RED_O_RDWR)) == 0U)
+            || (((ulOpenMode & RED_O_RDONLY) != 0U) && ((ulOpenMode & (RED_O_WRONLY|RED_O_RDWR)) != 0U))
+            || (((ulOpenMode & RED_O_WRONLY) != 0U) && ((ulOpenMode & (RED_O_RDONLY|RED_O_RDWR)) != 0U))
+            || (((ulOpenMode & RED_O_RDWR) != 0U) && ((ulOpenMode & (RED_O_RDONLY|RED_O_WRONLY)) != 0U))
+            || (((ulOpenMode & (RED_O_TRUNC|RED_O_CREAT|RED_O_EXCL)) != 0U) && ((ulOpenMode & RED_O_RDONLY) != 0U))
+            || (((ulOpenMode & RED_O_EXCL) != 0U) && ((ulOpenMode & RED_O_CREAT) == 0U)))
+        {
+            ret = -RED_EINVAL;
+        }
+      #if REDCONF_API_POSIX_FTRUNCATE == 0
+        else if((ulOpenMode & RED_O_TRUNC) != 0U)
+        {
+            ret = -RED_EINVAL;
+        }
+      #endif
+      #endif
+        else
+        {
+            ret = FildesOpen(pszPath, ulOpenMode, FTYPE_EITHER, &iFildes);
+        }
 
         PosixLeave();
     }
@@ -1179,7 +1230,8 @@ int32_t red_rmdir(
     - #RED_EINVAL: @p pszOldPath is `NULL`; or @p pszNewPath is `NULL`; or the
       volume containing the path is not mounted; or #REDCONF_API_POSIX_CWD is
       true and either path ends with dot or dot-dot; or #REDCONF_API_POSIX_CWD
-      is false and @p pszNewPath ends with dot or dot-dot.
+      is false and @p pszNewPath ends with dot or dot-dot; or the rename is
+      cyclic.
     - #RED_EIO: A disk I/O error occurred.
     - #RED_EISDIR: The @p pszNewPath argument names a directory and the
       @p pszOldPath argument names a non-directory.
@@ -2810,7 +2862,7 @@ static REDSTATUS PathStartingPoint(
         }
       #endif
 
-        if(pbVolNum != NULL)
+        if((ret == 0) && (pbVolNum != NULL))
         {
             *pbVolNum = bVolNum;
         }

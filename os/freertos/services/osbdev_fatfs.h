@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -84,37 +84,6 @@ static REDSTATUS DiskOpen(
         ret = -RED_EIO;
     }
 
-    /*  Retrieve the sector size and sector count to ensure they are compatible
-        with our compile-time geometry.
-    */
-    if(ret == 0)
-    {
-        WORD    wSectorSize;
-        DWORD   dwSectorCount;
-        DRESULT result;
-
-        result = disk_ioctl(bVolNum, GET_SECTOR_SIZE, &wSectorSize);
-        if(result == RES_OK)
-        {
-            result = disk_ioctl(bVolNum, GET_SECTOR_COUNT, &dwSectorCount);
-            if(result == RES_OK)
-            {
-                if(!VOLUME_SECTOR_GEOMETRY_IS_VALID(bVolNum, wSectorSize, dwSectorCount))
-                {
-                    ret = -RED_EINVAL;
-                }
-            }
-            else
-            {
-                ret = -RED_EIO;
-            }
-        }
-        else
-        {
-            ret = -RED_EIO;
-        }
-    }
-
     return ret;
 }
 
@@ -133,6 +102,50 @@ static REDSTATUS DiskClose(
 {
     (void)bVolNum;
     return 0;
+}
+
+
+/** @brief Return the disk geometry.
+
+    @param bVolNum  The volume number of the volume whose block device geometry
+                    is being queried.
+    @param pInfo    On successful return, populated with the geometry of the
+                    block device.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EIO    A disk I/O or driver error occurred.
+*/
+static REDSTATUS DiskGetGeometry(
+    uint8_t     bVolNum,
+    BDEVINFO   *pInfo)
+{
+    REDSTATUS   ret;
+    WORD        wSectorSize;
+    DWORD       dwSectorCount;
+    DRESULT     result;
+
+    result = disk_ioctl(bVolNum, GET_SECTOR_SIZE, &wSectorSize);
+    if(result == RES_OK)
+    {
+        result = disk_ioctl(bVolNum, GET_SECTOR_COUNT, &dwSectorCount);
+        if(result == RES_OK)
+        {
+            pInfo->ulSectorSize = wSectorSize;
+            pInfo->ullSectorCount = dwSectorCount;
+        }
+        else
+        {
+            ret = -RED_EIO;
+        }
+    }
+    else
+    {
+        ret = -RED_EIO;
+    }
+
+    return ret;
 }
 
 
@@ -157,7 +170,7 @@ static REDSTATUS DiskRead(
 {
     REDSTATUS   ret = 0;
     uint32_t    ulSectorIdx = 0U;
-    uint32_t    ulSectorSize = gaRedVolConf[bVolNum].ulSectorSize;
+    uint32_t    ulSectorSize = gaRedBdevInfo[bVolNum].ulSectorSize;
     uint8_t    *pbBuffer = CAST_VOID_PTR_TO_UINT8_PTR(pBuffer);
 
     while(ulSectorIdx < ulSectorCount)
@@ -202,7 +215,7 @@ static REDSTATUS DiskWrite(
 {
     REDSTATUS       ret = 0;
     uint32_t        ulSectorIdx = 0U;
-    uint32_t        ulSectorSize = gaRedVolConf[bVolNum].ulSectorSize;
+    uint32_t        ulSectorSize = gaRedBdevInfo[bVolNum].ulSectorSize;
     const uint8_t  *pbBuffer = CAST_VOID_PTR_TO_CONST_UINT8_PTR(pBuffer);
 
     while(ulSectorIdx < ulSectorCount)

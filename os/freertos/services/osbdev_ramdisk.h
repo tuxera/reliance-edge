@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -52,10 +52,11 @@ static REDSTATUS DiskOpen(
     BDEVOPENMODE    mode)
 {
     REDSTATUS       ret = 0;
+    const VOLCONF  *pVolConf = gaRedVolConf[bVolNum];
 
     (void)mode;
 
-    if(gaRedVolConf[bVolNum].ullSectorOffset > 0U)
+    if(pVolConf->ullSectorOffset > 0U)
     {
         /*  A sector offset makes no sense for a RAM disk.  The feature exists
             to enable partitioning, but we don't support having more than one
@@ -65,12 +66,26 @@ static REDSTATUS DiskOpen(
         REDERROR();
         ret = -RED_EINVAL;
     }
+    else if((pVolConf->ulSectorSize == SECTOR_SIZE_AUTO) || (pVolConf->ullSectorCount == SECTOR_COUNT_AUTO))
+    {
+        /*  Automatic geometry detection is not possible for RAM disks.
+        */
+        ret = -RED_EINVAL;
+    }
     else if(gapbRamDisk[bVolNum] == NULL)
     {
-        gapbRamDisk[bVolNum] = ALLOCATE_CLEARED_MEMORY(gaRedVolume[bVolNum].ulBlockCount, REDCONF_BLOCK_SIZE);
-        if(gapbRamDisk[bVolNum] == NULL)
+        if((size_t)pVolConf->ullSectorCount != pVolConf->ullSectorCount)
         {
-            ret = -RED_EIO;
+            REDERROR();
+            ret = -RED_EINVAL;
+        }
+        else
+        {
+            gapbRamDisk[bVolNum] = ALLOCATE_CLEARED_MEMORY(pVolConf->ullSectorCount, pVolConf->ulSectorSize);
+            if(gapbRamDisk[bVolNum] == NULL)
+            {
+                ret = -RED_EIO;
+            }
         }
     }
     else
@@ -114,6 +129,30 @@ static REDSTATUS DiskClose(
     }
 
     return ret;
+}
+
+
+/** @brief Return the disk geometry.
+
+    @param bVolNum  The volume number of the volume whose block device geometry
+                    is being queried.
+    @param pInfo    On successful return, populated with the geometry of the
+                    block device.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0               Operation was successful.
+    @retval -RED_EIO        A disk I/O or driver error occurred.
+    @retval -RED_ENOTSUPP   The geometry cannot be queried on this block device.
+*/
+static REDSTATUS DiskGetGeometry(
+    uint8_t     bVolNum,
+    BDEVINFO   *pInfo)
+{
+    (void)bVolNum;
+    (void)pInfo;
+
+    return -RED_ENOTSUPP;
 }
 
 

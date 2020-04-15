@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -32,6 +32,7 @@
 
 #include <redfs.h>
 #include <redvolume.h>
+#include <redbdev.h>
 
 
 typedef enum
@@ -55,6 +56,7 @@ typedef struct
 static bool IsDriveSpec(const char *pszPathSpec);
 static REDSTATUS RamDiskOpen(uint8_t bVolNum, BDEVOPENMODE mode);
 static REDSTATUS RamDiskClose(uint8_t bVolNum);
+static REDSTATUS RamDiskGetGeometry(uint8_t bVolNum, BDEVINFO *pInfo);
 static REDSTATUS RamDiskRead(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, void *pBuffer);
 #if REDCONF_READ_ONLY == 0
 static REDSTATUS RamDiskWrite(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, const void *pBuffer);
@@ -62,6 +64,7 @@ static REDSTATUS RamDiskFlush(uint8_t bVolNum);
 #endif
 static REDSTATUS FileDiskOpen(uint8_t bVolNum, BDEVOPENMODE mode);
 static REDSTATUS FileDiskClose(uint8_t bVolNum);
+static REDSTATUS FileDiskGetGeometry(uint8_t bVolNum, BDEVINFO *pInfo);
 static REDSTATUS FileDiskRead(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, void *pBuffer);
 #if REDCONF_READ_ONLY == 0
 static REDSTATUS FileDiskWrite(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, const void *pBuffer);
@@ -69,6 +72,7 @@ static REDSTATUS FileDiskFlush(uint8_t bVolNum);
 #endif
 static REDSTATUS RawDiskOpen(uint8_t bVolNum, BDEVOPENMODE mode);
 static REDSTATUS RawDiskClose(uint8_t bVolNum);
+static REDSTATUS RawDiskGetGeometry(uint8_t bVolNum, BDEVINFO *pInfo);
 static REDSTATUS RawDiskRead(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, void *pBuffer);
 #if REDCONF_READ_ONLY == 0
 static REDSTATUS RawDiskWrite(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, const void *pBuffer);
@@ -332,6 +336,61 @@ REDSTATUS RedOsBDevClose(
 }
 
 
+/** @brief Return the block device geometry.
+
+    The behavior of calling this function is undefined if the block device is
+    closed.
+
+    @param bVolNum  The volume number of the volume whose block device geometry
+                    is being queried.
+    @param pInfo    On successful return, populated with the geometry of the
+                    block device.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0               Operation was successful.
+    @retval -RED_EINVAL     @p bVolNum is an invalid volume number, or @p pInfo
+                            is `NULL`.
+    @retval -RED_EIO        A disk I/O error occurred.
+    @retval -RED_ENOTSUPP   The geometry cannot be queried on this block device.
+*/
+REDSTATUS RedOsBDevGetGeometry(
+    uint8_t     bVolNum,
+    BDEVINFO   *pInfo)
+{
+    REDSTATUS   ret;
+
+    if((bVolNum >= REDCONF_VOLUME_COUNT) || !gaDisk[bVolNum].fOpen || (pInfo == NULL))
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        switch(gaDisk[bVolNum].type)
+        {
+            case BDEVTYPE_RAM_DISK:
+                ret = RamDiskGetGeometry(bVolNum, pInfo);
+                break;
+
+            case BDEVTYPE_FILE_DISK:
+                ret = FileDiskGetGeometry(bVolNum, pInfo);
+                break;
+
+            case BDEVTYPE_RAW_DISK:
+                ret = RawDiskGetGeometry(bVolNum, pInfo);
+                break;
+
+            default:
+                REDERROR();
+                ret = -RED_EINVAL;
+                break;
+        }
+    }
+
+    return ret;
+}
+
+
 /** @brief Read sectors from a physical block device.
 
     The behavior of calling this function is undefined if the block device is
@@ -535,7 +594,15 @@ static REDSTATUS RamDiskOpen(
 
     (void)mode;
 
-    if(gaRedVolConf[bVolNum].ullSectorOffset > 0U)
+    if(    (gaRedVolConf[bVolNum].ulSectorSize == SECTOR_SIZE_AUTO)
+        || (gaRedVolConf[bVolNum].ullSectorCount == SECTOR_COUNT_AUTO))
+    {
+        /*  Automatic detection of sector size and sector count are not
+            supported by the RAM disk.
+        */
+        ret = -RED_ENOTSUPP;
+    }
+    else if(gaRedVolConf[bVolNum].ullSectorOffset > 0U)
     {
         /*  A sector offset makes no sense for a RAM disk.  The feature exists
             to enable partitioning, but we don't support having more than one
@@ -546,10 +613,20 @@ static REDSTATUS RamDiskOpen(
     }
     else if(gaDisk[bVolNum].pbRamDisk == NULL)
     {
-        gaDisk[bVolNum].pbRamDisk = calloc(gaRedVolume[bVolNum].ulBlockCount, REDCONF_BLOCK_SIZE);
-        if(gaDisk[bVolNum].pbRamDisk == NULL)
+        /*  Make sure the sector count fits into a size_t, for the calloc()
+            parameter.
+        */
+        if(gaRedVolConf[bVolNum].ullSectorCount > SIZE_MAX)
         {
-            ret = -RED_EIO;
+            ret = -RED_EINVAL;
+        }
+        else
+        {
+            gaDisk[bVolNum].pbRamDisk = calloc((size_t)gaRedVolConf[bVolNum].ullSectorCount, gaRedVolConf[bVolNum].ulSectorSize);
+            if(gaDisk[bVolNum].pbRamDisk == NULL)
+            {
+                ret = -RED_EIO;
+            }
         }
     }
     else
@@ -580,6 +657,33 @@ static REDSTATUS RamDiskClose(
         exits.
     */
     return 0;
+}
+
+
+/** @brief Return the block device geometry.
+
+    Not supported on RAM disks.  Geometry must be specified in redconf.c.
+
+    @param bVolNum          The volume number of the volume whose block device
+                            geometry is being queried.
+    @param pulSectorSize    The starting sector number.
+    @param pullSectorCount  The number of sectors to read.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval -RED_ENOTSUPP   The geometry cannot be queried on this block device.
+*/
+static REDSTATUS RamDiskGetGeometry(
+    uint8_t     bVolNum,
+    BDEVINFO   *pInfo)
+{
+    (void)bVolNum;
+    (void)pInfo;
+
+    /*  The RAM disk requires the geometry to be specified in the volume
+        configuration at compile-time; it cannot be detected at run-time.
+    */
+    return -RED_ENOTSUPP;
 }
 
 
@@ -667,7 +771,8 @@ static REDSTATUS RamDiskFlush(
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
-    @retval -RED_EIO    A disk I/O error occurred.
+    @retval -RED_EIO    A disk I/O error occurred; or, automatic size detection
+                        is specified and the file disk does not exist.
     @retval -RED_EROFS  The file disk is a preexisting read-only file and write
                         access was requested.
 */
@@ -703,7 +808,14 @@ static REDSTATUS FileDiskOpen(
                 failures that sometimes happen when opening write-only.
             */
             dwDesiredAccess = GENERIC_READ | GENERIC_WRITE;
-            dwCreationDisposition = OPEN_ALWAYS;
+
+            /*  If the sector count is to be automatically detected, the file
+                disk must already exist.
+            */
+            if(gaRedVolConf[bVolNum].ullSectorCount != SECTOR_COUNT_AUTO)
+            {
+                dwCreationDisposition = OPEN_ALWAYS;
+            }
         }
       #endif
 
@@ -762,6 +874,65 @@ static REDSTATUS FileDiskClose(
 }
 
 
+/** @brief Return the block device geometry.
+
+    Supported only on existing file disks.  Sector size must be spepcified in
+    the volume config.
+
+    @param bVolNum          The volume number of the volume whose block device
+                            geometry is being queried.
+    @param pulSectorSize    The starting sector number.
+    @param pullSectorCount  The number of sectors to read.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0               Operation was successful.
+    @retval -RED_EIO        A disk I/O error occurred.
+    @retval -RED_ENOTSUPP   The sector size is not specified in the volume
+                            config.
+*/
+static REDSTATUS FileDiskGetGeometry(
+    uint8_t     bVolNum,
+    BDEVINFO   *pInfo)
+{
+    REDSTATUS   ret = 0;
+
+    if(gaRedVolConf[bVolNum].ulSectorSize == SECTOR_SIZE_AUTO)
+    {
+        /*  If the sector size isn't specified, any valid value will do.  Thus,
+            use 512 bytes (the most common value) or the block size, whichever
+            is less.
+        */
+        pInfo->ulSectorSize = REDMIN(512U, REDCONF_BLOCK_SIZE);
+    }
+    else
+    {
+        pInfo->ulSectorSize = gaRedVolConf[bVolNum].ulSectorSize;
+    }
+
+    if(gaRedVolConf[bVolNum].ullSectorCount == SECTOR_COUNT_AUTO)
+    {
+        LARGE_INTEGER   fileSize;
+        BOOL            fResult = GetFileSizeEx(gaDisk[bVolNum].hDevice, &fileSize);
+
+        if(fResult)
+        {
+            pInfo->ullSectorCount = fileSize.QuadPart / pInfo->ulSectorSize;
+        }
+        else
+        {
+            ret = -RED_EIO;
+        }
+    }
+    else
+    {
+        pInfo->ullSectorCount = gaRedVolConf[bVolNum].ullSectorOffset + gaRedVolConf[bVolNum].ullSectorCount;
+    }
+
+    return ret;
+}
+
+
 /** @brief Read sectors from a file disk.
 
     @param bVolNum          The volume number of the volume whose block device
@@ -783,7 +954,7 @@ static REDSTATUS FileDiskRead(
 {
     ULARGE_INTEGER  position;
     OVERLAPPED      overlap = {{0}};
-    uint32_t        ulSectorSize = gaRedVolConf[bVolNum].ulSectorSize;
+    uint32_t        ulSectorSize = gaRedBdevInfo[bVolNum].ulSectorSize;
     DWORD           dwRead;
     BOOL            fResult;
     REDSTATUS       ret;
@@ -828,7 +999,7 @@ static REDSTATUS FileDiskWrite(
 {
     ULARGE_INTEGER  position;
     OVERLAPPED      overlap = {{0}};
-    uint32_t        ulSectorSize = gaRedVolConf[bVolNum].ulSectorSize;
+    uint32_t        ulSectorSize = gaRedBdevInfo[bVolNum].ulSectorSize;
     DWORD           dwWritten;
     BOOL            fResult;
     REDSTATUS       ret;
@@ -1005,56 +1176,6 @@ static REDSTATUS RawDiskOpen(
         }
     }
 
-    if(ret == 0)
-    {
-        DISK_GEOMETRY_EX geo;
-
-        if(!DeviceIoControl(pDisk->hDevice, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, NULL, 0, &geo, sizeof(geo), &dwUnused, NULL))
-        {
-            ret = -RED_EIO;
-        }
-        else
-        {
-            uint64_t ullTotalSectors;
-
-            /*  NOTE: There are issues with both methods of calculating the
-                      sector count.
-
-                      The first method may result in a sector count which
-                      exceeds the number of sectors Windows thinks the media
-                      has. When these purportedly non-existent sectors are read
-                      or written, the I/O operation fails with a bad parameter
-                      error. This behavior has shown up on numerous flash
-                      drives and SD cards.
-
-                      The second (and original) method is not known to result in
-                      any I/O failures, but it can result in a sector count
-                      which renders the disk much smaller than it should be;
-                      this is known to have affected partitioned media.
-            */
-          #if 0
-            ullTotalSectors  = geo.DiskSize.QuadPart;
-            ullTotalSectors /= geo.Geometry.BytesPerSector;
-          #else
-            ullTotalSectors  = geo.Geometry.Cylinders.QuadPart;
-            ullTotalSectors *= geo.Geometry.TracksPerCylinder;
-            ullTotalSectors *= geo.Geometry.SectorsPerTrack;
-          #endif
-
-            /*  Error if the disk is smaller than the configuration says it was.
-
-                Currently the code expects the sector size to be accurate.  It
-                would be possible to update the code to be forgiving of an
-                incorrect configuration sector size, but that would involve more
-                conversions.
-            */
-            if(!VOLUME_SECTOR_GEOMETRY_IS_VALID(bVolNum, geo.Geometry.BytesPerSector, ullTotalSectors))
-            {
-                ret = -RED_EINVAL;
-            }
-        }
-    }
-
   #if REDCONF_READ_ONLY == 0
     if(ret == 0)
     {
@@ -1112,6 +1233,75 @@ static REDSTATUS RawDiskClose(
     else
     {
         ret = -RED_EIO;
+    }
+
+    return ret;
+}
+
+
+/** @brief Return the block device geometry.
+
+    @param bVolNum  The volume number of the volume whose block device geometry
+                    is being queried.
+    @param pInfo    On successful return, populated with the geometry of the
+                    block device.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EIO    A disk I/O error occurred.
+*/
+static REDSTATUS RawDiskGetGeometry(
+    uint8_t             bVolNum,
+    BDEVINFO           *pInfo)
+{
+    REDSTATUS           ret = 0;
+    DISK_GEOMETRY_EX    geo;
+    DWORD               dwUnused;
+
+    if(!DeviceIoControl(gaDisk[bVolNum].hDevice, IOCTL_DISK_GET_DRIVE_GEOMETRY_EX, NULL, 0, &geo, sizeof(geo), &dwUnused, NULL))
+    {
+        ret = -RED_EIO;
+    }
+    else
+    {
+        PARTITION_INFORMATION_EX    partInfo;
+
+        pInfo->ulSectorSize = geo.Geometry.BytesPerSector;
+
+        /*  Try querying the partition info.  If the specified drive is a
+            partition, this should succeed and provide an accurate length.
+            Otherwise, the a physical drive was specified, not a partition.
+        */
+        if(DeviceIoControl(gaDisk[bVolNum].hDevice, IOCTL_DISK_GET_PARTITION_INFO_EX, NULL, 0, &partInfo, sizeof(partInfo), &dwUnused, NULL))
+        {
+            pInfo->ullSectorCount = partInfo.PartitionLength.QuadPart / pInfo->ulSectorSize;
+        }
+        else
+        {
+            /*  NOTE: There are issues with both methods of calculating the
+                      sector count.
+
+                      The first method may result in a sector count which
+                      exceeds the number of sectors Windows thinks the media
+                      has. When these purportedly non-existent sectors are read
+                      or written, the I/O operation fails with a bad parameter
+                      error. This behavior has shown up on numerous flash
+                      drives and SD cards.
+
+                      The second (and original) method is not known to result in
+                      any I/O failures, but it can result in a sector count
+                      which renders the disk much smaller than it should be;
+                      this is known to have affected partitioned media.
+            */
+          #if 0
+            pInfo->ullSectorCount  = geo.DiskSize.QuadPart;
+          #else
+            pInfo->ullSectorCount  = geo.Geometry.Cylinders.QuadPart;
+            pInfo->ullSectorCount *= geo.Geometry.TracksPerCylinder;
+            pInfo->ullSectorCount *= geo.Geometry.SectorsPerTrack;
+          #endif
+        }
     }
 
     return ret;

@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -166,6 +166,147 @@ REDSTATUS RedImapEBlockSet(
             }
 
             RedBufferPut(pImap);
+        }
+    }
+
+    return ret;
+}
+
+
+/** @brief Scan the imap for a free block.
+
+    @param ulBlock      The block at which to start the search.
+    @param pulFreeBlock On success, populated with the found free block.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL @p ulBlock is out of range; or @p pulFreeBlock is
+                        `NULL`.
+    @retval -RED_EIO    A disk I/O error occurred.
+    @retval -RED_ENOSPC No free block was found.
+*/
+REDSTATUS RedImapEBlockFindFree(
+    uint32_t    ulBlock,
+    uint32_t   *pulFreeBlock)
+{
+    REDSTATUS   ret = 0;
+
+    if(    gpRedCoreVol->fImapInline
+        || (ulBlock < gpRedCoreVol->ulFirstAllocableBN)
+        || (ulBlock >= gpRedVolume->ulBlockCount)
+        || (pulFreeBlock == NULL))
+    {
+        REDERROR();
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        bool        fFoundFree = false;
+        uint32_t    ulSearchBlock = ulBlock;
+        uint32_t    ulPrevImapNode = 0U; /* Init'd to suppress warnings */
+        IMAPNODE   *pImap = NULL; /* No imap buffer to start with */
+
+        do
+        {
+            /*  Blocks before the inode table aren't included in the bitmap.
+            */
+            uint32_t ulBmpIdx = ulSearchBlock - gpRedCoreVol->ulInodeTableStartBN;
+
+            /*  Compute which imap node we need and the index within that node.
+            */
+            uint32_t ulImapNode = ulBmpIdx / IMAPNODE_ENTRIES;
+            uint32_t ulImapIdx = ulBmpIdx % IMAPNODE_ENTRIES;
+
+            /*  If we have an imap node buffered but it isn't the one we want,
+                release that buffer.
+            */
+            if((pImap != NULL) && (ulImapNode != ulPrevImapNode))
+            {
+                RedBufferPut(pImap);
+                pImap = NULL;
+            }
+
+            /*  Get the imap node buffer if we don't have it already.
+            */
+            if(pImap == NULL)
+            {
+                ulPrevImapNode = ulImapNode;
+
+                ret = RedBufferGet(RedImapNodeBlock(gpRedCoreVol->bCurMR, ulImapNode),
+                    BFLAG_META_IMAP, CAST_VOID_PTR_PTR(&pImap));
+            }
+
+            if(ret == 0)
+            {
+                /*  As an optimization to reduce the number of RedBitGet()
+                    calls, if all eight blocks in the current byte are
+                    allocated, then skip to the next byte.
+                */
+                if(((ulImapIdx & 7U) == 0U) && (pImap->abEntries[ulImapIdx >> 3U] == UINT8_MAX))
+                {
+                    ulSearchBlock += REDMIN(8U, gpRedVolume->ulBlockCount - ulSearchBlock);
+                }
+                else
+                {
+                    /*  If the block is free in the working state...
+                    */
+                    if(!RedBitGet(pImap->abEntries, ulImapIdx))
+                    {
+                        /*  We aren't allowed to hold multiple imap buffers at
+                            the same time, since doing so would increase the
+                            minimum buffer count.
+                        */
+                        RedBufferPut(pImap);
+                        pImap = NULL;
+
+                        /*  Get the buffer for the committed state imap.
+                        */
+                        ret = RedBufferGet(RedImapNodeBlock(1U - gpRedCoreVol->bCurMR, ulImapNode),
+                            BFLAG_META_IMAP, CAST_VOID_PTR_PTR(&pImap));
+                        if(ret == 0)
+                        {
+                            /*  If the block is free in the committed state...
+                            */
+                            if(!RedBitGet(pImap->abEntries, ulImapIdx))
+                            {
+                                /*  Found a free block.
+                                */
+                                fFoundFree = true;
+                                *pulFreeBlock = ulSearchBlock;
+                                break;
+                            }
+
+                            /*  Release the committed state imap buffer so we
+                                can reacquire the working state imap buffer on
+                                the next loop iteration.
+                            */
+                            RedBufferPut(pImap);
+                            pImap = NULL;
+                        }
+                    }
+
+                    ulSearchBlock++;
+                }
+
+                if(ulSearchBlock == gpRedVolume->ulBlockCount)
+                {
+                    ulSearchBlock = gpRedCoreVol->ulFirstAllocableBN;
+                }
+            }
+        } while((ret == 0) && (ulSearchBlock != ulBlock));
+
+        if(pImap != NULL)
+        {
+            RedBufferPut(pImap);
+        }
+
+        /*  If we searched every allocable block without finding a free block,
+            return an ENOSPC error.
+        */
+        if((ret == 0) && !fFoundFree)
+        {
+            ret = -RED_ENOSPC;
         }
     }
 

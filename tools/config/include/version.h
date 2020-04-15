@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -25,13 +25,13 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-#define CONFIG_VERSION      "2.4"
+#define CONFIG_VERSION      "2.5"
 
 // Hex representation of version above. Most significant byte is the
 // major version, etc.  The low byte should be left 00.  This is exported
 // with the configuration to allow Reliance Edge to print a more helpful
 // message if the configuration is too old.
-#define CONFIG_VERSION_VAL  0x02040000U
+#define CONFIG_VERSION_VAL  0x02050000U
 
 #endif // VERSION_H
 

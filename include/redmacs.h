@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -57,6 +57,9 @@
 #ifndef false
 #define false (0)
 #endif
+
+#define SECTOR_SIZE_AUTO    (0U)
+#define SECTOR_COUNT_AUTO   (0U)
 
 #define SECTOR_SIZE_MIN (128U)
 
@@ -117,12 +120,12 @@
     RedCoreInit() ensures that SectorOffset + SectorCount will not result in
     unsigned integer wrap-around.
 */
-#define VOLUME_SECTOR_LIMIT(volnum) (gaRedVolConf[(volnum)].ullSectorOffset + gaRedVolConf[(volnum)].ullSectorCount)
+#define VOLUME_SECTOR_LIMIT(volnum) (gaRedVolConf[(volnum)].ullSectorOffset + gaRedBdevInfo[(volnum)].ullSectorCount)
 
 /** @brief Determine if the sector size reported by the storage device is
            compatible with the configured volume geometry.
 */
-#define VOLUME_SECTOR_SIZE_IS_VALID(volnum, devsectsize) ((uint32_t)(devsectsize) == gaRedVolConf[(volnum)].ulSectorSize)
+#define VOLUME_SECTOR_SIZE_IS_VALID(volnum, devsectsize) ((uint32_t)(devsectsize) == gaRedBdevInfo[(volnum)].ulSectorSize)
 
 /** @brief Determine if the sector count reported by the storage device is
            compatible with the configured volume geometry.

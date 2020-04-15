@@ -23,70 +23,14 @@
     more information.
 */
 /** @file
-    @brief Implements block device I/O.
+    @brief Implements the block device abstraction of the file system.
 */
-#include <common.h>
-#include <blk.h>
-#include <redfs_uboot.h>
-
-
 #include <redfs.h>
 #include <redvolume.h>
 #include <redbdev.h>
-#include <redosdeviations.h>
-#include <redutils.h>
-#include <redosbdev.h>
 
 
-/*  This array holds the block device handles and partition information for
-    the various redfs volumes.
-*/
-typedef struct {
-    struct blk_desc * block_dev;
-    disk_partition_t * fs_partition;
-} UBOOT_DEV;
-static UBOOT_DEV gaDisk[REDCONF_VOLUME_COUNT];
-
-
-/** @brief Configure a block device.
-
-    @note   This is a non-standard block device API!  The standard block device
-            APIs are designed for implementations running on targets with block
-            devices that are known in advance and can be statically defined by
-            the implementation.  However, that model does not work well for
-            u-boot, so we implement this API to allow the name of the block
-            device to be specified at run-time.
-
-    @param bVolNum      The volume number of the volume to configure.
-    @param pszBDevSpec  Drive or file to associate with the volume.
-
-    @return A negated ::REDSTATUS code indicating the operation result.
-
-    @retval 0           Operation was successful.
-    @retval -RED_EINVAL @p bVolNum is not a valid volume number; or
-                        @p pszBDevSpec is `NULL` or an empty string.
-*/
-REDSTATUS RedOsBDevConfig2(
-    uint8_t bVolNum,
-    struct blk_desc * block_dev,
-    disk_partition_t * fs_partition)
-{
-    REDSTATUS ret = 0;
-
-
-    if(bVolNum >= REDCONF_VOLUME_COUNT)
-    {
-        ret = RED_EINVAL;
-    }
-    else
-    {
-        gaDisk[bVolNum].block_dev = block_dev;
-        gaDisk[bVolNum].fs_partition = fs_partition;
-    }
-
-
-    return ret;
-}
+BDEVINFO gaRedBdevInfo[REDCONF_VOLUME_COUNT];
 
 
 /** @brief Initialize a block device.
@@ -107,22 +51,115 @@ REDSTATUS RedOsBDevConfig2(
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
-    @retval -RED_EINVAL @p bVolNum is an invalid volume number; or the block
-                        device is already open.
+    @retval -RED_EINVAL @p bVolNum is an invalid volume number.
     @retval -RED_EIO    A disk I/O error occurred.
 */
-REDSTATUS RedOsBDevOpen(
+REDSTATUS RedBDevOpen(
     uint8_t         bVolNum,
     BDEVOPENMODE    mode)
 {
-    return 0;
+    REDSTATUS       ret;
+
+    if(bVolNum >= REDCONF_VOLUME_COUNT)
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        ret = RedOsBDevOpen(bVolNum, mode);
+    }
+
+    if(ret == 0)
+    {
+        BDEVINFO       *pBdevInfo = &gaRedBdevInfo[bVolNum];
+        const VOLCONF  *pVolConf = &gaRedVolConf[bVolNum];
+        BDEVINFO        info;
+
+        if(    (pVolConf->ullSectorCount == SECTOR_COUNT_AUTO)
+            || (pVolConf->ulSectorSize == SECTOR_SIZE_AUTO))
+        {
+            ret = RedOsBDevGetGeometry(bVolNum, &info);
+            if(ret == 0)
+            {
+                if(    (pVolConf->ullSectorCount != SECTOR_COUNT_AUTO)
+                    && (pVolConf->ullSectorCount != info.ullSectorCount))
+                {
+                    REDERROR();
+                    ret = -RED_EINVAL;
+                }
+                else if(    (pVolConf->ulSectorSize != SECTOR_COUNT_AUTO)
+                         && (pVolConf->ulSectorSize != info.ulSectorSize))
+                {
+                    REDERROR();
+                    ret = -RED_EINVAL;
+                }
+                else if(pVolConf->ullSectorOffset >= info.ullSectorCount)
+                {
+                    REDERROR();
+                    ret = -RED_EINVAL;
+                }
+                else
+                {
+                    *pBdevInfo = info;
+
+                    /*  Volumes which begin at a sector offset and are of
+                        automatically-detected size, extend from the sector
+                        offset to the end of the media.  The block device
+                        will return the total size of the media, so the
+                        adjustment happens here.
+                    */
+                    pBdevInfo->ullSectorCount -= pVolConf->ullSectorOffset;
+                }
+            }
+        }
+        else
+        {
+            pBdevInfo->ullSectorCount = pVolConf->ullSectorCount;
+            pBdevInfo->ulSectorSize = pVolConf->ulSectorSize;
+
+            /*  Query the geometry (if supported) to validate that the
+                statically configured geometry is compatible with the
+                block device.
+            */
+            ret = RedOsBDevGetGeometry(bVolNum, &info);
+            if(ret == 0)
+            {
+                if(!VOLUME_SECTOR_GEOMETRY_IS_VALID(bVolNum, info.ulSectorSize, info.ullSectorCount))
+                {
+                    /*  The statically configured geometry is incompatible with
+                        the reported geometry.
+                    */
+                    ret = -RED_EINVAL;
+                }
+            }
+            else if(ret == -RED_ENOTSUPP)
+            {
+                /*  Querying the geometry is not supported, so we can't
+                    validate it.
+                */
+                ret = 0;
+            }
+            else
+            {
+                /*  Unexpected error.
+                */
+            }
+        }
+
+        if(ret != 0)
+        {
+            (void)RedOsBDevClose(bVolNum);
+        }
+    }
+
+    return ret;
 }
 
 
 /** @brief Uninitialize a block device.
 
     This function is called when the file system no longer needs access to a
-    block device.  If any resource were allocated by RedOsBDevOpen() to service
+    block device.  If any resource were allocated by RedBDevOpen() to service
     block device requests, they should be freed at this time.
 
     Upon successful return, the block device must be in such a state that it
@@ -136,46 +173,21 @@ REDSTATUS RedOsBDevOpen(
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
-    @retval 0           Operation was successful.
-    @retval -RED_EINVAL @p bVolNum is an invalid volume number; or the block
-                        device is already open.
+    @retval 0       Operation was successful.
+    @retval -RED_EINVAL @p bVolNum is an invalid volume number.
 */
-REDSTATUS RedOsBDevClose(
+REDSTATUS RedBDevClose(
     uint8_t     bVolNum)
-{
-    return 0;
-}
-
-
-/** @brief Return the block device geometry.
-
-    The behavior of calling this function is undefined if the block device is
-    closed.
-
-    @param bVolNum  The volume number of the volume whose block device geometry
-                    is being queried.
-    @param pInfo    On successful return, populated with the geometry of the
-                    block device.
-
-    @return A negated ::REDSTATUS code indicating the operation result.
-
-    @retval -RED_EINVAL     @p bVolNum is an invalid volume number, or @p pInfo
-                            is `NULL`.
-    @retval -RED_ENOTSUPP   The geometry cannot be queried on this block device.
-*/
-REDSTATUS RedOsBDevGetGeometry(
-    uint8_t     bVolNum,
-    BDEVINFO   *pInfo)
 {
     REDSTATUS   ret;
 
-    if((bVolNum >= REDCONF_VOLUME_COUNT) || (pInfo == NULL))
+    if(bVolNum >= REDCONF_VOLUME_COUNT)
     {
         ret = -RED_EINVAL;
     }
     else
     {
-        ret = -RED_ENOTSUPP;
+        ret = RedOsBDevClose(bVolNum);
     }
 
     return ret;
@@ -201,22 +213,24 @@ REDSTATUS RedOsBDevGetGeometry(
                         refer to an invalid range of sectors.
     @retval -RED_EIO    A disk I/O error occurred.
 */
-REDSTATUS RedOsBDevRead(
+REDSTATUS RedBDevRead(
     uint8_t     bVolNum,
     uint64_t    ullSectorStart,
     uint32_t    ulSectorCount,
     void       *pBuffer)
 {
-    ulong count;
-    REDSTATUS ret = 0;
+    REDSTATUS   ret;
 
-
-    count = blk_dread(gaDisk[bVolNum].block_dev, ullSectorStart, ulSectorCount, pBuffer);
-    if(count != ulSectorCount)
+    if(    (bVolNum >= REDCONF_VOLUME_COUNT)
+        || !VOLUME_SECTOR_RANGE_IS_VALID(bVolNum, ullSectorStart, ulSectorCount)
+        || (pBuffer == NULL))
     {
-        ret = -RED_EIO;
+        ret = -RED_EINVAL;
     }
-
+    else
+    {
+        ret = RedOsBDevRead(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
+    }
 
     return ret;
 }
@@ -242,13 +256,26 @@ REDSTATUS RedOsBDevRead(
                         refer to an invalid range of sectors.
     @retval -RED_EIO    A disk I/O error occurred.
 */
-REDSTATUS RedOsBDevWrite(
+REDSTATUS RedBDevWrite(
     uint8_t     bVolNum,
     uint64_t    ullSectorStart,
     uint32_t    ulSectorCount,
     const void *pBuffer)
 {
-    return -RED_EINVAL;
+    REDSTATUS   ret;
+
+    if(    (bVolNum >= REDCONF_VOLUME_COUNT)
+        || !VOLUME_SECTOR_RANGE_IS_VALID(bVolNum, ullSectorStart, ulSectorCount)
+        || (pBuffer == NULL))
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        ret = RedOsBDevWrite(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
+    }
+
+    return ret;
 }
 
 
@@ -273,11 +300,21 @@ REDSTATUS RedOsBDevWrite(
     @retval -RED_EINVAL @p bVolNum is an invalid volume number.
     @retval -RED_EIO    A disk I/O error occurred.
 */
-REDSTATUS RedOsBDevFlush(
+REDSTATUS RedBDevFlush(
     uint8_t     bVolNum)
 {
-    return -RED_EINVAL;
+    REDSTATUS   ret;
+
+    if(bVolNum >= REDCONF_VOLUME_COUNT)
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        ret = RedOsBDevFlush(bVolNum);
+    }
+
+    return ret;
 }
 #endif /* REDCONF_READ_ONLY == 0 */
-
 

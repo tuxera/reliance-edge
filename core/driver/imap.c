@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -223,47 +223,49 @@ REDSTATUS RedImapAllocBlock(
     }
     else
     {
-        uint32_t ulStopBlock = gpRedMR->ulAllocNextBlock;
-        bool     fAllocated = false;
-
-        do
+        /*  Scan the imap for a block which is free.
+        */
+      #if (REDCONF_IMAP_INLINE == 1) && (REDCONF_IMAP_EXTERNAL == 1)
+        if(gpRedCoreVol->fImapInline)
         {
-            ALLOCSTATE state;
-
-            ret = RedImapBlockState(gpRedMR->ulAllocNextBlock, &state);
-            CRITICAL_ASSERT(ret == 0);
-
-            if(ret == 0)
-            {
-                if(state == ALLOCSTATE_FREE)
-                {
-                    ret = RedImapBlockSet(gpRedMR->ulAllocNextBlock, true);
-                    CRITICAL_ASSERT(ret == 0);
-
-                    *pulBlock = gpRedMR->ulAllocNextBlock;
-                    fAllocated = true;
-                }
-
-                /*  Increment the next block number, wrapping it when the end of
-                    the volume is reached.
-                */
-                gpRedMR->ulAllocNextBlock++;
-                if(gpRedMR->ulAllocNextBlock == gpRedVolume->ulBlockCount)
-                {
-                    gpRedMR->ulAllocNextBlock = gpRedCoreVol->ulFirstAllocableBN;
-                }
-            }
+            ret = RedImapIBlockFindFree(gpRedMR->ulAllocNextBlock, pulBlock);
         }
-        while((ret == 0) && !fAllocated && (gpRedMR->ulAllocNextBlock != ulStopBlock));
-
-        if((ret == 0) && !fAllocated)
+        else
         {
-            /*  The free block count was already determined to be non-zero, no
-                error occurred while looking for free blocks, but no free blocks
-                were found.  This indicates metadata corruption.
+            ret = RedImapEBlockFindFree(gpRedMR->ulAllocNextBlock, pulBlock);
+        }
+      #elif REDCONF_IMAP_INLINE == 1
+        ret = RedImapIBlockFindFree(gpRedMR->ulAllocNextBlock, pulBlock);
+      #else
+        ret = RedImapEBlockFindFree(gpRedMR->ulAllocNextBlock, pulBlock);
+      #endif
+
+        if(ret == 0)
+        {
+            gpRedMR->ulAllocNextBlock = *pulBlock + 1U;
+            if(gpRedMR->ulAllocNextBlock == gpRedVolume->ulBlockCount)
+            {
+                gpRedMR->ulAllocNextBlock = gpRedCoreVol->ulFirstAllocableBN;
+            }
+
+            /*  Mark the free block as allocated.
+            */
+            ret = RedImapBlockSet(*pulBlock, true);
+            CRITICAL_ASSERT(ret == 0);
+        }
+        else if(ret == -RED_ENOSPC)
+        {
+            /*  An ENOSPC error indicates metadata corruption.  The free block
+                count is greater than zero, but scanning the imaps failed to
+                find any free blocks.
             */
             CRITICAL_ERROR();
-            ret = -RED_EFUBAR;
+            ret = -RED_EIO;
+        }
+        else
+        {
+            /*  Other errors are propagated.
+            */
         }
     }
 

@@ -8,6 +8,7 @@
 
 # Objects necessary (in some configuration) to build the file system driver.
 REDDRIVOBJ=								\
+	$(P_BASEDIR)/bdev/bdev.$(B_OBJEXT)				\
 	$(P_BASEDIR)/core/driver/blockio.$(B_OBJEXT)			\
 	$(P_BASEDIR)/core/driver/buffer.$(B_OBJEXT)			\
 	$(P_BASEDIR)/core/driver/core.$(B_OBJEXT)			\
@@ -70,12 +71,13 @@ REDPROJHDR=
 endif
 
 REDHDR=							\
-	$(P_BASEDIR)/include/redfs.h			\
 	$(P_BASEDIR)/include/redapimacs.h		\
+	$(P_BASEDIR)/include/redbdev.h			\
 	$(P_BASEDIR)/include/redcoreapi.h		\
 	$(P_BASEDIR)/include/reddeviations.h		\
 	$(P_BASEDIR)/include/rederrno.h			\
 	$(P_BASEDIR)/include/redexclude.h		\
+	$(P_BASEDIR)/include/redfs.h			\
 	$(P_BASEDIR)/include/redfse.h			\
 	$(P_BASEDIR)/include/redgetopt.h		\
 	$(P_BASEDIR)/include/redmacs.h			\
@@ -114,6 +116,7 @@ REDDISKFULLTESTHDR=					\
 	$(REDTESTHDR)					\
 	$(P_BASEDIR)/tests/disk_full/redtdiskfullprotos.h
 
+$(P_BASEDIR)/bdev/bdev.$(B_OBJEXT):				$(P_BASEDIR)/bdev/bdev.c $(REDHDR)
 $(P_BASEDIR)/core/driver/blockio.$(B_OBJEXT):			$(P_BASEDIR)/core/driver/blockio.c $(REDCOREHDR)
 $(P_BASEDIR)/core/driver/buffer.$(B_OBJEXT):			$(P_BASEDIR)/core/driver/buffer.c $(REDCOREHDR)
 $(P_BASEDIR)/core/driver/core.$(B_OBJEXT):			$(P_BASEDIR)/core/driver/core.c $(REDCOREHDR)

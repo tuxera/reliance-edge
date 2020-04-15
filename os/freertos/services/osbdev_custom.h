@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -103,6 +103,39 @@ static REDSTATUS DiskClose(
     (void)bVolNum;
 
     /*  Insert code here to close/deinitialize the block device.
+    */
+    REDERROR();
+    ret = -RED_ENOSYS;
+
+    return ret;
+}
+
+
+/** @brief Return the disk geometry.
+
+    @param bVolNum  The volume number of the volume whose block device geometry
+                    is being queried.
+    @param pInfo    On successful return, populated with the geometry of the
+                    block device.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0               Operation was successful.
+    @retval -RED_EIO        A disk I/O or driver error occurred.
+    @retval -RED_ENOTSUPP   The geometry cannot be queried on this block device.
+*/
+static REDSTATUS DiskGetGeometry(
+    uint8_t     bVolNum,
+    BDEVINFO   *pInfo)
+{
+    REDSTATUS   ret;
+
+    /*  Avoid warnings about unused function parameters.
+    */
+    (void)bVolNum;
+    (void)pInfo;
+
+    /*  Insert code here to read the block device geometry.
     */
     REDERROR();
     ret = -RED_ENOSYS;

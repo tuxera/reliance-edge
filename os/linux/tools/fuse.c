@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -161,7 +161,7 @@ static void show_help(
 "Reliance Edge specific options:\n"
 "    --vol=volumeID             A volume number (e.g., 2) or a volume path\n"
 "                               prefix (e.g., VOL1: or /data) of the volume to\n"
-"                               mount.  Manatory if Reliance Edge is configured\n"
+"                               mount.  Mandatory if Reliance Edge is configured\n"
 "                               with multiple volumes.\n"
 "    --dev=devname, -D devname  Specifies the device name.  This can be the\n"
 "                               path and name of a file disk (e.g., red.bin);\n"
@@ -401,10 +401,10 @@ static int fuse_red_mkdir(
 
     return result;
   #else
-    (void)path;
+    (void)pszPath;
     (void)mode;
 
-    return -ENOSYS
+    return -ENOSYS;
   #endif
 }
 
@@ -432,9 +432,9 @@ static int fuse_red_unlink(
 
     return result;
   #else
-    (void)path;
+    (void)pszPath;
 
-    return -ENOSYS
+    return -ENOSYS;
   #endif
 }
 
@@ -462,10 +462,9 @@ static int fuse_red_rmdir(
 
     return result;
   #else
-    (void)path;
-    (void)mode;
+    (void)pszPath;
 
-    return -ENOSYS
+    return -ENOSYS;
   #endif
 }
 
@@ -500,10 +499,10 @@ static int fuse_red_rename(
 
     return result;
   #else
-    (void) from;
-    (void) to;
+    (void)pszOldPath;
+    (void)pszNewPath;
 
-    return -ENOSYS
+    return -ENOSYS;
   #endif
 }
 
@@ -538,10 +537,10 @@ static int fuse_red_link(
 
     return result;
   #else
-    (void) from;
-    (void) to;
+    (void)pszOldPath;
+    (void)pszNewPath;
 
-    return -ENOSYS
+    return -ENOSYS;
   #endif
 }
 
@@ -594,10 +593,10 @@ static int fuse_red_truncate(
 
     return result;
   #else
-    (void) path;
-    (void) size;
+    (void)pszPath;
+    (void)size;
 
-    return -ENOSYS
+    return -ENOSYS;
   #endif
 }
 
@@ -719,7 +718,7 @@ static int fuse_red_write(
     (void)offset;
     (void)pFileInfo;
 
-    return -ENOSYS
+    return -ENOSYS;
   #endif
 }
 
@@ -880,7 +879,7 @@ static int fuse_red_readdir(
     (void)offset;
     (void)pFileInfo;
 
-    return -ENOSYS
+    return -ENOSYS;
   #endif
 }
 
@@ -996,7 +995,7 @@ static int fuse_red_ftruncate(
     (void)size;
     (void)pFileInfo;
 
-    return -ENOSYS
+    return -ENOSYS;
   #endif
 }
 

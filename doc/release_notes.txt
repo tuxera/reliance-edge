@@ -9,6 +9,63 @@ course of recent releases and a list of known issues.
 
 Release History and Changes
 
+Reliance Edge v2.5, April 2020
+
+Common Code Changes
+
+-   By popular demand, implement support for automatically detecting the
+    sector count and sector size at run-time, as an alternative to
+    specifying those values at compile-time.
+    -   This change is backward compatible with old redconf.c/redconf.h
+        configuration files, which will continue to work as before. The
+        configuration files only need to be updated if enabling this new
+        feature is desired. To enable the feature, download the v2.5
+        version of the Reliance Edge Configuration Utility and select
+        the "Auto" checkbox for the sector count or sector size.
+    -   Related to this change, a new file has been added to Reliance
+        Edge: bdev/bdev.c. If you have your own build system or project
+        which lists all the Reliance Edge source files, please update it
+        to include this new file.
+    -   The block device OS service (osbdev.c) has a new API to query
+        the sector count and sector size: RedOsBDevGetGeometry(). If you
+        implemented your own version of osbdev.c for a previous version
+        of Reliance Edge, to update to v2.5 you must add an implemention
+        of this new API. See os/stub/services/osbdev.c for a template.
+        If you do not need the new feature, the API can be stubbed to
+        return -RED_ENOTSUPP.
+-   Implement a block allocation optimization that improves write
+    performance in some circumstances.
+-   Add red_umount2() to the POSIX-like API. It is similar to
+    red_umount() except that unmount flags can be specified. A flag is
+    provided to force an unmount even if there are open handles.
+
+FreeRTOS Port Changes
+
+-   Remove the F_DRIVER example implementation of the block device
+    service, which was deemed obsolete because support for FAT SL was
+    removed in FreeRTOS v10.
+
+INTEGRITY Port Changes
+
+-   Implement support for the MNT_RDONLY and MNT_NOTRIM flags, used with
+    the mount() system call.
+-   Implement support for the MNT_FORCE flag in the unmount() system
+    call, which has the effect of forcing an unmount even if there are
+    open handles.
+-   Calling mount() when Reliance Edge is already mounted now fails and
+    sets errno to EBUSY; whereas previously it did nothing and returned
+    success. The new behavior is consistent with the behavior of the
+    native file systems.
+-   If mount() or unmount() is passed a mount point with extraneous
+    trailing path separators, they now fail and set errno to EINVAL.
+    This fixes a bug where using trailing path separators would seem to
+    succeed, but the VFS would fail to update the mount point array
+    correctly, which could cause problems for subsequent operations.
+
+FUSE Port Changes
+
+-   Fix build errors in non-default configurations.
+
 Reliance Edge v2.4, November 2019
 
 Common Code Changes

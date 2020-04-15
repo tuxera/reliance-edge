@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -447,41 +447,49 @@ Validity validateVolSectorSize(unsigned long value, QString &msg)
 ///
 Validity validateVolSectorCount(unsigned long value, QString &msg)
 {
-
-    unsigned long sectorSize = volumeSettings
-                                ->GetVolumes()
-                                ->at(volumeSettings->GetCurrentIndex())
-                                ->GetStSectorSize()
-                                ->GetValue();
+    VolumeSettings::Volume *currVolume = volumeSettings->GetVolumes()->at(volumeSettings->GetCurrentIndex());
+	bool isAutoSize = currVolume->IsAutoSectorSize();
+    unsigned long sectorSize = currVolume->GetStSectorSize()->GetValue();
     unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
 
     // Avoid division by 0
-    if(blockSize == 0 || sectorSize == 0 || blockSize < sectorSize)
+    if(blockSize == 0 || (!isAutoSize && blockSize < sectorSize))
     {
         msg = "Invalid block or sector size; cannot validate volume size.";
         return Warning;
     }
 
-    if((value / (blockSize / sectorSize)) < 5)
+    if(isAutoSize)
     {
-        msg = "Volume must be the size of at least 5 blocks.";
-        return Invalid;
+        if(value < 5)
+        {
+            msg = "Volume must be the size of at least 5 sectors.";
+            return Invalid;
+        }
+    }
+    else
+    {
+        if((value / (blockSize / sectorSize)) < 5)
+        {
+            msg = "Volume must be the size of at least 5 blocks.";
+            return Invalid;
+        }
+
+        Q_ASSERT(volumeSettings != NULL);
+        qulonglong maxSectors = getVolSizeMaxBytes() / sectorSize;
+
+        if(static_cast<qulonglong>(value) > maxSectors)
+        {
+            msg = "Volume size too large. Try selecting a higher block size. See Info tab for limits.";
+            return Invalid;
+        }
     }
 
-    Q_ASSERT(volumeSettings != NULL);
-    qulonglong maxSectors = getVolSizeMaxBytes() / sectorSize;
-
-    if(static_cast<qulonglong>(value) > maxSectors)
-    {
-        msg = "Volume size too large. Try selecting a higher block size. See Info tab for limits.";
-        return Invalid;
-    }
-
-    else return Valid;
+    return Valid;
 }
 
 ///
-/// \brief  Validator for a VolumeSettings::Volume::stSectorCount.
+/// \brief  Validator for a VolumeSettings::Volume::stSectorOff.
 ///
 ///         Assumes the validator is being run on the volume at
 ///         volumeSettings::activeIndex. Requires ::allSettings and
@@ -490,17 +498,15 @@ Validity validateVolSectorCount(unsigned long value, QString &msg)
 Validity validateVolSectorOff(unsigned long value, QString &msg)
 {
     (void)value;
-    unsigned long sectorSize = volumeSettings
-                                ->GetVolumes()
-                                ->at(volumeSettings->GetCurrentIndex())
-                                ->GetStSectorSize()
-                                ->GetValue();
+    VolumeSettings::Volume *currVolume = volumeSettings->GetVolumes()->at(volumeSettings->GetCurrentIndex());
+	bool isAutoSize = currVolume->IsAutoSectorSize();
+    unsigned long sectorSize = currVolume->GetStSectorSize()->GetValue();
     unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
 
     // Avoid division by 0
-    if(blockSize == 0 || sectorSize == 0 || blockSize < sectorSize)
+    if(blockSize == 0 || (!isAutoSize && blockSize < sectorSize))
     {
-        msg = "Invalid block or sector size; cannot validate volume size.";
+        msg = "Invalid block or sector size; cannot validate volume offset.";
         return Warning;
     }
 	else
@@ -525,6 +531,8 @@ Validity validateVolInodeCount(unsigned long value, QString &msg)
     }
 
     VolumeSettings::Volume *currVolume = volumeSettings->GetVolumes()->at(volumeSettings->GetCurrentIndex());
+	bool isAutoSize = currVolume->IsAutoSectorSize();
+	bool isAutoCount = currVolume->IsAutoSectorCount();
 
     bool imapExternal = currVolume->NeedsExternalImap();
     unsigned long sectorSize = currVolume->GetStSectorSize()->GetValue();
@@ -532,45 +540,48 @@ Validity validateVolInodeCount(unsigned long value, QString &msg)
     unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
 
     // Avoid division by 0
-    if(blockSize == 0 || sectorSize == 0 || blockSize < sectorSize)
+    if(blockSize == 0 || (!isAutoSize && blockSize < sectorSize))
     {
         msg = "Invalid block or sector size; cannot validate inode count.";
         return Warning;
     }
 
-    unsigned long blockCount = sectorCount / (blockSize / sectorSize);
-
-    // Number of bits in a block after subtracting the node header size.
-    unsigned long imapnodeEntries = (blockSize - 16) * 8;
-
-    unsigned long inodeTableStartBN; // BN = Block Number
-
-    if(imapExternal)
+    if(!isAutoCount && !isAutoSize)
     {
-        int imapNodeCount = 1;
-        while(((blockCount - 3) - (imapNodeCount * 2)) > (imapnodeEntries * imapNodeCount))
+        unsigned long blockCount = sectorCount / (blockSize / sectorSize);
+
+        // Number of bits in a block after subtracting the node header size.
+        unsigned long imapnodeEntries = (blockSize - 16) * 8;
+
+        unsigned long inodeTableStartBN; // BN = Block Number
+
+        if(imapExternal)
         {
-            imapNodeCount++;
+            int imapNodeCount = 1;
+            while(((blockCount - 3) - (imapNodeCount * 2)) > (imapnodeEntries * imapNodeCount))
+            {
+                imapNodeCount++;
+            }
+
+            // Imap start block number + number of imap blocks
+            inodeTableStartBN = 3 + (imapNodeCount * 2);
+        }
+        else
+        {
+            inodeTableStartBN = 3;
         }
 
-        // Imap start block number + number of imap blocks
-        inodeTableStartBN = 3 + (imapNodeCount * 2);
-    }
-    else
-    {
-        inodeTableStartBN = 3;
-    }
+        // Number of inode blocks past starting point must fit within block count
+        if((inodeTableStartBN + value * 2) > blockCount)
+        {
+            unsigned long currMax = ((long)blockCount - (long)inodeTableStartBN > 0 ?
+                                     (blockCount - inodeTableStartBN) / 2 : 0);
 
-    // Number of inode blocks past starting point must fit within block count
-    if((inodeTableStartBN + value * 2) > blockCount)
-    {
-        unsigned long currMax = ((long)blockCount - (long)inodeTableStartBN > 0 ?
-                                 (blockCount - inodeTableStartBN) / 2 : 0);
-
-        msg = QString("Inode count too high; limited by sector count. Current max: ")
-                + QString::number(currMax)
-                + QString(".");
-        return Invalid;
+            msg = QString("Inode count too high; limited by sector count. Current max: ")
+                    + QString::number(currMax)
+                    + QString(".");
+            return Invalid;
+        }
     }
 
     return Valid;

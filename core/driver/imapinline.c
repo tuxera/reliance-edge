@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -127,7 +127,90 @@ REDSTATUS RedImapIBlockSet(
 
     return ret;
 }
-#endif
+
+
+/** @brief Scan the imap for a free block.
+
+    @param ulBlock      The block at which to start the search.
+    @param pulFreeBlock On success, populated with the found free block.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL @p ulBlock is out of range; or @p pulFreeBlock is
+                        `NULL`.
+    @retval -RED_ENOSPC No free block was found.
+*/
+REDSTATUS RedImapIBlockFindFree(
+    uint32_t    ulBlock,
+    uint32_t   *pulFreeBlock)
+{
+    REDSTATUS   ret;
+
+    if(    (!gpRedCoreVol->fImapInline)
+        || (ulBlock < gpRedCoreVol->ulFirstAllocableBN)
+        || (ulBlock >= gpRedVolume->ulBlockCount)
+        || (pulFreeBlock == NULL))
+    {
+        REDERROR();
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        const uint8_t  *pbBmpCurMR = gpRedCoreVol->aMR[gpRedCoreVol->bCurMR].abEntries;
+        const uint8_t  *pbBmpCmtMR = gpRedCoreVol->aMR[1U - gpRedCoreVol->bCurMR].abEntries;
+        uint32_t        ulSearchBlock = ulBlock;
+
+        /*  Default to an ENOSPC error, which will be returned if we search
+            every allocable block without finding a free block.
+        */
+        ret = -RED_ENOSPC;
+
+        do
+        {
+            /*  Blocks before the inode table aren't included in the bitmap.
+            */
+            uint32_t ulBmpIdx = ulSearchBlock - gpRedCoreVol->ulInodeTableStartBN;
+
+            /*  As an optimization to reduce the number of RedBitGet() calls, if
+                all eight blocks in the current byte are allocated, then skip
+                to the next byte.
+            */
+            if(((ulBmpIdx & 7U) == 0U) && (pbBmpCurMR[ulBmpIdx >> 3U] == UINT8_MAX))
+            {
+                ulSearchBlock += REDMIN(8U, gpRedVolume->ulBlockCount - ulSearchBlock);
+            }
+            else
+            {
+                /*  If the block is free in the working state...
+                */
+                if(!RedBitGet(pbBmpCurMR, ulBmpIdx))
+                {
+                    /*  If the block is free in the committed state...
+                    */
+                    if(!RedBitGet(pbBmpCmtMR, ulBmpIdx))
+                    {
+                        /*  Found a free block.
+                        */
+                        *pulFreeBlock = ulSearchBlock;
+                        ret = 0;
+                        break;
+                    }
+                }
+
+                ulSearchBlock++;
+            }
+
+            if(ulSearchBlock == gpRedVolume->ulBlockCount)
+            {
+                ulSearchBlock = gpRedCoreVol->ulFirstAllocableBN;
+            }
+        } while(ulSearchBlock != ulBlock);
+    }
+
+    return ret;
+}
+#endif /* REDCONF_READ_ONLY == 0 */
 
 #endif /* REDCONF_IMAP_INLINE == 1 */
 

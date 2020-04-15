@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -29,6 +29,7 @@
 
 #include <redfs.h>
 #include <redvolume.h>
+#include <redbdev.h>
 #include <redosdeviations.h>
 
 
@@ -58,22 +59,6 @@
     This option is only available in commercial releases of Reliance Edge.
 */
 #define BDEV_FLASHFX        (1U)
-
-/** @brief The F_DRIVER example implementation.
-
-    This implementation is designed to reuse an existing block device driver
-    that was written for FreeRTOS+FAT SL.  If you have such a driver, with
-    little work it can be "dropped in" and used for Reliance Edge.  The only
-    customization required is that gpfnRedOsBDevInit needs to be defined and
-    pointed at the F_DRIVERINIT function.  This can be done in this module or in
-    another C file.
-
-    The disadantage of using the FreeRTOS F_DRIVER functions is that they only
-    support single-sector reads and writes.  Reliance Edge will issue
-    multi-sector requests, and servicing these one sector at a time will
-    significantly slow down the file system.
-*/
-#define BDEV_F_DRIVER       (2U)
 
 /** @brief The FatFs example implementation.
 
@@ -127,7 +112,6 @@
     Must be one of:
     - #BDEV_CUSTOM
     - #BDEV_FLASHFX
-    - #BDEV_F_DRIVER
     - #BDEV_FATFS
     - #BDEV_ATMEL_SDMMC
     - #BDEV_STM32_SDIO
@@ -148,8 +132,6 @@
     #error "FlashFX block device only supported in commercial versions of Reliance Edge."
   #endif
   #include "osbdev_flashfx.h"
-#elif BDEV_EXAMPLE_IMPLEMENTATION == BDEV_F_DRIVER
-  #include "osbdev_fdriver.h"
 #elif BDEV_EXAMPLE_IMPLEMENTATION == BDEV_FATFS
   #include "osbdev_fatfs.h"
 #elif BDEV_EXAMPLE_IMPLEMENTATION == BDEV_ATMEL_SDMMC
@@ -235,6 +217,43 @@ REDSTATUS RedOsBDevClose(
     else
     {
         ret = DiskClose(bVolNum);
+    }
+
+    return ret;
+}
+
+
+/** @brief Return the block device geometry.
+
+    The behavior of calling this function is undefined if the block device is
+    closed.
+
+    @param bVolNum  The volume number of the volume whose block device geometry
+                    is being queried.
+    @param pInfo    On successful return, populated with the geometry of the
+                    block device.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0               Operation was successful.
+    @retval -RED_EINVAL     @p bVolNum is an invalid volume number, or @p pInfo
+                            is `NULL`.
+    @retval -RED_EIO        A disk I/O error occurred.
+    @retval -RED_ENOTSUPP   The geometry cannot be queried on this block device.
+*/
+REDSTATUS RedOsBDevGetGeometry(
+    uint8_t     bVolNum,
+    BDEVINFO   *pInfo)
+{
+    REDSTATUS   ret;
+
+    if((bVolNum >= REDCONF_VOLUME_COUNT) || (pInfo == NULL))
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        ret = DiskGetGeometry(bVolNum, pInfo);
     }
 
     return ret;

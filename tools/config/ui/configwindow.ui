@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>370</width>
+    <width>411</width>
     <height>553</height>
    </rect>
   </property>
@@ -68,7 +68,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>350</width>
+             <width>403</width>
              <height>790</height>
             </rect>
            </property>
@@ -1020,7 +1020,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>366</width>
+             <width>403</width>
              <height>489</height>
             </rect>
            </property>
@@ -1236,10 +1236,20 @@
                      <item>
                       <widget class="QLabel" name="label_17">
                        <property name="toolTip">
-                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This is the sector size of the storage medium underlying the volume being configured. The sector size is the unit for reads and writes to the storage medium; while the file system allocates in terms of blocks, the block numbers and counts are converted to sector numbers and counts before being passed into the block device service.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; The correct value here is the sector size of the storage medium. For example, if the storage medium underlying the volume has 512 byte sectors, this should be set to 512. The most common value here will be 512.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This is the sector size of the storage medium underlying the volume being configured. The sector size is the unit for reads and writes to the storage medium; while the file system allocates in terms of blocks, the block numbers and counts are converted to sector numbers and counts before being passed into the block device service.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; The correct value here is the sector size of the storage medium. For example, if the storage medium underlying the volume has 512 byte sectors, this should be set to 512. The most common value here will be 512.  Supported values are powers-of-two between 128 and 65536, inclusive.&lt;/p&gt;&lt;p&gt;If "Auto" is selected, the redconf.c will have a placeholder value (SECTOR_SIZE_AUTO) as its sector size and RedOsBDevGetGeometry() will be used at run-time to query the sector size.  This will work so long as RedOsBDevGetGeometry() has been implemented, which it is for the pre-ported RTOSes.  However, note that "Auto" is unsupported with RAM disks provided as part of Reliance Edge, so for those the sector size must be explicitly specified.&lt;/p&gt;&lt;p&gt;The "Auto" option is valuable in situations where the sector size is not known in advance.  For example, all eMMC parts default to a 512-byte sector size but some of them can be configured to switch to a 4096-byte sector size.  The "Auto" option would allow the same configuration to work with either sector size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                        </property>
                        <property name="text">
-                        <string>Sector size:</string>
+                        <string> Sector size:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="cbSectorSizeAuto">
+                       <property name="text">
+                        <string>Auto</string>
+                       </property>
+                       <property name="checked">
+                        <bool>false</bool>
                        </property>
                       </widget>
                      </item>
@@ -1354,10 +1364,20 @@
                        <item>
                         <widget class="QLabel" name="label_9">
                          <property name="toolTip">
-                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This is the size of the volume, in units of sectors.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; To set this value correctly, you need to know the exact size of your storage media. For example, if your medium is an SD card which is about 2 GB and you assume the sector count is 4194304, this will result in errors if the SD card is actually 1.86 GB with 3900702 sectors. This information may be available in the datasheet for your storage medium; with SD and eMMC, the sector count can be derived from values in the CSD (Card-Specific Data) register.&lt;/p&gt;&lt;p&gt;If you are using partitioning on your storage media, then the sector count should be the size of the partion which will underlie the volume, rather than the size of the entire storage device.&lt;/p&gt;&lt;p&gt;For more information, see the &amp;quot;Product Configuration&amp;quot; chapter of the Reliance Edge Developer's Guide.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This is the size of the volume, in units of sectors.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; Selecting "Auto" is often the correct choice, since it provides more flexibility and avoids the hassle of manually determining the sector count of the storage device.  When "Auto" is selected, the redconf.c will have a placeholder value (SECTOR_COUNT_AUTO) as its sector count and RedOsBDevGetGeometry() will be used at run-time to query the sector count.  This will work so long as RedOsBDevGetGeometry() has been implemented, which it is for the pre-ported RTOSes.  The one downside to using "Auto" is that it may slightly increase the code size, relative to what it would have been if the sector count was explicitly configured.  Also note that "Auto" is unsupported for RAM disks provided as part of Reliance Edge, so for those the sector count must be explicitly specified.  For a file disks provided as part of Reliance Edge, "Auto" is only supported if the file disk already exists, since the file size will be used to determine the sector count.&lt;/p&gt;&lt;p&gt;Otherwise, to set this sector count explicitly, you need to know the exact size of your storage media. For example, if your medium is an SD card which is about 2 GB and you assume the sector count is 4194304, this will result in errors if the SD card is actually 1.86 GB with 3900702 sectors. This information may be available in the datasheet for your storage medium; with SD and eMMC, the sector count can be derived from values in the CSD (Card-Specific Data) register.&lt;/p&gt;&lt;p&gt;If you are using partitioning on your storage media, then the sector count should be the size of the partion which will underlie the volume, rather than the size of the entire storage device.&lt;/p&gt;&lt;p&gt;For more information, see the &amp;quot;Product Configuration&amp;quot; chapter of the Reliance Edge Developer's Guide.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                          </property>
                          <property name="text">
                           <string>Volume size:</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QCheckBox" name="cbVolSizeAuto">
+                         <property name="text">
+                          <string>Auto</string>
+                         </property>
+                         <property name="checked">
+                          <bool>false</bool>
                          </property>
                         </widget>
                        </item>
@@ -2076,7 +2096,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>364</width>
+             <width>403</width>
              <height>503</height>
             </rect>
            </property>
@@ -2652,7 +2672,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>364</width>
+             <width>403</width>
              <height>503</height>
             </rect>
            </property>
@@ -3028,7 +3048,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>364</width>
+             <width>403</width>
              <height>503</height>
             </rect>
            </property>
@@ -3304,7 +3324,7 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>364</width>
+             <width>403</width>
              <height>503</height>
             </rect>
            </property>
@@ -3504,7 +3524,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>370</width>
+     <width>411</width>
      <height>21</height>
     </rect>
    </property>

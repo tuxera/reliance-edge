@@ -134,6 +134,11 @@
 			<locationURI>STM32CubeFWPath/Middlewares/Third_Party/FreeRTOS/Source/timers.c</locationURI>
 		</link>
 		<link>
+			<name>RelianceEdge/bdev.c</name>
+			<type>1</type>
+			<locationURI>REDFS_SRC_PATH/bdev/bdev.c</locationURI>
+		</link>
+		<link>
 			<name>RelianceEdge/bitmap.c</name>
 			<type>1</type>
 			<locationURI>REDFS_SRC_PATH/util/bitmap.c</locationURI>

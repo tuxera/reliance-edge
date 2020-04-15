@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2019 Datalight, Inc.
+                   Copyright (c) 2014-2020 Datalight, Inc.
                        All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -28,13 +28,7 @@
 #include <redfs.h>
 #include <redcoreapi.h>
 #include <redcore.h>
-
-
-/*  Minimum number of blocks needed for metadata on any volume: the master
-    block (1), the two metaroots (2), and one doubly-allocated inode (2),
-    resulting in 1 + 2 + 2 = 5.
-*/
-#define MINIMUM_METADATA_BLOCKS (5U)
+#include <redbdev.h>
 
 
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1)
@@ -108,20 +102,17 @@ REDSTATUS RedCoreInit(void)
 
     for(bVolNum = 0U; bVolNum < REDCONF_VOLUME_COUNT; bVolNum++)
     {
-        VOLUME         *pVol = &gaRedVolume[bVolNum];
-        COREVOLUME     *pCoreVol = &gaCoreVol[bVolNum];
         const VOLCONF  *pVolConf = &gaRedVolConf[bVolNum];
 
-        if(    (pVolConf->ulSectorSize < SECTOR_SIZE_MIN)
-            || ((REDCONF_BLOCK_SIZE % pVolConf->ulSectorSize) != 0U)
-            || ((UINT64_MAX - pVolConf->ullSectorOffset) < pVolConf->ullSectorCount) /* SectorOffset + SectorCount must not wrap */
-            || (pVolConf->ulInodeCount == 0U))
+        if(pVolConf->ulInodeCount == 0U)
         {
+            REDERROR();
             ret = -RED_EINVAL;
         }
       #if REDCONF_API_POSIX == 1
         else if(pVolConf->pszPathPrefix == NULL)
         {
+            REDERROR();
             ret = -RED_EINVAL;
         }
         else
@@ -138,111 +129,23 @@ REDSTATUS RedCoreInit(void)
 
                 if(RedStrCmp(pVolConf->pszPathPrefix, pszCmpPathPrefix) == 0)
                 {
+                    REDERROR();
                     ret = -RED_EINVAL;
                     break;
                 }
             }
           #endif
         }
-      #endif
-
-        if(ret == 0)
-        {
-            pVol->bBlockSectorShift = 0U;
-            while((pVolConf->ulSectorSize << pVol->bBlockSectorShift) < REDCONF_BLOCK_SIZE)
-            {
-                pVol->bBlockSectorShift++;
-            }
-
-            /*  This should always be true since the block size is confirmed to
-                be a power of two (checked at compile time) and above we ensured
-                that (REDCONF_BLOCK_SIZE % pVolConf->ulSectorSize) == 0.
-            */
-            REDASSERT((pVolConf->ulSectorSize << pVol->bBlockSectorShift) == REDCONF_BLOCK_SIZE);
-
-            pVol->ulBlockCount = (uint32_t)(pVolConf->ullSectorCount >> pVol->bBlockSectorShift);
-
-            if(pVol->ulBlockCount < MINIMUM_METADATA_BLOCKS)
-            {
-                ret = -RED_EINVAL;
-            }
-            else
-            {
-              #if REDCONF_READ_ONLY == 0
-                pVol->ulTransMask = REDCONF_TRANSACT_DEFAULT;
-              #endif
-
-                pVol->ullMaxInodeSize = INODE_SIZE_MAX;
-
-                /*  To understand the following code, note that the fixed-
-                    location metadata is located at the start of the disk, in
-                    the following order:
-
-                    - Master block (1 block)
-                    - Metaroots (2 blocks)
-                    - External imap blocks (variable * 2 blocks)
-                    - Inode blocks (pVolConf->ulInodeCount * 2 blocks)
-                */
-
-                /*  The imap needs bits for all inode and allocable blocks.  If
-                    that bitmap will fit into the metaroot, the inline imap is
-                    used and there are no imap nodes on disk.  The minus 3 is
-                    there since the imap does not include bits for the master
-                    block or metaroots.
-                */
-                pCoreVol->fImapInline = (pVol->ulBlockCount - 3U) <= METAROOT_ENTRIES;
-
-                if(pCoreVol->fImapInline)
-                {
-                  #if REDCONF_IMAP_INLINE == 1
-                    pCoreVol->ulInodeTableStartBN = 3U;
-                  #else
-                    ret = -RED_EINVAL;
-                  #endif
-                }
-                else
-                {
-                  #if REDCONF_IMAP_EXTERNAL == 1
-                    pCoreVol->ulImapStartBN = 3U;
-
-                    /*  The imap does not include bits for itself, so add two to
-                        the number of imap entries for the two blocks of each
-                        imap node.  This allows us to divide up the remaining
-                        space, making sure to round up so all data blocks are
-                        covered.
-                    */
-                    pCoreVol->ulImapNodeCount =
-                        ((pVol->ulBlockCount - 3U) + ((IMAPNODE_ENTRIES + 2U) - 1U)) / (IMAPNODE_ENTRIES + 2U);
-
-                    pCoreVol->ulInodeTableStartBN = pCoreVol->ulImapStartBN + (pCoreVol->ulImapNodeCount * 2U);
-                  #else
-                    ret = -RED_EINVAL;
-                  #endif
-                }
-            }
-        }
-
-        if(ret == 0)
-        {
-            pCoreVol->ulFirstAllocableBN = pCoreVol->ulInodeTableStartBN + (pVolConf->ulInodeCount * 2U);
-
-            if(pCoreVol->ulFirstAllocableBN > pVol->ulBlockCount)
-            {
-                /*  We can get here if there is not enough space for the number
-                    of configured inodes.
-                */
-                ret = -RED_EINVAL;
-            }
-            else
-            {
-                pVol->ulBlocksAllocable = pVol->ulBlockCount - pCoreVol->ulFirstAllocableBN;
-            }
-        }
+      #endif /* REDCONF_API_POSIX == 1 */
 
         if(ret != 0)
         {
             break;
         }
+
+      #if REDCONF_READ_ONLY == 0
+        gaRedVolume[bVolNum].ulTransMask = REDCONF_TRANSACT_DEFAULT;
+      #endif
     }
 
     /*  Make sure the configured endianness is correct.
@@ -260,6 +163,7 @@ REDSTATUS RedCoreInit(void)
         if(abBytes[0U] != 0x00U)
       #endif
         {
+            REDERROR();
             ret = -RED_EINVAL;
         }
     }
@@ -433,7 +337,7 @@ REDSTATUS RedCoreVolUnmount(void)
 
     if(ret == 0)
     {
-        ret = RedOsBDevClose(gbRedVolNum);
+        ret = RedBDevClose(gbRedVolNum);
     }
 
     if(ret == 0)
@@ -1255,7 +1159,8 @@ REDSTATUS RedCoreLookup(
     @retval -RED_EEXIST         #REDCONF_RENAME_POSIX is false and the
                                 destination name exists.
     @retval -RED_EINVAL         The volume is not mounted; @p pszSrcName is
-                                `NULL`; or @p pszDstName is `NULL`.
+                                `NULL`; or @p pszDstName is `NULL`; or the
+                                rename is cyclic.
     @retval -RED_EIO            A disk I/O error occurred.
     @retval -RED_EISDIR         The destination name exists and is a directory,
                                 and the source name is a non-directory.
@@ -1333,6 +1238,7 @@ REDSTATUS RedCoreRename(
                                 @p ulDstPInode is not a valid inode number.
     @retval -RED_EEXIST         #REDCONF_RENAME_POSIX is false and the
                                 destination name exists.
+    @retval -RED_EINVAL         The rename is cyclic.
     @retval -RED_EIO            A disk I/O error occurred.
     @retval -RED_EISDIR         The destination name exists and is a directory,
                                 and the source name is a non-directory.

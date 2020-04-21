@@ -955,10 +955,10 @@ static uint32_t LtoA(
     }
     else
     {
-        char                ach[12U]; /* big enough for a int32_t in base 10 */
-        uint32_t            ulDigits = 0U;
-        uint32_t            ulNum;
-        bool                fSign;
+        char        ach[12U]; /* big enough for a int32_t in base 10 */
+        uint32_t    ulDigits = 0U;
+        uint32_t    ulNum;
+        bool        fSign;
 
         if(lNum < 0)
         {
@@ -1025,10 +1025,10 @@ static uint32_t LLtoA(
     }
     else
     {
-        char                ach[12U]; /* big enough for a int32_t in base 10 */
-        uint32_t            ulDigits = 0U;
-        uint64_t            ullNum;
-        bool                fSign;
+        char        ach[21U]; /* big enough for a int64_t in base 10 */
+        uint32_t    ulDigits = 0U;
+        uint64_t    ullNum;
+        bool        fSign;
 
         if(llNum < 0)
         {
@@ -1157,7 +1157,6 @@ static uint32_t ULLtoA(
     }
     else
     {
-
         char        ach[21U];   /* Big enough for a uint64_t in radix 10 */
         uint32_t    ulDigits = 0U;
         uint64_t    ullNumericVal = ullNum;

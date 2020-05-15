@@ -1,7 +1,7 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2020 Datalight, Inc.
-                       All Rights Reserved Worldwide.
+                  Copyright (c) 2014-2020 Tuxera US Inc.
+                      All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,8 +34,8 @@
         version of the Reliance Edge Configuration Utility that is designed
         for a more recent version of Reliance Edge and is no longer compatible
         with this version.  You can update to the most recent version of
-        Reliance Edge or contact RelianceEdgeSupport@datalight.com to obtain
-        the correct legacy version of the Configuration Utility.
+        Reliance Edge or contact support@tuxera.com to obtain the correct legacy
+        version of the Configuration Utility.
     */
     #error "Your configuration is not compatible with this version of Reliance Edge. Please download the latest version of Reliance Edge or recreate your configuration with an older version of the Configuration Utility."
   #endif
@@ -245,7 +245,7 @@
     #error "Configuration error: REDCONF_API_POSIX_FSTRIM must be either 0 or 1."
   #endif
   #if (REDCONF_API_POSIX_FSTRIM == 1) && (RED_KIT == RED_KIT_GPL)
-    #error "REDCONF_API_POSIX_FSTRIM not supported in Reliance Edge under GPL. Contact sales@datalight.com to upgrade."
+    #error "REDCONF_API_POSIX_FSTRIM not supported in Reliance Edge under GPL. Contact sales@tuxera.com to upgrade."
   #endif
 
   #if (REDCONF_NAME_MAX < 1U) || (REDCONF_NAME_MAX > (REDCONF_BLOCK_SIZE - 4U))
@@ -351,7 +351,7 @@
 #endif
 
 #if (REDCONF_DISCARDS == 1) && (RED_KIT == RED_KIT_GPL)
-  #error "REDCONF_DISCARDS not supported in Reliance Edge under GPL. Contact sales@datalight.com to upgrade."
+  #error "REDCONF_DISCARDS not supported in Reliance Edge under GPL. Contact sales@tuxera.com to upgrade."
 #endif
 
 /*  REDCONF_BUFFER_COUNT lower limit checked in buffer.c

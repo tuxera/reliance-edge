@@ -1,7 +1,7 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2020 Datalight, Inc.
-                       All Rights Reserved Worldwide.
+                  Copyright (c) 2014-2020 Tuxera US Inc.
+                      All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -45,9 +45,9 @@
 
 /** @brief Maximum number of bytes of output supported by RedPrintf().
 
-    Typically only Datalight code uses these functions, and that could should be
-    written to respect this limit, so it should not normally be necessary to
-    adjust this value.
+    Typically only code authored by Tuxera uses these functions, and that could
+    should be written to respect this limit, so it should not normally be
+    necessary to adjust this value.
 */
 #define OUTPUT_BUFFER_SIZE 256U
 

@@ -15,18 +15,18 @@ A few examples of how you can contribute:
   wording; or pointing out unclear or incomplete instructions.
 - Creating new tools or tests.
 - Adding new features or APIs (though for major new features, it might be good
-  to discuss your idea with Datalight).
+  to discuss your idea with Tuxera).
 
-Suggestions and feedback of any kind are welcome at
-<RelianceEdgeSupport@datalight.com>.  If there is something about Reliance Edge
-which you like or do not like, let us know.
+Suggestions and feedback of any kind are welcome at <support@tuxera.com>.  If
+there is something about Reliance Edge which you like or do not like, let us
+know.
 
 Reporting Bugs
 --------------
 
-To report bugs, please create a GitHub issue or contact
-<RelianceEdgeSupport@datalight.com>.  Search the existing GitHub issues to make
-sure that your issue is not a known issue.
+To report bugs, please create a GitHub issue or contact <support@tuxera.com>.
+Search the existing GitHub issues to make sure that your issue is not a known
+issue.
 
 Submitting Changes
 ------------------
@@ -36,10 +36,10 @@ and use GitHub to submit a pull request.  See details here:
 
 <https://help.github.com/articles/using-pull-requests/>
 
-After submitting a pull request, it will be reviewed by Datalight engineers.
-You may be asked to make changes via the comments on the pull request.  If the
-pull request contributes a substantial amount of code, you will need to assign
-copyright to Datalight before it will be accepted (see the next section).
+After submitting a pull request, it will be reviewed by Tuxera engineers.  You
+may be asked to make changes via the comments on the pull request.  If the pull
+request contributes a substantial amount of code, you will need to assign
+copyright to Tuxera US Inc before it will be accepted (see the next section).
 
 Pull requests often will not be directly merged into the Reliance Edge GitHub
 repo.  Due to quality assurance and packaging requirements, pull requests which
@@ -52,30 +52,30 @@ For the portions of the _Developer's Guide_ that are included in the GitHub
 repository (like the API documentation, which is derived from Doxygen comments
 in the code), changes should be submitted as pull requests just like code.  For
 the prose chapters which are excluded from the repository, send an email to
-<RelianceEdgeSupport@datalight.com> to request changes.
+<support@tuxera.com> to request changes.
 
 Copyright
 ---------
 
-Datalight policy is that Datalight must own the copyright of all code
+Tuxera policy is that Tuxera US Inc must own the copyright of all code
 incorporated into Reliance Edge; if contributing a substantial amount of code,
 you must file a copyright assignment agreement.  After submitting your pull
-request, contact <RelianceEdgeSupport@datalight.com> if you believe you will
-need to assign the copyright.  If Datalight determines that a copyright
-assignment agreement is required, and you have not made contact, you will be
-notified via a comment left on the pull request.
+request, contact <support@tuxera.com> if you believe you will need to assign the
+copyright.  If Tuxera determines that a copyright assignment agreement is
+required, and you have not made contact, you will be notified via a comment left
+on the pull request.
 
 CREDITS.TXT
 -----------
 
 CREDITS.TXT is a list of people who have made non-trivial contributions to
 Reliance Edge.  If you contribute to Reliance Edge, it is understood that
-Datalight may, at our discretion, add your name and GitHub account name to
+Tuxera may, at our discretion, add your name and GitHub account name to
 CREDITS.TXT, unless you explicitly request to be excluded.
 
-Datalight Coding Style
-----------------------
+Reliance Edge Coding Style
+--------------------------
 
-Code contributed to Reliance Edge should make an attempt to follow Datalight
-coding style.  See the doc/coding_style.txt document.
+Code contributed to Reliance Edge should make an attempt to follow its coding
+style.  See the doc/coding_style.txt document.
 

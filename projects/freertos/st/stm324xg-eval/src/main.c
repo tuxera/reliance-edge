@@ -1,7 +1,7 @@
 /** @file
-    @brief This project runs Reliance Edge on top of FreeRTOS.  The example
-           task runs fsstress and Datalight's POSIX API test suite if
-           the configuration allows.
+    @brief This project runs Reliance Edge on top of FreeRTOS.  The example task
+           runs fsstress and Tuxera's POSIX API test suite if the configuration
+           allows.
 
     Portions of this file are copyright (c) STMicroelectronics, to be used only
     in accordance with the notice below:
@@ -111,7 +111,7 @@ static bool prvSetupHardware( void )
     LCD_LOG_Init();
     LCD_LOG_SetHeader((uint8_t *) "Reliance Edge Example");
 
-    /*  Joystick initialization.  Datalight has observed several times where
+    /*  Joystick initialization.  Tuxera has observed several times where
         BSP_JOY_Init() fails every time it is called until the board is
         physically powered down.
     */

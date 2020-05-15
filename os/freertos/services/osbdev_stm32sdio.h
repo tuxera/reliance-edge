@@ -1,7 +1,7 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2020 Datalight, Inc.
-                       All Rights Reserved Worldwide.
+                  Copyright (c) 2014-2020 Tuxera US Inc.
+                      All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -57,9 +57,9 @@
 
     See ::CheckStatus().
 
-    NOTE: Datalight has not observed a scenario where BSP_SD_GetStatus()
-    returns SD_TRANSFER_BUSY after a transfer command returns successfully.
-    Set SD_STATUS_TIMEOUT to 0U to skip checking BSP_SD_GetStatus().
+    NOTE: We have not observed a scenario where BSP_SD_GetStatus() returns
+    SD_TRANSFER_BUSY after a transfer command returns successfully.  Set
+    SD_STATUS_TIMEOUT to 0U to skip checking BSP_SD_GetStatus().
 */
 #define SD_STATUS_TIMEOUT (100000U)
 

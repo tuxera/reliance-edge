@@ -1,7 +1,7 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2020 Datalight, Inc.
-                       All Rights Reserved Worldwide.
+                  Copyright (c) 2014-2020 Tuxera US Inc.
+                      All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -51,9 +51,9 @@
 */
 #define BDEV_CUSTOM         (0U)
 
-/** @brief Datalight FlashFX Tera driver implementation.
+/** @brief Tuxera FlashFX Tera driver implementation.
 
-    This implementation uses Datalight's FlashFX Tera driver to use raw flash
+    This implementation uses Tuxera's FlashFX Tera driver to use raw flash
     storage with Reliance Edge.
 
     This option is only available in commercial releases of Reliance Edge.

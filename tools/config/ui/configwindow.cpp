@@ -1,7 +1,7 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2020 Datalight, Inc.
-                       All Rights Reserved Worldwide.
+                  Copyright (c) 2014-2020 Tuxera US Inc.
+                      All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -512,8 +512,8 @@ void ConfigWindow::actionAbout_clicked()
                 "Edge file system. Documenation may be downloaded from "
                 "<a href='http://www.datalight.com/reliance-edge'>"
                 "datalight.com/reliance-edge</a>. For email support, contact "
-                "<a href='mailto:RelianceEdgeSupport@datalight.com'>"
-                "RelianceEdgeSupport@datalight.com</a>."
+                "<a href='mailto:support@tuxera.com'>"
+                "support@tuxera.com</a>."
                 );
     aboutBox.exec();
 }

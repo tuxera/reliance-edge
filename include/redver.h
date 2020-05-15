@@ -1,7 +1,7 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2020 Datalight, Inc.
-                       All Rights Reserved Worldwide.
+                  Copyright (c) 2014-2020 Tuxera US Inc.
+                      All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@
 
     <!-- This macro is updated automatically: do not edit! -->
 */
-#define RED_BUILD_NUMBER "861"
+#define RED_BUILD_NUMBER "863"
 
 #define RED_KIT_GPL         0U  /* Open source GPL kit. */
 #define RED_KIT_COMMERCIAL  1U  /* Commercially-licensed kit. */
@@ -83,12 +83,12 @@
 
 /** @brief Full product name and version.
 */
-#define RED_PRODUCT_NAME "Datalight " RED_PRODUCT_BASE_NAME " " RED_VERSION " Build " RED_BUILD_NUMBER ALPHABETA
+#define RED_PRODUCT_NAME "Tuxera " RED_PRODUCT_BASE_NAME " " RED_VERSION " Build " RED_BUILD_NUMBER ALPHABETA
 
 
 /** @brief Product copyright.
 */
-#define RED_PRODUCT_LEGAL "Copyright (c) 2014-2020 Datalight, Inc.  All Rights Reserved Worldwide."
+#define RED_PRODUCT_LEGAL "Copyright (c) 2014-2020 Tuxera US Inc.  All Rights Reserved Worldwide."
 
 
 /** @brief Product patents.

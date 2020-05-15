@@ -1,7 +1,7 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2020 Datalight, Inc.
-                       All Rights Reserved Worldwide.
+                  Copyright (c) 2014-2020 Tuxera US Inc.
+                      All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -205,8 +205,8 @@
     integer value of the pointer is not saved and not converted back into a
     pointer and dereferenced.  The result of casting a pointer to a sufficiently
     large integer is implementation-defined, but macros similar to this one have
-    been used by Datalight for a long time in a wide variety of environments and
-    they have always worked as expected.
+    been used by us for a long time in a wide variety of environments and they
+    have always worked as expected.
 
     As Rule 11.4 is advisory, a deviation record is not required.  This notice
     and the PC-Lint error inhibition option are the only records of the

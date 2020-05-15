@@ -1,7 +1,7 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                   Copyright (c) 2014-2020 Datalight, Inc.
-                       All Rights Reserved Worldwide.
+                  Copyright (c) 2014-2020 Tuxera US Inc.
+                      All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -519,7 +519,15 @@ static REDSTATUS RamDiskOpen(
 
     (void)mode;
 
-    if(gaRedVolConf[bVolNum].ullSectorOffset > 0U)
+    if(    (gaRedVolConf[bVolNum].ulSectorSize == SECTOR_SIZE_AUTO)
+        || (gaRedVolConf[bVolNum].ullSectorCount == SECTOR_COUNT_AUTO))
+    {
+        /*  Automatic detection of sector size and sector count are not
+            supported by the RAM disk.
+        */
+        ret = -RED_ENOTSUPP;
+    }
+    else if(gaRedVolConf[bVolNum].ullSectorOffset > 0U)
     {
         /*  A sector offset makes no sense for a RAM disk.  The feature exists
             to enable partitioning, but we don't support having more than one
@@ -530,10 +538,20 @@ static REDSTATUS RamDiskOpen(
     }
     else if(gaDisk[bVolNum].pbRamDisk == NULL)
     {
-        gaDisk[bVolNum].pbRamDisk = calloc(gaRedVolume[bVolNum].ulBlockCount, REDCONF_BLOCK_SIZE);
-        if(gaDisk[bVolNum].pbRamDisk == NULL)
+        /*  Make sure the sector count fits into a size_t, for the calloc()
+            parameter.
+        */
+        if(gaRedVolConf[bVolNum].ullSectorCount > SIZE_MAX)
         {
-            ret = -RED_EIO;
+            ret = -RED_EINVAL;
+        }
+        else
+        {
+            gaDisk[bVolNum].pbRamDisk = calloc((size_t)gaRedVolConf[bVolNum].ullSectorCount, gaRedVolConf[bVolNum].ulSectorSize);
+            if(gaDisk[bVolNum].pbRamDisk == NULL)
+            {
+                ret = -RED_EIO;
+            }
         }
     }
     else

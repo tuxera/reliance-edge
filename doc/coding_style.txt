@@ -1,10 +1,11 @@
-Datalight Coding Style
-======================
+Reliance Edge Coding Style
+==========================
 
-This is a description of the Datalight Coding Style intended for third parties
-who want to contribute code to Reliance Edge.  This document is derived from the
-DDSS Coding Guidelines, but only contains a subset of the content which is most
-likely to be relevant to third party contributors.
+This is a description of the Reliance Edge Coding Style intended for third
+parties who want to contribute code to Reliance Edge.  This document is derived
+from the DDSS Coding Guidelines (an internal coding standard used by the
+Reliance and FlashFX product families), but only contains a subset of the
+content which is most likely to be relevant to third party contributors.
 
 Reliance Edge complies with the MISRA-C:2012 coding guidelines, which includes
 many rules that affect coding style.  Unfortunately, the MISRA-C:2012 document
@@ -16,12 +17,12 @@ of exit); default cases in every switch statement; avoid recursion; and make
 generous use of parentheses.  Outside of the file system driver, in tests and
 host tools, the MISRA-C rules are relaxed.
 
-Beyond MISRA-C, Datalight has a standard coding style.  Most aspects of this
-style are matters of preference, but when contributing code to Datalight an
+Beyond MISRA-C, Reliance Edge has a standard coding style.  Most aspects of this
+style are matters of preference, but when contributing code to Reliance Edge an
 effort should be made to use this style for the sake of consistency.
 
-Below is an example function, which illustrates several key points of Datalight
-Coding Style:
+Below is an example function, which illustrates several key points of Reliance
+Edge Coding Style:
 
 /** @brief One-sentence description of what this function does.
 
@@ -70,9 +71,10 @@ tab width of 8.
 Naming
 ------
 
-Datalight uses CamelCase for functions and variables.  Type names are generally
-UPPERCASE, except for standard types like uint32_t.  Preprocessor macros are
-UPPERCASE, with words separated by underscores (for example, INODE_INVALID).
+Reliance Edge uses CamelCase for functions and variables.  Type names are
+generally UPPERCASE, except for standard types like uint32_t.  Preprocessor
+macros are UPPERCASE, with words separated by underscores (for example,
+INODE_INVALID).
 
 Doxygen Documentation
 ---------------------
@@ -118,8 +120,8 @@ next.
 Curly Braces
 ------------
 
-Datalight lines up all curly braces vertically.  As per MISRA-C, curly braces
-are never omitted, even if the braces contain only a single statement.
+Reliance Edge lines up all curly braces vertically.  As per MISRA-C, curly
+braces are never omitted, even if the braces contain only a single statement.
 
 For consistency, even structure declarations and initializations should use the
 same style, with the curly braces lined up vertically.  One exception is for
@@ -129,9 +131,9 @@ fit on the same line.  If so, do it.
 Code Comments
 -------------
 
-Datalight uses the standard C style /* comments */.  C++ style comments (//) are
-never used.  The Datalight standard comment style is shown below.  This style
-applies to all general comments within the code.
+Reliance Edge uses the standard C style /* comments */.  C++ style comments (//)
+are never used.  The Reliance Edge standard comment style is shown below.  This
+style applies to all general comments within the code.
 
 /*  This is a single-line comment.
 */
@@ -173,7 +175,7 @@ if necessary, as this sometimes promotes code readability.
 Indentation Style
 -----------------
 
-The general paradigm used in Datalight code is that curly braces line up
+The general paradigm used in Reliance Edge code is that curly braces line up
 vertically, and everything in between them is indented.  This should include all
 comments, labels, and preprocessor symbols.   The only things which are aligned
 at the left-most columns are:
@@ -325,7 +327,7 @@ notational element.  For example:
 Hungarian Notation
 ------------------
 
-Datalight uses Hungarian notation.  The following type prefixes are used:
+Reliance Edge uses Hungarian notation.  The following type prefixes are used:
 
 Type Prefix | Meaning
 ----------- | -------

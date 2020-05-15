@@ -15,10 +15,10 @@ application.
 Getting Help
 
 You will find this section later in our readme as well -- but we wanted
-to tell you up front: DATALIGHT WANTS TO HEAR FROM YOU! Whether it's
-just to make comments about the product, to suggest new features, or to
-tell us what you don't like -- reach out! All comments and inquiries can
-be directed to RelianceEdgeSupport@datalight.com.
+to tell you up front: TUXERA WANTS TO HEAR FROM YOU! Whether it's just
+to make comments about the product, to suggest new features, or to tell
+us what you don't like -- reach out! All comments and inquiries can be
+directed to support@tuxera.com.
 
 
 Documentation
@@ -70,7 +70,7 @@ ROM or NOR flash), and 500 to 700 bytes of stack.
 Reliance Edge is not designed for high-end embedded systems that run
 complicated operating systems like Linux or Windows Embedded Compact.
 Embedded systems of that variety are better served by other file
-systems, like Datalight's Reliance Nitro.
+systems, like Tuxera's Reliance Nitro.
 
 
 Getting Reliance Edge Working
@@ -106,7 +106,7 @@ Licensing
 Reliance Edge is an open-source project licensed under the GNU General
 Public License v2 (GPLv2). Businesses and individuals that for
 commercial or other reasons cannot comply with the terms of the GPLv2
-license may obtain a commercial license before incorporating Reliance
+license must obtain a commercial license before incorporating Reliance
 Edge into proprietary software for distribution in any form. Visit
 http://www.datalight.com/reliance-edge for more information. The
 commercial distribution also includes extra tests and tools not
@@ -119,22 +119,20 @@ product.
 Getting Help
 
 If you need assistance using Reliance Edge, and you have already
-consulted the _Developer's Guide_, contact
-RelianceEdgeSupport@datalight.com.
+consulted the _Developer's Guide_, contact support@tuxera.com.
 
-In the near future, a community forum or message board will be set up to
-facilitate discussion of Reliance Edge and allow users to get help from
-Datalight and from each other. In the meantime, please use the email
-address given above.
+A community forum is also available to facilitate discussion of Reliance
+Edge and allow users to get help from Tuxera and from each other: you
+can find it at https://www.datalight.com/forums/board/2/reliance-edge.
 
 
 Contributing
 
-Contributions to Reliance Edge are welcome. Our policy is that Datalight
-must own the copyright of all code incorporated into Reliance Edge; if
-contributing a significant amount of code, you will be asked to file a
-copyright assignment agreement. See CONTRIBUTING.txt for further details
-and contribution guidelines.
+Contributions to Reliance Edge are welcome. Our policy is that Tuxera US
+Inc must own the copyright of all code incorporated into Reliance Edge;
+if contributing a significant amount of code, you will be asked to file
+a copyright assignment agreement. See CONTRIBUTING.txt for further
+details and contribution guidelines.
 
 To report bugs, please create a GitHub issue or contact
-RelianceEdgeSupport@datalight.com.
+support@tuxera.com.

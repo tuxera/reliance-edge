@@ -9,6 +9,27 @@ course of recent releases and a list of known issues.
 
 Release History and Changes
 
+Reliance Edge v2.5.1, May 2020
+
+Common Code Changes
+
+-   Rebrand from Datalight to Tuxera. For details, please read the
+    following:
+    https://www.tuxera.com/blog/tuxera-and-datalight-continue-forward-as-one-unified-brand-tuxera/
+-   Fix a v2.5 regression where the checker (available in the
+    commercially-licensed SDK) did not work when run as a standalone
+    application.
+
+Linux Port Changes
+
+-   Fix a v2.5 regression where the RAM disk was erroneously allocated
+    as a zero-sized buffer.
+
+Win32 Port Changes
+
+-   Fix a v2.5 regression where the powerint and errinject test projects
+    (provided with the commercially-licensed SDK) were not functional.
+
 Reliance Edge v2.5, April 2020
 
 Common Code Changes

@@ -160,8 +160,8 @@ static int32_t RedStrCmpUnchecked(
     /*  "The sign of a non-zero return value is determined by the sign of the
         difference between the values of the first pair of bytes (both
         interpreted as type unsigned char) that differ in the strings being
-        compared."  Use uint8_t instead of unsigned char to avoid MISRA C
-        deviations.
+        compared."  Use uint8_t which is usually equivalent to unsigned char and
+        is consistent with our general preference for fixed-width integers.
     */
     if((uint8_t)pszStr1[ulIdx] > (uint8_t)pszStr2[ulIdx])
     {
@@ -244,8 +244,9 @@ static int32_t RedStrNCmpUnchecked(
             /*  "The sign of a non-zero return value is determined by the sign
                 of the difference between the values of the first pair of bytes
                 (both interpreted as type unsigned char) that differ in the
-                strings being compared."  Use uint8_t instead of unsigned char
-                to avoid MISRA C deviations.
+                strings being compared."  Use uint8_t which is usually
+                equivalent to unsigned char and is consistent with our general
+                preference for fixed-width integers.
             */
             if((uint8_t)pszStr1[ulIdx] > (uint8_t)pszStr2[ulIdx])
             {

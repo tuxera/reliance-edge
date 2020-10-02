@@ -34,7 +34,6 @@
 #include "redconfigchk.h"
 #include <redtypes.h>
 #include "rederrno.h"
-#include "reddeviations.h"
 #include "redmacs.h"
 #include "redapimacs.h"
 #include "redutils.h"

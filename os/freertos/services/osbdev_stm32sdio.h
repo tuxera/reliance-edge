@@ -201,9 +201,9 @@ static REDSTATUS DiskRead(
     uint32_t    ulSectorSize = gaRedBdevInfo[bVolNum].ulSectorSize;
     uint8_t     bSdError;
 
-    if(IS_UINT32_ALIGNED_PTR(pBuffer))
+    if(IS_ALIGNED_PTR(pBuffer, sizeof(uint32_t)))
     {
-        bSdError = BSP_SD_ReadBlocks_DMA(CAST_UINT32_PTR(pBuffer), ullSectorStart * ulSectorSize, ulSectorSize, ulSectorCount);
+        bSdError = BSP_SD_ReadBlocks_DMA(pBuffer, ullSectorStart * ulSectorSize, ulSectorSize, ulSectorCount);
 
         if(bSdError != MSD_OK)
         {
@@ -237,7 +237,7 @@ static REDSTATUS DiskRead(
 
             if(redStat == 0)
             {
-                uint8_t *pbBuffer = CAST_VOID_PTR_TO_UINT8_PTR(pBuffer);
+                uint8_t *pbBuffer = pBuffer;
 
                 RedMemCpy(&pbBuffer[ulSectorIdx * ulSectorSize], gaulAlignedBuffer, ulSectorSize);
             }
@@ -277,9 +277,9 @@ static REDSTATUS DiskWrite(
     uint32_t    ulSectorSize = gaRedBdevInfo[bVolNum].ulSectorSize;
     uint8_t     bSdError;
 
-    if(IS_UINT32_ALIGNED_PTR(pBuffer))
+    if(IS_ALIGNED_PTR(pBuffer, sizeof(uint32_t)))
     {
-        bSdError = BSP_SD_WriteBlocks_DMA(CAST_UINT32_PTR(CAST_AWAY_CONST(void, pBuffer)), ullSectorStart * ulSectorSize,
+        bSdError = BSP_SD_WriteBlocks_DMA(CAST_AWAY_CONST(void, pBuffer), ullSectorStart * ulSectorSize,
                                           ulSectorSize, ulSectorCount);
 
         if(bSdError != MSD_OK)
@@ -299,7 +299,7 @@ static REDSTATUS DiskWrite(
 
         for(ulSectorIdx = 0U; ulSectorIdx < ulSectorCount; ulSectorIdx++)
         {
-            const uint8_t *pbBuffer = CAST_VOID_PTR_TO_CONST_UINT8_PTR(pBuffer);
+            const uint8_t *pbBuffer = pBuffer;
 
             RedMemCpy(gaulAlignedBuffer, &pbBuffer[ulSectorIdx * ulSectorSize], ulSectorSize);
 

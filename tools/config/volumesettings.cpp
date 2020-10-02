@@ -41,10 +41,10 @@ VolumeSettings::Volume::Volume(QString name,
                                WarningBtn *wbtnDiscardSupport,
                                WarningBtn *wbtnBlockIoRetries)
     : stName("", name, validateVolName, wbtnPathPrefix),
-      stSectorSize("", 512, validateVolSectorSize, wbtnSectorSize),
       stSectorCount("", 1024, validateVolSectorCount, wbtnVolSize),
       stSectorOff("", 0, validateVolSectorOff, wbtnVolOff),
       stInodeCount("", 100, validateVolInodeCount, wbtnInodeCount),
+      stSectorSize("", 512, validateVolSectorSize, wbtnSectorSize),
       stAtomicWrite("", gpszUnsupported, validateSupportedUnsupported, wbtnAtomicWrite),
       stDiscardSupport("", gpszUnsupported, validateDiscardSupport, wbtnDiscardSupport),
       stBlockIoRetries("", 0, validateVolIoRetries, wbtnBlockIoRetries)
@@ -235,15 +235,16 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
                                WarningBtn *discardSupportWarn,
                                WarningBtn *ioRetriesWarn)
     : stVolumeCount(macroNameVolumeCount, 1, validateVolumeCount),
+      volTick(0),
       lePathPrefix(pathPrefixBox),
       sbVolSize(volSizeBox),
-      cbVolSizeAuto(volSizeAuto),
       sbVolOff(volOffBox),
       sbInodeCount(inodeCountBox),
+      cbVolSizeAuto(volSizeAuto),
+      cbSectorSizeAuto(sectorSizeAuto),
       labelVolSizeBytes(volSizeLabel),
       labelVolOffBytes(volOffLabel),
       cmbSectorSize(sectorSizeBox),
-      cbSectorSizeAuto(sectorSizeAuto),
       cmbAtomicWrite(atomicWriteBox),
       cmbDiscardSupport(discardSupportBox),
       cbEnableRetries(enableRetriesCheck),
@@ -254,14 +255,13 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
       listVolumes(volumesList),
       wbtnVolCount(volCountWarn),
       wbtnPathPrefix(pathPrefixWarn),
-      wbtnSectorSize(sectorSizeWarn),
       wbtnVolSize(volSizeWarn),
       wbtnVolOff(volOffWarn),
       wbtnInodeCount(inodeCountWarn),
+      wbtnSectorSize(sectorSizeWarn),
       wbtnAtomicWrite(atomicWriteWarn),
       wbtnDiscardSupport(discardSupportWarn),
-      wbtnIoRetries(ioRetriesWarn),
-      volTick(0)
+      wbtnIoRetries(ioRetriesWarn)
 {
     Q_ASSERT(allSettings.rbtnsUsePosix != NULL);
     usePosix = allSettings.rbtnsUsePosix->GetValue();
@@ -1071,15 +1071,8 @@ void VolumeSettings::cmbSectorSize_currentIndexChanged(int index)
     // Asserts that the vol index is ok
     if(!checkCurrentIndex()) return;
 
-    try {
-        volumes[activeIndex]->GetStSectorSize()
-                ->ProcessInput(cmbSectorSize->itemText(index));
-    }
-    catch(std::invalid_argument)
-    {
-        Q_ASSERT(false);
-        return;
-    }
+    volumes[activeIndex]->GetStSectorSize()
+            ->ProcessInput(cmbSectorSize->itemText(index));
 
     updateVolSizeBytes();
     updateVolOffBytes();
@@ -1103,7 +1096,7 @@ void VolumeSettings::sbVolSize_valueChanged(const QString &value)
     {
         volumes[activeIndex]->GetStSectorCount()->ProcessInput(value);
     }
-    catch(std::invalid_argument)
+    catch(...)
     {
         Q_ASSERT(false);
         return;
@@ -1121,7 +1114,7 @@ void VolumeSettings::sbVolOff_valueChanged(const QString &value)
     {
         volumes[activeIndex]->GetStSectorOff()->ProcessInput(value);
     }
-    catch(std::invalid_argument)
+    catch(...)
     {
         Q_ASSERT(false);
         return;
@@ -1138,7 +1131,7 @@ void VolumeSettings::sbInodeCount_valueChanged(const QString &value)
     try {
         volumes[activeIndex]->GetStInodeCount()->ProcessInput(value);
     }
-    catch(std::invalid_argument)
+    catch(...)
     {
         Q_ASSERT(false);
         return;
@@ -1150,15 +1143,9 @@ void VolumeSettings::cmbAtomicWrite_currentIndexChanged(int index)
     // Asserts that the vol index is ok
     if(!checkCurrentIndex()) return;
 
-    try {
-        volumes[activeIndex]->GetStAtomicWrite()
-                ->ProcessInput(cmbAtomicWrite->itemText(index));
-    }
-    catch(std::invalid_argument)
-    {
-        Q_ASSERT(false);
-        return;
-    }
+    volumes[activeIndex]->GetStAtomicWrite()
+            ->ProcessInput(cmbAtomicWrite->itemText(index));
+
 }
 
 void VolumeSettings::cmbDiscardSupport_currentIndexChanged(int index)
@@ -1166,15 +1153,9 @@ void VolumeSettings::cmbDiscardSupport_currentIndexChanged(int index)
     // Asserts that the vol index is ok
     if(!checkCurrentIndex()) return;
 
-    try {
-        volumes[activeIndex]->GetStDiscardSupport()
-                ->ProcessInput(cmbDiscardSupport->itemText(index));
-    }
-    catch(std::invalid_argument)
-    {
-        Q_ASSERT(false);
-        return;
-    }
+    volumes[activeIndex]->GetStDiscardSupport()
+            ->ProcessInput(cmbDiscardSupport->itemText(index));
+
 }
 
 void VolumeSettings::cbEnableRetries_stateChanged(int state)

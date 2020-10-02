@@ -224,7 +224,7 @@ REDSTATUS RedDirEntryDelete(
 
             if(ret == 0)
             {
-                const DIRENT *pDirents = CAST_CONST_DIRENT_PTR(pPInode->pbData);
+                const DIRENT *pDirents = (const DIRENT *)pPInode->pbData;
                 uint32_t      ulBlockIdx = ulTruncIdx % DIRENTS_PER_BLOCK;
 
                 do
@@ -355,7 +355,7 @@ REDSTATUS RedDirEntryLookup(
 
                 if(ret == 0)
                 {
-                    const DIRENT *pDirents = CAST_CONST_DIRENT_PTR(pPInode->pbData);
+                    const DIRENT *pDirents = (const DIRENT *)pPInode->pbData;
                     uint32_t      ulBlockLastIdx = REDMIN(DIRENTS_PER_BLOCK, ulDirentCount - ulIdx);
                     uint32_t      ulBlockIdx;
 
@@ -524,7 +524,7 @@ REDSTATUS RedDirEntryRead(
 
             if(ret == 0)
             {
-                const DIRENT *pDirents = CAST_CONST_DIRENT_PTR(pPInode->pbData);
+                const DIRENT *pDirents = (const DIRENT *)pPInode->pbData;
                 uint32_t      ulBlockLastIdx = REDMIN(DIRENTS_PER_BLOCK, ulDirentCount - (ulBlockOffset * DIRENTS_PER_BLOCK));
                 uint32_t      ulBlockIdx;
 

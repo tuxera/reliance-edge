@@ -29,7 +29,9 @@
 
 #if REDCONF_ASSERTS == 1
 
-#include <redosdeviations.h>
+#if REDCONF_OUTPUT == 1
+#include <stdio.h>
+#endif
 
 
 /** @brief Invoke the native assertion handler.
@@ -44,7 +46,8 @@ void RedOsAssertFail(
     uint32_t    ulLineNum)
 {
   #if REDCONF_OUTPUT == 1
-    IGNORE_ERRORS(PRINT_ASSERT(pszFileName, ulLineNum));
+    (void)printf("Assertion failed in \"%s\" at line %u\n\r",
+        (pszFileName == NULL) ? "" : pszFileName, (unsigned)ulLineNum);
   #endif
 
     while(true)

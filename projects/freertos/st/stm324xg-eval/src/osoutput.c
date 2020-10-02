@@ -30,8 +30,6 @@
 
 #if REDCONF_OUTPUT == 1
 
-#include <redosdeviations.h>
-
 
 extern int __io_putchar(int ch);
 

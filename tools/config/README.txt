@@ -15,30 +15,33 @@ Building
 
 The Configuration Utility is designed for Windows and Linux.  The build
 processes described here have been tested on Windows 7 and 10 and on Ubuntu
-16.04 LTS.
+20.04 LTS.
 
 The most basic thing you will need is a C++ compiler.  On Windows, you can
 obtain one by downloading and installing a free version of Visual Studio, such
 as Visual Studio Community Edition (see visualstudio.com).  Versions older than
-2010 may not be compatible.  On Ubuntu, you can use GCC; however, you will need
-to install GCC 4.8 to compile without errors.  This can be done from the
-console:
+2010 may not be compatible.  On Ubuntu, you can use your current version of GCC, 
+however the compiler used with this configuration was version 9.3.0.
 
-    sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-    sudo apt-get update
-    sudo apt-get install gcc-4.8 g++-4.8
+Installing Qt Creator
+=====================
 
-You also need to install OpenGL:
+Update your install to the latest available software packages
+	$ sudo apt-get update
 
-    sudo apt-get install mesa-common-dev libglu1-mesa-dev -y
+Install the build tools essential package
+	$ sudo apt-get install build-essential
 
-Next, you will need the Qt Creator package.  This can be downloaded from
-www.qt.io/download-open-source/.  On Linux, after downloading the installer, you
-will need to mark it executable.  When the installer prompts you to create an
-account, you can select Skip.  By default, the installer will install Qt Creator
-but not Qt itself.  If you do not already have Qt installed, ensure at least one
-version of Qt (such as the latest stable version) is selected on the Select
-Components page.
+Finally install the Qt product
+	$ sudo apt-get install qtcreator
+
+Ths README describes using Qt 5 
+	$ sudo apt install qt5-default
+
+You may also need to install OpenGL:
+
+    	$ sudo apt-get install mesa-common-dev libglu1-mesa-dev -y
+
 
 Once Qt Creator, Qt, and a C++ compiler are installed, open the file
 redconfig.pro in Qt Creator.  You may need to set up the compiler, Qt version,

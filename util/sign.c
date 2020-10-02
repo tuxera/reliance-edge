@@ -34,9 +34,7 @@ void RedSignOn(void)
 {
   #if REDCONF_OUTPUT == 1
 
-    /*  Use RedOsOutputString() instead of RedPrintf() to avoid using variadic
-        arguments, since this function is called from the driver and cannot use
-        functions that violate MISRA-C:2012.
+    /*  Use RedOsOutputString() instead of RedPrintf() to reduce code size.
     */
     RedOsOutputString(RED_PRODUCT_NAME "\n");
     RedOsOutputString(RED_PRODUCT_EDITION "\n");

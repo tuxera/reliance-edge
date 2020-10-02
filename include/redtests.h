@@ -288,6 +288,7 @@ typedef struct
     uint32_t    ulMaxFileSize;  /**< --file-size */
     uint32_t    ulMaxOpSize;    /**< --buffer-size */
     uint32_t    ulIterations;   /**< --iterations */
+    bool        fNoCleanup;     /**< --no-cleanup */
     uint32_t    ulSeed;         /**< --seed */
 } MVSTRESSTESTPARAM;
 

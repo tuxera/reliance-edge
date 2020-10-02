@@ -34,8 +34,8 @@
     Do *not* use these functions in code which can safely assume the standard
     I/O functions are available (e.g., in host tools code).
 
-    Do *not* use these functions from within the file system driver.  These
-    functions use variable arguments and thus are not MISRA-C:2012 compliant.
+    Do *not* use these functions from within the file system driver.  They are
+    not linked into the driver due to their relatively large size.
 */
 #include <redfs.h>
 #include <redtestutils.h>

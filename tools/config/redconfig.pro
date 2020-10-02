@@ -87,8 +87,8 @@ RC_FILE = res/ic.rc
 CONFIG += c++11
 
 linux-g++* {
-    QMAKE_CXX = g++-4.8
-    QMAKE_CC = gcc-4.8
+    QMAKE_CXX = g++
+    QMAKE_CC = gcc
 
     # This project contains many object initializers in class constructors that
     # have side effects. However, the order of initialization of these objects

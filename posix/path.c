@@ -702,10 +702,6 @@ static bool IsDotOrDotDot(
 {
     bool fRet;
 
-    /*  Not using "IsDot(p) || IsDotDot(p)" because that would be flagged as a
-        violation of MISRA C:2012 Rule 13.5 -- which is a false positive since
-        IsDotDot() does not have side effects.
-    */
     fRet = IsDot(pszPathComponent);
     if(!fRet)
     {

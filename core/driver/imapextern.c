@@ -95,7 +95,7 @@ REDSTATUS RedImapEBlockGet(
         }
       #endif
 
-        ret = RedBufferGet(RedImapNodeBlock(bMRToRead, ulImapNode), BFLAG_META_IMAP, CAST_VOID_PTR_PTR(&pImap));
+        ret = RedBufferGet(RedImapNodeBlock(bMRToRead, ulImapNode), BFLAG_META_IMAP, (void **)&pImap);
 
         if(ret == 0)
         {
@@ -234,7 +234,7 @@ REDSTATUS RedImapEBlockFindFree(
                 ulPrevImapNode = ulImapNode;
 
                 ret = RedBufferGet(RedImapNodeBlock(gpRedCoreVol->bCurMR, ulImapNode),
-                    BFLAG_META_IMAP, CAST_VOID_PTR_PTR(&pImap));
+                    BFLAG_META_IMAP, (void **)&pImap);
             }
 
             if(ret == 0)
@@ -263,7 +263,7 @@ REDSTATUS RedImapEBlockFindFree(
                         /*  Get the buffer for the committed state imap.
                         */
                         ret = RedBufferGet(RedImapNodeBlock(1U - gpRedCoreVol->bCurMR, ulImapNode),
-                            BFLAG_META_IMAP, CAST_VOID_PTR_PTR(&pImap));
+                            BFLAG_META_IMAP, (void **)&pImap);
                         if(ret == 0)
                         {
                             /*  If the block is free in the committed state...
@@ -347,7 +347,7 @@ static REDSTATUS ImapNodeBranch(
     {
         /*  Imap node is already branched, so just get it buffered dirty.
         */
-        ret = RedBufferGet(RedImapNodeBlock(gpRedCoreVol->bCurMR, ulImapNode), BFLAG_META_IMAP | BFLAG_DIRTY, CAST_VOID_PTR_PTR(ppImap));
+        ret = RedBufferGet(RedImapNodeBlock(gpRedCoreVol->bCurMR, ulImapNode), BFLAG_META_IMAP | BFLAG_DIRTY, (void **)ppImap);
     }
     else
     {
@@ -376,7 +376,7 @@ static REDSTATUS ImapNodeBranch(
         */
         if(ret == 0)
         {
-            ret = RedBufferGet(ulBlockOld, BFLAG_META_IMAP, CAST_VOID_PTR_PTR(ppImap));
+            ret = RedBufferGet(ulBlockOld, BFLAG_META_IMAP, (void **)ppImap);
 
             if(ret == 0)
             {

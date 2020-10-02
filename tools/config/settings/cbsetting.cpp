@@ -52,7 +52,7 @@ void CbSetting::setUi()
 
 void CbSetting::checkBox_stateChanged(int state)
 {
-    bool bstate;
+    bool bstate = false;
     if(state == Qt::Checked)
     {
         bstate = true;

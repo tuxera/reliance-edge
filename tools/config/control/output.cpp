@@ -48,7 +48,7 @@ void Output::TrySave(const QString & headerPath, const QString & codefilePath)
         // Shouldn't be possible because the UI is blocked while
         // isSaving is true.
         Q_ASSERT(false);
-        emit results(OutResultErrorBusy, QString::null, QString::null);
+        emit results(OutResultErrorBusy, QString(), QString());
     }
 
     currHeaderPath = headerPath;
@@ -96,7 +96,7 @@ void Output::ShowErrors(bool showIfNoErrors)
     if(isSaving)
     {
         Q_ASSERT(false); //Don't want this happening.
-        emit results(OutResultErrorBusy, QString::null, QString::null);
+        emit results(OutResultErrorBusy, QString(), QString());
     }
     Q_ASSERT(errorDialog != NULL);
 
@@ -169,7 +169,7 @@ void Output::doOutput()
         headerPath = fileDialog->ShowGetHeader(currHeaderPath);
         if(headerPath.isNull() || headerPath.isEmpty())
         {
-            emit results(OutResultUserCancelled, QString::null, QString::null);
+            emit results(OutResultUserCancelled, QString(), QString());
             return;
         }
 
@@ -184,7 +184,7 @@ void Output::doOutput()
             fileCodefile.setFileName(codefilePath);
             if(codefilePath.isNull() || codefilePath.isEmpty())
             {
-                emit results(OutResultUserCancelled, QString::null, QString::null);
+                emit results(OutResultUserCancelled, QString(), QString());
                 return;
             }
             if(!fileCodefile.open(QIODevice::WriteOnly | QIODevice::Text))
@@ -224,7 +224,7 @@ void Output::doOutput()
     }
     else
     {
-        emit results(OutResultFileError, QString::null, QString::null);
+        emit results(OutResultFileError, QString(), QString());
     }
 
 }
@@ -234,7 +234,7 @@ void Output::errorDialog_results(ErrorDialog::Result r)
     switch(r)
     {
         case ErrorDialog::EdResultCancel:
-            emit results(OutResultUserCancelled, QString::null, QString::null);
+            emit results(OutResultUserCancelled, QString(), QString());
             isSaving = false;
             break;
 
@@ -242,11 +242,11 @@ void Output::errorDialog_results(ErrorDialog::Result r)
             if(isSaving)
             {
                 isSaving = false;
-                emit results(OutResultInvalid, QString::null, QString::null);
+                emit results(OutResultInvalid, QString(), QString());
             }
             else
             {
-                emit results(OutResultInfoDismissed, QString::null, QString::null);
+                emit results(OutResultInfoDismissed, QString(), QString());
             }
             break;
 

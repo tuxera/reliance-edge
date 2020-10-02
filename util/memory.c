@@ -91,8 +91,8 @@ static void RedMemCpyUnchecked(
     const void     *pSrc,
     uint32_t        ulLen)
 {
-    uint8_t        *pbDest = CAST_VOID_PTR_TO_UINT8_PTR(pDest);
-    const uint8_t  *pbSrc = CAST_VOID_PTR_TO_CONST_UINT8_PTR(pSrc);
+    uint8_t        *pbDest = pDest;
+    const uint8_t  *pbSrc = pSrc;
     uint32_t        ulIdx;
 
     for(ulIdx = 0U; ulIdx < ulLen; ulIdx++)
@@ -142,11 +142,28 @@ static void RedMemMoveUnchecked(
     const void     *pSrc,
     uint32_t        ulLen)
 {
-    uint8_t        *pbDest = CAST_VOID_PTR_TO_UINT8_PTR(pDest);
-    const uint8_t  *pbSrc = CAST_VOID_PTR_TO_CONST_UINT8_PTR(pSrc);
+    uint8_t        *pbDest = pDest;
+    const uint8_t  *pbSrc = pSrc;
     uint32_t        ulIdx;
 
-    if(MEMMOVE_MUST_COPY_FORWARD(pbDest, pbSrc))
+    /*  In order to copy between overlapping memory regions, RedMemMove() must
+        copy forward if the destination memory is lower, and backward if the
+        destination memory is higher.  Failure to do so would yield incorrect
+        results.
+
+        The only way to make this determination without gross inefficiency is to
+        use pointer comparison.  Pointer comparisons are undefined unless both
+        pointers point within the same object or array (or one element past the
+        end of the array); see section 6.3.8 of ANSI C89.  While RedMemMove() is
+        normally only used when memory regions overlap, which would not result
+        in undefined behavior, it (like memmove()) is supposed to work even for
+        non-overlapping regions, which would make this function invoke undefined
+        behavior.  Experience has shown the pointer comparisons of this sort
+        behave intuitively on common platforms, even though the behavior is
+        undefined.  For those platforms where this is not the case, this
+        implementation of memmove() should be replaced with an alternate one.
+    */
+    if(pbDest < pbSrc)
     {
         /*  If the destination is lower than the source with overlapping memory
             regions, we must copy from start to end in order to copy the memory
@@ -212,7 +229,7 @@ static void RedMemSetUnchecked(
     uint8_t     bVal,
     uint32_t    ulLen)
 {
-    uint8_t    *pbDest = CAST_VOID_PTR_TO_UINT8_PTR(pDest);
+    uint8_t    *pbDest = pDest;
     uint32_t    ulIdx;
 
     for(ulIdx = 0U; ulIdx < ulLen; ulIdx++)
@@ -272,8 +289,8 @@ static int32_t RedMemCmpUnchecked(
     const void     *pMem2,
     uint32_t        ulLen)
 {
-    const uint8_t  *pbMem1 = CAST_VOID_PTR_TO_CONST_UINT8_PTR(pMem1);
-    const uint8_t  *pbMem2 = CAST_VOID_PTR_TO_CONST_UINT8_PTR(pMem2);
+    const uint8_t  *pbMem1 = pMem1;
+    const uint8_t  *pbMem2 = pMem2;
     uint32_t        ulIdx = 0U;
     int32_t         lResult;
 

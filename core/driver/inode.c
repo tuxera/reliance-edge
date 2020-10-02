@@ -117,7 +117,7 @@ REDSTATUS RedInodeMount(
 
         if(ret == 0)
         {
-            ret = RedBufferGet(InodeBlock(pInode->ulInode, bWhich), BFLAG_META_INODE, CAST_VOID_PTR_PTR(&pInode->pInodeBuf));
+            ret = RedBufferGet(InodeBlock(pInode->ulInode, bWhich), BFLAG_META_INODE, (void **)&pInode->pInodeBuf);
         }
 
       #if REDCONF_READ_ONLY == 0
@@ -271,7 +271,7 @@ REDSTATUS RedInodeCreate(
             if(ret == 0)
             {
                 ret = RedBufferGet(InodeBlock(pInode->ulInode, bWriteableWhich),
-                    (uint16_t)((uint32_t)BFLAG_META_INODE | BFLAG_DIRTY | BFLAG_NEW), CAST_VOID_PTR_PTR(&pInode->pInodeBuf));
+                    (uint16_t)((uint32_t)BFLAG_META_INODE | BFLAG_DIRTY | BFLAG_NEW), (void **)&pInode->pInodeBuf);
 
                 if(ret == 0)
                 {

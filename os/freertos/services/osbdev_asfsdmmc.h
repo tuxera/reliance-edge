@@ -141,7 +141,7 @@ static REDSTATUS DiskGetGeometry(
 {
     uint32_t    ulSectorLast;
 
-    IGNORE_ERRORS(sd_mmc_read_capacity(bVolNum, &ulSectorLast));
+    (void)sd_mmc_read_capacity(bVolNum, &ulSectorLast);
 
     /*  The ASF SD/MMC driver only supports 512-byte sectors.
 
@@ -178,7 +178,7 @@ static REDSTATUS DiskRead(
     REDSTATUS   ret = 0;
     uint32_t    ulSectorIdx = 0U;
     uint32_t    ulSectorSize = gaRedBdevInfo[bVolNum].ulSectorSize;
-    uint8_t    *pbBuffer = CAST_VOID_PTR_TO_UINT8_PTR(pBuffer);
+    uint8_t    *pbBuffer = pBuffer;
 
     while(ulSectorIdx < ulSectorCount)
     {
@@ -224,7 +224,7 @@ static REDSTATUS DiskWrite(
     REDSTATUS       ret = 0;
     uint32_t        ulSectorIdx = 0U;
     uint32_t        ulSectorSize = gaRedBdevInfo[bVolNum].ulSectorSize;
-    const uint8_t  *pbBuffer = CAST_VOID_PTR_TO_CONST_UINT8_PTR(pBuffer);
+    const uint8_t  *pbBuffer = pBuffer;
 
     while(ulSectorIdx < ulSectorCount)
     {

@@ -77,11 +77,11 @@ REDSTATUS RedVolFormat(void)
         /*  Overwrite the master block with zeroes, so that if formatting is
             interrupted, the volume will not be mountable.
         */
-        ret = RedBufferGet(BLOCK_NUM_MASTER, BFLAG_NEW | BFLAG_DIRTY, CAST_VOID_PTR_PTR(&pMB));
+        ret = RedBufferGet(BLOCK_NUM_MASTER, BFLAG_NEW | BFLAG_DIRTY, (void **)&pMB);
 
         if(ret == 0)
         {
-            ret = RedBufferFlush(BLOCK_NUM_MASTER, 1U);
+            ret = RedBufferFlushRange(BLOCK_NUM_MASTER, 1U);
 
             RedBufferDiscard(pMB);
         }
@@ -108,7 +108,7 @@ REDSTATUS RedVolFormat(void)
         {
             IMAPNODE   *pImap;
 
-            ret = RedBufferGet(ulImapBlock, uImapFlags, CAST_VOID_PTR_PTR(&pImap));
+            ret = RedBufferGet(ulImapBlock, uImapFlags, (void **)&pImap);
             if(ret != 0)
             {
                 break;
@@ -193,7 +193,7 @@ REDSTATUS RedVolFormat(void)
     {
         MASTERBLOCK *pMB;
 
-        ret = RedBufferGet(BLOCK_NUM_MASTER, (uint16_t)((uint32_t)BFLAG_META_MASTER | BFLAG_NEW | BFLAG_DIRTY), CAST_VOID_PTR_PTR(&pMB));
+        ret = RedBufferGet(BLOCK_NUM_MASTER, (uint16_t)((uint32_t)BFLAG_META_MASTER | BFLAG_NEW | BFLAG_DIRTY), (void **)&pMB);
         if(ret == 0)
         {
             pMB->ulVersion = RED_DISK_LAYOUT_VERSION;
@@ -219,7 +219,7 @@ REDSTATUS RedVolFormat(void)
             pMB->bFlags |= MBFLAG_INODE_NLINK;
           #endif
 
-            ret = RedBufferFlush(BLOCK_NUM_MASTER, 1U);
+            ret = RedBufferFlushRange(BLOCK_NUM_MASTER, 1U);
 
             RedBufferPut(pMB);
         }

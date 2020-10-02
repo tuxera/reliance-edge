@@ -32,7 +32,6 @@
 
 #if (REDCONF_TASK_COUNT > 1U) && (REDCONF_API_POSIX == 1)
 
-#include <redosdeviations.h>
 
 #if INCLUDE_xTaskGetCurrentTaskHandle != 1
   #error "INCLUDE_xTaskGetCurrentTaskHandle must be 1 when REDCONF_TASK_COUNT > 1 and REDCONF_API_POSIX == 1"
@@ -51,7 +50,7 @@ uint32_t RedOsTaskId(void)
         warnings from some compilers, so use variables.
     */
     TaskHandle_t    xTask = xTaskGetCurrentTaskHandle();
-    uintptr_t       taskptr = CAST_TASK_PTR_TO_UINTPTR(xTask);
+    uintptr_t       taskptr = (uintptr_t)xTask;
     uint32_t        ulTaskPtr = (uint32_t)taskptr;
 
     /*  Assert no information was lost casting from uintptr_t to uint32_t.

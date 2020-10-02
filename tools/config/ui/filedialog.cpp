@@ -108,7 +108,7 @@ QString FileDialog::showFileDialog()
 
     if(!exec())
     {
-        return QString::null;
+        return QString();
     }
 
     defaultDir = directory().absolutePath();
@@ -118,7 +118,7 @@ QString FileDialog::showFileDialog()
     Q_ASSERT(strList.count() == 1); //Should give us one file
     if(strList.count() == 0) //But just in case it doesn't
     {
-        return QString::null;
+        return QString();
     }
 
     return strList.at(0);

@@ -246,7 +246,7 @@ REDSTATUS RedVolMountMaster(void)
     /*  Read the master block, to ensure that the disk was formatted with
         Reliance Edge.
     */
-    ret = RedBufferGet(BLOCK_NUM_MASTER, BFLAG_META_MASTER, CAST_VOID_PTR_PTR(&pMB));
+    ret = RedBufferGet(BLOCK_NUM_MASTER, BFLAG_META_MASTER, (void **)&pMB);
 
     if(ret == 0)
     {
@@ -467,7 +467,7 @@ static bool MetarootIsValid(
     }
     else
     {
-        const uint8_t  *pbMR = CAST_VOID_PTR_TO_CONST_UINT8_PTR(pMR);
+        const uint8_t  *pbMR = (const uint8_t *)pMR;
         uint32_t        ulSectorSize = gaRedBdevInfo[gbRedVolNum].ulSectorSize;
         uint32_t        ulSectorCRC = pMR->ulSectorCRC;
         uint32_t        ulCRC;
@@ -521,7 +521,7 @@ REDSTATUS RedVolTransact(void)
         gpRedMR->ulFreeBlocks += gpRedCoreVol->ulAlmostFreeBlocks;
         gpRedCoreVol->ulAlmostFreeBlocks = 0U;
 
-        ret = RedBufferFlush(0U, gpRedVolume->ulBlockCount);
+        ret = RedBufferFlushRange(0U, gpRedVolume->ulBlockCount);
 
         if(ret == 0)
         {
@@ -533,7 +533,7 @@ REDSTATUS RedVolTransact(void)
 
         if(ret == 0)
         {
-            const uint8_t  *pbMR = CAST_VOID_PTR_TO_CONST_UINT8_PTR(gpRedMR);
+            const uint8_t  *pbMR = (const uint8_t *)gpRedMR;
             uint32_t        ulSectorSize = gaRedBdevInfo[gbRedVolNum].ulSectorSize;
             uint32_t        ulSectorCRC;
 
@@ -620,6 +620,9 @@ static void MetaRootEndianSwap(
     }
     else
     {
+        pMetaRoot->hdr.ulSignature = RedRev32(pMetaRoot->hdr.ulSignature);
+        pMetaRoot->hdr.ullSequence = RedRev64(pMetaRoot->hdr.ullSequence);
+
         pMetaRoot->ulSectorCRC = RedRev32(pMetaRoot->ulSectorCRC);
         pMetaRoot->ulFreeBlocks = RedRev32(pMetaRoot->ulFreeBlocks);
       #if REDCONF_API_POSIX == 1

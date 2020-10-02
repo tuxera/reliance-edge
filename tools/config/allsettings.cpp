@@ -29,14 +29,14 @@
 
 // Private helpers
 static QString outputLine(const QString &macroName, const QString &value,
-                          const QString &comment = QString::null);
+                          const QString &comment = QString());
 static QString outputIfNotBlank(const QString &macroName, const QString &value,
-                                const QString &comment = QString::null);
+                                const QString &comment = QString());
 static qint32 getMinCompatVer();
 template<typename T>
 static void parseToSetting(const QString &text, Setting<T> *setting,
                           QStringList &notFound, QStringList &notParsed,
-                          const QString &humanName = QString::null);
+                          const QString &humanName = QString());
 static void parseMemSetting(const QString &text, StrSetting *setting);
 static void parseToEnabledDisabledSetting(const QString &text,
                                           StrSetting *setting,
@@ -44,7 +44,7 @@ static void parseToEnabledDisabledSetting(const QString &text,
                                           const QString &strFalse,
                                           QStringList &notFound,
                                           QStringList &notParsed,
-                                          const QString &humanName = QString::null);
+                                          const QString &humanName = QString());
 static void parseToTrSetting(const QString &text, BoolSetting *setting);
 static QString findValue(const QString &text, const QString &macroName, bool &found);
 
@@ -697,7 +697,7 @@ QString findValue(const QString &text, const QString &macroName, bool &found)
     found = rem.hasMatch() && rem.lastCapturedIndex() > 0;
     if(!found)
     {
-        return QString::null;
+        return QString();
     }
     return rem.captured(1);
 }

@@ -32,6 +32,17 @@
 #define NULL ((void *)0)
 #endif
 
+/*  The ULL and LL suffixes mean "unsigned long long" and "long long",
+    respectively.  C99 guarantees that these types are 64-bit integers or
+    something larger (though in practice, it's never larger).
+
+    Although these suffixes are a C99 feature, most C89 compilers support these
+    suffixes as an extension.  Thus, even though we usually stick to C89, we
+    make an exception for these suffixes.
+*/
+#define UINT64_SUFFIX(number) (number##ULL)
+#define INT64_SUFFIX(number) (number##LL)
+
 #ifndef UINT8_MAX
 #define UINT8_MAX   (0xFFU)
 #endif
@@ -87,12 +98,52 @@
 #error "REDCONF_BLOCK_SIZE must be a power of two value between 128 and 65536"
 #endif
 
+/** @brief Cast a const-qualified pointer to a pointer which is *not*
+           const-qualified.
+
+    Reliance Edge uses const-qualified pointers whenever possible.  However,
+    sometimes the third-party RTOS or block device driver code that Reliance
+    Edge interfaces with aren't as careful, so it's necessary to cast away the
+    const to call those functions.
+
+    This macro exists so that places that cast away the cost-qualifier are
+    explicitly annotated.  If the pointer type cast were done without using this
+    macro, it might not be obvious that the original pointer was a const type.
+*/
+#define CAST_AWAY_CONST(type, ptr) ((type *)(ptr))
+
+/** @brief Determine whether a pointer is aligned.
+
+    The specified alignment is assumed to be a power-of-two.
+*/
+#define IS_ALIGNED_PTR(ptr, alignment) (((uintptr_t)(ptr) & ((alignment) - 1U)) == 0U)
+
 #define REDMIN(a, b) (((a) < (b)) ? (a) : (b))
 #define REDMAX(a, b) (((a) > (b)) ? (a) : (b))
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(ARRAY)   (sizeof(ARRAY) / sizeof((ARRAY)[0U]))
 #endif
+
+/** @brief Does the given pointer point at an element of the given array?
+
+    Returns true only if: 1) the pointer address falls within the bounds of the
+    array; and 2) the pointer address is aligned such that it points to the
+    start of an array element, rather than pointing at the middle of an element.
+
+    Notes:
+    - Technically, this macro relies on "implementation-defined" pointer
+      behavior, but it should work on all normal platforms.
+    - The alignment check casts the pointer offset to uint32_t, to avoid doing
+      modulus on uintptr_t, which might be a 64-bit type.  It is assumed that
+      this macro won't be used on arrays that are >4GB in size.
+*/
+#define PTR_IS_ARRAY_ELEMENT(ptr, array) \
+    ( \
+         ((uintptr_t)(ptr) >= (uintptr_t)&(array)[0U]) \
+      && ((uintptr_t)(ptr) <= (uintptr_t)(&(array)[ARRAY_SIZE(array) - 1U])) \
+      && (((uint32_t)((uintptr_t)(ptr) - (uintptr_t)&(array)[0U]) % sizeof((array)[0U])) == 0U) \
+    )
 
 #define BITMAP_SIZE(bitcnt) (((bitcnt) + 7U) / 8U)
 

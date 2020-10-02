@@ -7,19 +7,14 @@ from the DDSS Coding Guidelines (an internal coding standard used by the
 Reliance and FlashFX product families), but only contains a subset of the
 content which is most likely to be relevant to third party contributors.
 
-Reliance Edge complies with the MISRA-C:2012 coding guidelines, which includes
-many rules that affect coding style.  Unfortunately, the MISRA-C:2012 document
-is not freely available, and is much too long to be effectively summarized, but
-if you are familiar with the rules, adhere to them.  A few important rules of
-thumb: avoid the goto and continue keywords; avoid using more than one break
-in a loop; and avoid having more than one return from a function (single point
-of exit); default cases in every switch statement; avoid recursion; and make
-generous use of parentheses.  Outside of the file system driver, in tests and
-host tools, the MISRA-C rules are relaxed.
-
-Beyond MISRA-C, Reliance Edge has a standard coding style.  Most aspects of this
-style are matters of preference, but when contributing code to Reliance Edge an
-effort should be made to use this style for the sake of consistency.
+Reliance Edge has a standard coding style.  Most aspects of this style are
+matters of preference, but when contributing code to Reliance Edge an effort
+should be made to use this style for the sake of consistency.  A few important
+rules of thumb: avoid the goto and continue keywords; avoid using more than one
+break in a loop; and avoid having more than one return from a function (single
+point of exit); default cases in every switch statement; avoid recursion; and
+make generous use of parentheses.  Outside of the file system driver, in tests
+and host tools, these rules are relaxed.
 
 Below is an example function, which illustrates several key points of Reliance
 Edge Coding Style:
@@ -120,8 +115,8 @@ next.
 Curly Braces
 ------------
 
-Reliance Edge lines up all curly braces vertically.  As per MISRA-C, curly
-braces are never omitted, even if the braces contain only a single statement.
+Reliance Edge lines up all curly braces vertically.  Curly braces are never
+omitted, even if the braces contain only a single statement.
 
 For consistency, even structure declarations and initializations should use the
 same style, with the curly braces lined up vertically.  One exception is for

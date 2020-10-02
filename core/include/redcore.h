@@ -92,7 +92,7 @@ void RedBufferInit(void);
 REDSTATUS RedBufferGet(uint32_t ulBlock, uint16_t uFlags, void **ppBuffer);
 void RedBufferPut(const void *pBuffer);
 #if REDCONF_READ_ONLY == 0
-REDSTATUS RedBufferFlush(uint32_t ulBlockStart, uint32_t ulBlockCount);
+REDSTATUS RedBufferFlushRange(uint32_t ulBlockStart, uint32_t ulBlockCount);
 void RedBufferDirty(const void *pBuffer);
 void RedBufferBranch(const void *pBuffer, uint32_t ulBlockNew);
 #if (REDCONF_API_POSIX == 1) || FORMAT_SUPPORTED

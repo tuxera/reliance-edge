@@ -29,7 +29,7 @@
 #define OSBDEV_RAMDISK_H
 
 
-#include <stdlib.h> /* For ALLOCATE_CLEARED_MEMORY(), which expands to calloc(). */
+#include <stdlib.h> /* For calloc(). */
 
 
 static uint8_t *gapbRamDisk[REDCONF_VOLUME_COUNT];
@@ -81,7 +81,7 @@ static REDSTATUS DiskOpen(
         }
         else
         {
-            gapbRamDisk[bVolNum] = ALLOCATE_CLEARED_MEMORY(pVolConf->ullSectorCount, pVolConf->ulSectorSize);
+            gapbRamDisk[bVolNum] = calloc((size_t)pVolConf->ullSectorCount, pVolConf->ulSectorSize);
             if(gapbRamDisk[bVolNum] == NULL)
             {
                 ret = -RED_EIO;

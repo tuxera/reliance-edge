@@ -90,9 +90,9 @@
 /*  A note on the typecasts in the below macros: Operands to bitwise operators
     are subject to the "usual arithmetic conversions".  This means that the
     flags, which have uint16_t values, are promoted to int (if int is larger
-    than 16 bits).  MISRA-C:2012 R10.1 forbids using signed integers in bitwise
-    operations, so we cast to uint32_t to avoid the integer promotion, then back
-    to uint16_t to reflect the actual type.
+    than 16 bits).  To avoid using signed integers in bitwise operations, we
+    cast to uint32_t to avoid the integer promotion, then back to uint16_t to
+    reflect the actual type.
 */
 #define BFLAG_META_MASK (uint16_t)((uint32_t)BFLAG_META_MASTER | BFLAG_META_IMAP | BFLAG_META_INODE | BFLAG_META_INDIR | BFLAG_META_DINDIR)
 #define BFLAG_MASK (uint16_t)((uint32_t)BFLAG_DIRTY | BFLAG_NEW | BFLAG_META_MASK)
@@ -140,10 +140,15 @@ typedef struct
 
     /** Array of memory for the block buffers themselves.
 
-        Force 64-bit alignment of the aabBuffer array to ensure that it is safe
-        to cast buffer pointers to node structure pointers.
+        Force the aabBuffer array to be aligned adequately for a uint64_t, to
+        ensure that it is safe to cast buffer pointers to node structure
+        pointers.
     */
-    ALIGNED_2D_BYTE_ARRAY(b, aabBuffer, REDCONF_BUFFER_COUNT, REDCONF_BLOCK_SIZE);
+    union
+    {
+        uint8_t     aabBuffer[REDCONF_BUFFER_COUNT][REDCONF_BLOCK_SIZE];
+        uint64_t    DummyAlign;
+    } b;
 } BUFFERCTX;
 
 
@@ -161,7 +166,6 @@ static bool BufferFind(uint32_t ulBlock, uint8_t *pbIdx);
 static void BufferEndianSwap(const void *pBuffer, uint16_t uFlags);
 static void BufferEndianSwapHeader(NODEHEADER *pHeader);
 static void BufferEndianSwapMaster(MASTERBLOCK *pMaster);
-static void BufferEndianSwapMetaRoot(METAROOT *pMetaRoot);
 static void BufferEndianSwapInode(INODE *pInode);
 static void BufferEndianSwapIndir(INDIR *pIndir);
 #endif
@@ -409,7 +413,7 @@ void RedBufferPut(
     @retval -RED_EIO    A disk I/O error occurred.
     @retval -RED_EINVAL Invalid parameters.
 */
-REDSTATUS RedBufferFlush(
+REDSTATUS RedBufferFlushRange(
     uint32_t    ulBlockStart,
     uint32_t    ulBlockCount)
 {
@@ -634,26 +638,21 @@ static bool BufferIsValid(
     }
     else
     {
-        NODEHEADER  buf;
-        uint16_t    uMetaFlags = uFlags & BFLAG_META_MASK;
-
-        /*  Casting pbBuffer to (NODEHEADER *) would run afoul MISRA-C:2012
-            R11.3, so instead copy the fields out.
-        */
-        RedMemCpy(&buf.ulSignature, &pbBuffer[NODEHEADER_OFFSET_SIG], sizeof(buf.ulSignature));
-        RedMemCpy(&buf.ulCRC,       &pbBuffer[NODEHEADER_OFFSET_CRC], sizeof(buf.ulCRC));
-        RedMemCpy(&buf.ullSequence, &pbBuffer[NODEHEADER_OFFSET_SEQ], sizeof(buf.ullSequence));
-
+        const NODEHEADER   *pHdr = (const NODEHEADER *)pbBuffer;
+        uint16_t            uMetaFlags = uFlags & BFLAG_META_MASK;
       #ifdef REDCONF_ENDIAN_SWAP
-        buf.ulCRC = RedRev32(buf.ulCRC);
-        buf.ulSignature = RedRev32(buf.ulSignature);
-        buf.ullSequence = RedRev64(buf.ullSequence);
+        NODEHEADER          bufSwap;
+
+        bufSwap.ulCRC = RedRev32(pHdr->ulCRC);
+        bufSwap.ulSignature = RedRev32(pHdr->ulSignature);
+        bufSwap.ullSequence = RedRev64(pHdr->ullSequence);
+        pHdr = &bufSwap;
       #endif
 
         /*  Make sure the signature is correct for the type of metadata block
             requested by the caller.
         */
-        switch(buf.ulSignature)
+        switch(pHdr->ulSignature)
         {
             case META_SIG_MASTER:
                 fValid = (uMetaFlags == BFLAG_META_MASTER);
@@ -695,11 +694,11 @@ static bool BufferIsValid(
                 be unknown, and the check is skipped.
             */
             ulComputedCrc = RedCrcNode(pbBuffer);
-            if(buf.ulCRC != ulComputedCrc)
+            if(pHdr->ulCRC != ulComputedCrc)
             {
                 fValid = false;
             }
-            else if(gpRedVolume->fMounted && (buf.ullSequence >= gpRedVolume->ullSequence))
+            else if(gpRedVolume->fMounted && (pHdr->ullSequence >= gpRedVolume->ullSequence))
             {
                 fValid = false;
             }
@@ -731,28 +730,19 @@ static bool BufferToIdx(
 {
     bool        fRet = false;
 
-    if((pBuffer != NULL) && (pbIdx != NULL))
+    if(PTR_IS_ARRAY_ELEMENT(pBuffer, gBufCtx.b.aabBuffer) && (pbIdx != NULL))
     {
-        uint8_t bIdx;
+        uint8_t bIdx = (uint8_t)(((uintptr_t)pBuffer - (uintptr_t)gBufCtx.b.aabBuffer) >> BLOCK_SIZE_P2);
 
-        /*  pBuffer should be a pointer to one of the block buffers.
-
-            A good compiler should optimize this loop into a bounds check and an
-            alignment check, although GCC has been observed to not do so; if the
-            number of buffers is small, it should not make much difference.  The
-            alternative is to use pointer comparisons, but this both deviates
-            from MISRA-C:2012 and involves undefined behavior.
+        /*  This should be guaranteed, since PTR_IS_ARRAY_ELEMENT() was true.
         */
-        for(bIdx = 0U; bIdx < REDCONF_BUFFER_COUNT; bIdx++)
-        {
-            if(pBuffer == &gBufCtx.b.aabBuffer[bIdx][0U])
-            {
-                break;
-            }
-        }
+        REDASSERT(bIdx < REDCONF_BUFFER_COUNT);
 
-        if(    (bIdx < REDCONF_BUFFER_COUNT)
-            && (gBufCtx.aHead[bIdx].ulBlock != BBLK_INVALID)
+        /*  At this point, we know the buffer pointer refers to a valid buffer.
+            However, if the corresponding buffer head isn't an in-use buffer for
+            the current volume, then something is wrong.
+        */
+        if(    (gBufCtx.aHead[bIdx].ulBlock != BBLK_INVALID)
             && (gBufCtx.aHead[bIdx].bVolNum == gbRedVolNum))
         {
             *pbIdx = bIdx;
@@ -911,7 +901,7 @@ static REDSTATUS BufferFinalize(
     meta roots, which don't go through the buffers anyways.
 
     @param pBuffer  Pointer to the metadata buffer to swap
-    @param uFlags   The associated buffer flags.  Used to determin the type of
+    @param uFlags   The associated buffer flags.  Used to determine the type of
                     metadata node.
 */
 static void BufferEndianSwap(

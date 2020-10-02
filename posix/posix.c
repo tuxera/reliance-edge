@@ -93,7 +93,13 @@ typedef struct sREDHANDLE
     uint32_t        ulInode;    /**< Inode number; 0 if handle is available. */
     uint8_t         bVolNum;    /**< Volume containing the inode. */
     uint8_t         bFlags;     /**< Handle flags (type and mode). */
-    uint64_t        ullOffset;  /**< File or directory offset. */
+    union
+    {
+        uint64_t ullFileOffset;
+      #if REDCONF_API_POSIX_READDIR == 1
+        uint32_t ulDirPosition;
+      #endif
+    }               o;          /**< File or directory offset. */
   #if REDCONF_API_POSIX_READDIR == 1
     REDDIRENT       dirent;     /**< Dirent structure returned by red_readdir(). */
   #endif
@@ -1522,14 +1528,14 @@ int32_t red_read(
         if(ret == 0)
         {
             ulLenRead = ulLength;
-            ret = RedCoreFileRead(pHandle->ulInode, pHandle->ullOffset, &ulLenRead, pBuffer);
+            ret = RedCoreFileRead(pHandle->ulInode, pHandle->o.ullFileOffset, &ulLenRead, pBuffer);
         }
 
         if(ret == 0)
         {
             REDASSERT(ulLenRead <= ulLength);
 
-            pHandle->ullOffset += ulLenRead;
+            pHandle->o.ullFileOffset += ulLenRead;
         }
 
         PosixLeave();
@@ -1642,21 +1648,21 @@ int32_t red_write(
             ret = RedCoreStat(pHandle->ulInode, &s);
             if(ret == 0)
             {
-                pHandle->ullOffset = s.st_size;
+                pHandle->o.ullFileOffset = s.st_size;
             }
         }
 
         if(ret == 0)
         {
             ulLenWrote = ulLength;
-            ret = RedCoreFileWrite(pHandle->ulInode, pHandle->ullOffset, &ulLenWrote, pBuffer);
+            ret = RedCoreFileWrite(pHandle->ulInode, pHandle->o.ullFileOffset, &ulLenWrote, pBuffer);
         }
 
         if(ret == 0)
         {
             REDASSERT(ulLenWrote <= ulLength);
 
-            pHandle->ullOffset += ulLenWrote;
+            pHandle->o.ullFileOffset += ulLenWrote;
         }
 
         PosixLeave();
@@ -1826,8 +1832,8 @@ int64_t red_lseek(
                 /*  Seek from the current file offset.
                 */
                 case RED_SEEK_CUR:
-                    REDASSERT(pHandle->ullOffset <= (uint64_t)INT64_MAX);
-                    llFrom = (int64_t)pHandle->ullOffset;
+                    REDASSERT(pHandle->o.ullFileOffset <= (uint64_t)INT64_MAX);
+                    llFrom = (int64_t)pHandle->o.ullFileOffset;
                     break;
 
                 /*  Seek from the end of the file.
@@ -1876,7 +1882,7 @@ int64_t red_lseek(
                 }
                 else
                 {
-                    pHandle->ullOffset = (uint64_t)llNewOffset;
+                    pHandle->o.ullFileOffset = (uint64_t)llNewOffset;
                     llReturn = llNewOffset;
                 }
             }
@@ -2126,19 +2132,7 @@ REDDIRENT *red_readdir(
 
         if(ret == 0)
         {
-            uint32_t ulDirPosition;
-
-            /*  To save memory, the directory position is stored in the same
-                location as the file offset.  This would be a bit cleaner using
-                a union, but MISRA-C:2012 Rule 19.2 disallows unions.
-            */
-            REDASSERT(pDirStream->ullOffset <= UINT32_MAX);
-            ulDirPosition = (uint32_t)pDirStream->ullOffset;
-
-            ret = RedCoreDirRead(pDirStream->ulInode, &ulDirPosition, pDirStream->dirent.d_name, &pDirStream->dirent.d_ino);
-
-            pDirStream->ullOffset = ulDirPosition;
-
+            ret = RedCoreDirRead(pDirStream->ulInode, &pDirStream->o.ulDirPosition, pDirStream->dirent.d_name, &pDirStream->dirent.d_ino);
             if(ret == 0)
             {
                 /*  POSIX extension: return stat information with the dirent.
@@ -2195,7 +2189,7 @@ void red_rewinddir(
     {
         if(DirStreamIsValid(pDirStream))
         {
-            pDirStream->ullOffset = 0U;
+            pDirStream->o.ulDirPosition = 0U;
         }
 
         PosixLeave();
@@ -3319,48 +3313,26 @@ static void FildesUnpack(
 static bool DirStreamIsValid(
     const REDDIR   *pDirStream)
 {
-    bool            fRet = true;
+    bool            fRet;
 
-    if(pDirStream == NULL)
+    if(!PTR_IS_ARRAY_ELEMENT(pDirStream, gaHandle))
     {
+        /*  pDirStream is not a pointer to one of our handles.
+        */
+        fRet = false;
+    }
+    else if(    (pDirStream->ulInode == INODE_INVALID)
+             || (pDirStream->bVolNum >= REDCONF_VOLUME_COUNT)
+             || ((pDirStream->bFlags & HFLAG_DIRECTORY) == 0U))
+    {
+        /*  The handle must be in use, have a valid volume number, and be a
+            directory handle.
+        */
         fRet = false;
     }
     else
     {
-        uint16_t uHandleIdx;
-
-        /*  pDirStream should be a pointer to one of the handles.
-
-            A good compiler will optimize this loop into a bounds check and an
-            alignment check.
-        */
-        for(uHandleIdx = 0U; uHandleIdx < REDCONF_HANDLE_COUNT; uHandleIdx++)
-        {
-            if(pDirStream == &gaHandle[uHandleIdx])
-            {
-                break;
-            }
-        }
-
-        if(uHandleIdx < REDCONF_HANDLE_COUNT)
-        {
-            /*  The handle must be in use, have a valid volume number, and be a
-                directory handle.
-            */
-            if(    (pDirStream->ulInode == INODE_INVALID)
-                || (pDirStream->bVolNum >= REDCONF_VOLUME_COUNT)
-                || ((pDirStream->bFlags & HFLAG_DIRECTORY) == 0U))
-            {
-                fRet = false;
-            }
-        }
-        else
-        {
-            /*  pDirStream is a non-null pointer, but it is not a pointer to one
-                of our handles.
-            */
-            fRet = false;
-        }
+        fRet = true;
     }
 
     return fRet;

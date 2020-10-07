@@ -253,6 +253,7 @@ REDSTATUS RedVolMountMetaroot(uint32_t ulFlags);
 #endif
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedVolTransact(void);
+REDSTATUS RedVolRollback(void);
 #endif
 void RedVolCriticalError(const char *pszFileName, uint32_t ulLineNum);
 REDSTATUS RedVolSeqNumIncrement(uint8_t bVolNum);

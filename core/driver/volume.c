@@ -607,7 +607,47 @@ REDSTATUS RedVolTransact(void)
 
     return ret;
 }
-#endif
+
+
+/** @brief Rollback to the previous transaction point.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EIO    An I/O error occurred.
+*/
+REDSTATUS RedVolRollback(void)
+{
+    REDSTATUS ret = 0;
+
+    REDASSERT(gpRedVolume->fMounted); /* Should be checked by caller. */
+    REDASSERT(!gpRedVolume->fReadOnly); /* Should be checked by caller. */
+
+    if(gpRedCoreVol->fBranched)
+    {
+        ret = RedBufferDiscardRange(0U, gpRedVolume->ulBlockCount);
+
+        if(ret == 0)
+        {
+            ret = RedVolMountMaster();
+        }
+
+        if(ret == 0)
+        {
+            ret = RedVolMountMetaroot(RED_MOUNT_DEFAULT);
+        }
+
+        if(ret == 0)
+        {
+            gpRedCoreVol->fBranched = false;
+        }
+
+        CRITICAL_ASSERT(ret == 0);
+    }
+
+    return ret;
+}
+#endif /* REDCONF_READ_ONLY == 0 */
 
 
 #ifdef REDCONF_ENDIAN_SWAP

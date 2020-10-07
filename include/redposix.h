@@ -144,6 +144,7 @@ int32_t red_format(const char *pszVolume);
 #endif
 #if REDCONF_READ_ONLY == 0
 int32_t red_transact(const char *pszVolume);
+int32_t red_rollback(const char *pszVolume);
 #endif
 #if REDCONF_READ_ONLY == 0
 int32_t red_settransmask(const char *pszVolume, uint32_t ulEventMask);

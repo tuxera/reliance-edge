@@ -732,17 +732,15 @@ int32_t red_transact(
 }
 
 
-/** @brief Rollback to the previous committed state.
+/** @brief Rollback to the previous transaction point.
 
     Reliance Edge is a transactional file system.  All modifications, of both
-    metadata and filedata, are initially working state.  A transaction point
-    is a process whereby the working state atomically becomes the committed
-    state, replacing the previous committed state.  Whenever Reliance Edge is
-    mounted, including after power loss, the state of the file system after
-    mount is the most recent committed state.  Nothing from the committed
-    state is ever missing, and nothing from the working state is ever included.
-    This call cancels all modifications in the working state and reverts to
-    the last committed state.
+    metadata and filedata, are initially working state.  A transaction point is
+    a process whereby the working state atomically becomes the committed state,
+    replacing the previous committed state.  This call cancels all modifications
+    in the working state and reverts to the last committed state.  In other
+    words, calling this function will discard all changes made to the file
+    system since the most recent transaction point.
 
     @param pszVolume    A path prefix identifying the volume to rollback.
 
@@ -750,12 +748,11 @@ int32_t red_transact(
             #red_errno is set appropriately.
 
     <b>Errno values</b>
-    - #RED_EINVAL: Volume is not mounted; or @p pszVolume is `NULL`.
-    - #RED_EBUSY: A discarded block is still referenced.
-    - #RED_ENOENT: @p pszVolume is not a valid volume path prefix.
-    - #RED_EUSERS: Cannot become a file system user: too many users.
     - #RED_EBUSY: There are still open handles for this file system volume.
+    - #RED_EINVAL: Volume is not mounted; or @p pszVolume is `NULL`.
+    - #RED_ENOENT: @p pszVolume is not a valid volume path prefix.
     - #RED_EROFS: The file system volume is read-only.
+    - #RED_EUSERS: Cannot become a file system user: too many users.
 */
 int32_t red_rollback(
     const char *pszVolume)

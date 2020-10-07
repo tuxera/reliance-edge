@@ -93,8 +93,6 @@ REDSTATUS RedVolInitGeometry(void)
         }
         else
         {
-            gpRedVolume->ullMaxInodeSize = INODE_SIZE_MAX;
-
             /*  To understand the following code, note that the fixed-
                 location metadata is located at the start of the disk, in
                 the following order:
@@ -634,7 +632,9 @@ REDSTATUS RedVolRollback(void)
 
         if(ret == 0)
         {
-            ret = RedVolMountMetaroot(RED_MOUNT_DEFAULT);
+            uint32_t ulFlags = RED_MOUNT_DEFAULT;
+
+            ret = RedVolMountMetaroot(ulFlags);
         }
 
         if(ret == 0)

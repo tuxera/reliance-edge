@@ -629,17 +629,16 @@ REDSTATUS RedFseTransact(
     return ret;
 }
 
-/** @brief Rollback to a previous transaction point.
+
+/** @brief Rollback to the previous transaction point.
 
     Reliance Edge is a transactional file system.  All modifications, of both
-    metadata and filedata, are initially working state.  A transaction point
-    is a process whereby the working state atomically becomes the committed
-    state, replacing the previous committed state.  Whenever Reliance Edge is
-    mounted, including after power loss, the state of the file system after
-    mount is the most recent committed state.  Nothing from the committed
-    state is ever missing, and nothing from the working state is ever included.
-    This call cancels all modifications in the working state and reverts to
-    the last committed state.
+    metadata and filedata, are initially working state.  A transaction point is
+    a process whereby the working state atomically becomes the committed state,
+    replacing the previous committed state.  This call cancels all modifications
+    in the working state and reverts to the last committed state.  In other
+    words, calling this function will discard all changes made to the file
+    system since the most recent transaction point.
 
     @param bVolNum  The volume number of the volume to rollback.
 
@@ -666,9 +665,10 @@ REDSTATUS RedFseRollback(
 
     return ret;
 }
-#endif
+#endif /* REDCONF_READ_ONLY == 0 */
 
 /** @} */
+
 
 /** @brief Enter the file system driver.
 

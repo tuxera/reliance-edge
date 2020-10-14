@@ -24,6 +24,13 @@
 */
 /** @file
     @brief Macros for version numbers, build number, and product information.
+
+    RED_VERSION_SUFFIX, if defined, is a custom string that will be suffixed to
+    the version number in the sign-on, replacing the build number.  It should
+    only be defined by Tuxera when building a binary delivery: it should not be
+    defined when building an SDK.  Since binary deliveries are always
+    commercially licensed, defining RED_VERSION_SUFFIX also changes the default
+    RED_KIT value.
 */
 #ifndef REDVER_H
 #define REDVER_H
@@ -33,7 +40,7 @@
 
     <!-- This macro is updated automatically: do not edit! -->
 */
-#define RED_BUILD_NUMBER "864-9"
+#define RED_BUILD_NUMBER "864-10"
 
 #define RED_KIT_GPL         0U  /* Open source GPL kit. */
 #define RED_KIT_COMMERCIAL  1U  /* Commercially-licensed kit. */
@@ -43,7 +50,11 @@
 
     <!-- This macro is updated automatically: do not edit! -->
 */
+#ifdef RED_VERSION_SUFFIX
+#define RED_KIT RED_KIT_COMMERCIAL
+#else
 #define RED_KIT RED_KIT_GPL
+#endif
 
 
 /** @brief Version number to display in output.
@@ -81,9 +92,18 @@
   #define ALPHABETA     ""
 #endif
 
+/*  Version suffix defaults to the SDK build number, but it can be otherwise
+    defined for binary deliveries where the build number is not meaningful.
+*/
+#ifdef RED_VERSION_SUFFIX
+#define VERSION_SUFFIX_STR "(" RED_VERSION_SUFFIX ")"
+#else
+#define VERSION_SUFFIX_STR "Build " RED_BUILD_NUMBER
+#endif
+
 /** @brief Full product name and version.
 */
-#define RED_PRODUCT_NAME "Tuxera " RED_PRODUCT_BASE_NAME " " RED_VERSION " Build " RED_BUILD_NUMBER ALPHABETA
+#define RED_PRODUCT_NAME "Tuxera " RED_PRODUCT_BASE_NAME " " RED_VERSION " " VERSION_SUFFIX_STR ALPHABETA
 
 
 /** @brief Product copyright.

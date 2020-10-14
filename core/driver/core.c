@@ -146,6 +146,7 @@ REDSTATUS RedCoreInit(void)
       #if REDCONF_READ_ONLY == 0
         gaRedVolume[bVolNum].ulTransMask = REDCONF_TRANSACT_DEFAULT;
       #endif
+        gaRedVolume[bVolNum].ullMaxInodeSize = INODE_SIZE_MAX;
     }
 
     /*  Make sure the configured endianness is correct.

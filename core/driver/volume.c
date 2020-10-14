@@ -93,8 +93,6 @@ REDSTATUS RedVolInitGeometry(void)
         }
         else
         {
-            gpRedVolume->ullMaxInodeSize = INODE_SIZE_MAX;
-
             /*  To understand the following code, note that the fixed-
                 location metadata is located at the start of the disk, in
                 the following order:
@@ -620,6 +618,9 @@ static void MetaRootEndianSwap(
     }
     else
     {
+        pMetaRoot->hdr.ulSignature = RedRev32(pMetaRoot->hdr.ulSignature);
+        pMetaRoot->hdr.ullSequence = RedRev64(pMetaRoot->hdr.ullSequence);
+
         pMetaRoot->ulSectorCRC = RedRev32(pMetaRoot->ulSectorCRC);
         pMetaRoot->ulFreeBlocks = RedRev32(pMetaRoot->ulFreeBlocks);
       #if REDCONF_API_POSIX == 1

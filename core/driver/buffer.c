@@ -161,7 +161,6 @@ static bool BufferFind(uint32_t ulBlock, uint8_t *pbIdx);
 static void BufferEndianSwap(const void *pBuffer, uint16_t uFlags);
 static void BufferEndianSwapHeader(NODEHEADER *pHeader);
 static void BufferEndianSwapMaster(MASTERBLOCK *pMaster);
-static void BufferEndianSwapMetaRoot(METAROOT *pMetaRoot);
 static void BufferEndianSwapInode(INODE *pInode);
 static void BufferEndianSwapIndir(INDIR *pIndir);
 #endif
@@ -911,7 +910,7 @@ static REDSTATUS BufferFinalize(
     meta roots, which don't go through the buffers anyways.
 
     @param pBuffer  Pointer to the metadata buffer to swap
-    @param uFlags   The associated buffer flags.  Used to determin the type of
+    @param uFlags   The associated buffer flags.  Used to determine the type of
                     metadata node.
 */
 static void BufferEndianSwap(

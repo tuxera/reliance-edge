@@ -43,6 +43,9 @@
 #define DIRENTS_PER_BLOCK   (REDCONF_BLOCK_SIZE / DIRENT_SIZE)
 #define DIRENTS_MAX         (uint32_t)REDMIN(UINT32_MAX, UINT64_SUFFIX(1) * INODE_DATA_BLOCKS * DIRENTS_PER_BLOCK)
 
+#define DIR_BLOCK_USED_SPACE    (DIRENT_SIZE * DIRENTS_PER_BLOCK)
+#define DIR_BLOCK_UNUSED_SPACE  (REDCONF_BLOCK_SIZE - DIR_BLOCK_USED_SPACE)
+
 
 /** @brief On-disk directory entry.
 */
@@ -265,7 +268,22 @@ REDSTATUS RedDirEntryDelete(
         */
         if(ret == 0)
         {
-            ret = RedInodeDataTruncate(pPInode, DirEntryIndexToOffset(ulTruncIdx));
+            uint64_t ullNewSize = DirEntryIndexToOffset(ulTruncIdx);
+
+          #if DIR_BLOCK_UNUSED_SPACE > 0U
+            /*  In configurations with unusable space at the end of directory
+                blocks, be sure to truncate away the unusable space.  This makes
+                the directory size more accurate and, more importantly, is
+                required in order for this function to recognize when the final
+                dirent in a block is being deleted.
+            */
+            if((ullNewSize >= REDCONF_BLOCK_SIZE) && ((ullNewSize & (REDCONF_BLOCK_SIZE - 1U)) == 0U))
+            {
+                ullNewSize -= DIR_BLOCK_UNUSED_SPACE;
+            }
+          #endif
+
+            ret = RedInodeDataTruncate(pPInode, ullNewSize);
         }
     }
     else

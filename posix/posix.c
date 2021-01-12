@@ -84,6 +84,13 @@
 #define HFLAG_READABLE  0x02U   /* Handle is readable. */
 #define HFLAG_WRITEABLE 0x04U   /* Handle is writeable. */
 #define HFLAG_APPENDING 0x08U   /* Handle was opened in append mode. */
+#if REDCONF_READAHEAD == 1
+#define HFLAG_RANDOM    0x10U   /* Handle has been accessed non-sequentially. */
+
+#define HANDLE_ACCESS(handle) ((((handle)->bFlags) & HFLAG_RANDOM) ? ACCESS_RANDOM : ACCESS_SEQUENTIAL)
+#else
+#define HANDLE_ACCESS(handle) ACCESS_UNKNOWN
+#endif
 
 /*  @brief Handle structure, used to implement file descriptors and directory
            streams.
@@ -1605,7 +1612,7 @@ int32_t red_read(
         if(ret == 0)
         {
             ulLenRead = ulLength;
-            ret = RedCoreFileRead(pHandle->ulInode, pHandle->o.ullFileOffset, &ulLenRead, pBuffer);
+            ret = RedCoreFileRead(pHandle->ulInode, HANDLE_ACCESS(pHandle), pHandle->o.ullFileOffset, &ulLenRead, pBuffer);
         }
 
         if(ret == 0)
@@ -1959,6 +1966,17 @@ int64_t red_lseek(
                 }
                 else
                 {
+                  #if REDCONF_READAHEAD == 1
+                    /*  An explicit seek changes the access pattern to random,
+                        unless the seek is a no-op or the seek is returning to
+                        the start of the file.
+                    */
+                    if((llNewOffset != 0) && (pHandle->o.ullFileOffset != (uint64_t)llNewOffset))
+                    {
+                        pHandle->bFlags |= HFLAG_RANDOM;
+                    }
+                  #endif
+
                     pHandle->o.ullFileOffset = (uint64_t)llNewOffset;
                     llReturn = llNewOffset;
                 }

@@ -400,6 +400,35 @@ void RedBufferPut(
 }
 
 
+#if REDCONF_READAHEAD == 1
+/** @brief Determine whether a block is currently buffered.
+
+    If the block has a buffer, as a side effect, that buffer is moved the tail
+    of the LRU list so that the buffer is more likely to persist.
+
+    @param ulBlock  The block number.
+
+    @return Whether @p ulBlock is currently buffered.
+*/
+bool RedIsBuffered(
+    uint32_t    ulBlock)
+{
+    uint8_t     bIdx;
+    bool        fBuffered;
+
+    fBuffered = BufferFind(ulBlock, &bIdx);
+    if(fBuffered)
+    {
+        /*  Promote this buffer to MRU so that it stays buffered.
+        */
+        BufferMakeMRU(bIdx);
+    }
+
+    return fBuffered;
+}
+#endif
+
+
 #if REDCONF_READ_ONLY == 0
 /** @brief Flush all buffers for the active volume in the given range of blocks.
 

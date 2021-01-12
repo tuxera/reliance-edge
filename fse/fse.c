@@ -320,7 +320,7 @@ int32_t RedFseRead(
     {
         uint32_t ulReadLen = ulLength;
 
-        ret = RedCoreFileRead(ulFileNum, ullFileOffset, &ulReadLen, pBuffer);
+        ret = RedCoreFileRead(ulFileNum, ACCESS_UNKNOWN, ullFileOffset, &ulReadLen, pBuffer);
 
         FseLeave();
 

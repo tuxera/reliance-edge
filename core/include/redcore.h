@@ -91,6 +91,9 @@ REDSTATUS RedIoFlush(uint8_t bVolNum);
 void RedBufferInit(void);
 REDSTATUS RedBufferGet(uint32_t ulBlock, uint16_t uFlags, void **ppBuffer);
 void RedBufferPut(const void *pBuffer);
+#if REDCONF_READAHEAD == 1
+bool RedIsBuffered(uint32_t ulBlock);
+#endif
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedBufferFlushRange(uint32_t ulBlockStart, uint32_t ulBlockCount);
 void RedBufferDirty(const void *pBuffer);
@@ -220,7 +223,7 @@ REDSTATUS RedInodeIsFree(uint32_t ulInode, bool *pfFree);
 REDSTATUS RedInodeBitGet(uint8_t bMR, uint32_t ulInode, uint8_t bWhich, bool *pfAllocated);
 #endif
 
-REDSTATUS RedInodeDataRead(CINODE *pInode, uint64_t ullStart, uint32_t *pulLen, void *pBuffer);
+REDSTATUS RedInodeDataRead(CINODE *pInode, ACCESSPATTERN pattern, uint64_t ullStart, uint32_t *pulLen, void *pBuffer);
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedInodeDataWrite(CINODE *pInode, uint64_t ullStart, uint32_t *pulLen, const void *pBuffer);
 #if DELETE_SUPPORTED || TRUNCATE_SUPPORTED

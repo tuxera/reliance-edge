@@ -70,6 +70,9 @@ static REDSTATUS SeekInode(CINODE *pInode, uint32_t ulBlock);
 static void SeekCoord(CINODE *pInode, uint32_t ulBlock);
 static REDSTATUS ReadUnaligned(CINODE *pInode, uint64_t ullStart, uint32_t ulLen, uint8_t *pbBuffer);
 static REDSTATUS ReadAligned(CINODE *pInode, uint32_t ulBlockStart, uint32_t ulBlockCount, uint8_t *pbBuffer);
+#if REDCONF_READAHEAD == 1
+static REDSTATUS Readahead(CINODE *pInode, uint32_t ulReadLen, uint64_t ullReadEndOffset);
+#endif
 #if REDCONF_READ_ONLY == 0
 static REDSTATUS WriteUnaligned(CINODE *pInode, uint64_t ullStart, uint32_t ulLen, const uint8_t *pbBuffer);
 static REDSTATUS WriteAligned(CINODE *pInode, uint32_t ulBlockStart, uint32_t *pulBlockCount, const uint8_t *pbBuffer);
@@ -87,6 +90,7 @@ static uint32_t FreeBlockCount(void);
 
     @param pInode   A pointer to the cached inode structure of the inode from
                     which to read.
+    @param pattern  Inode access pattern (sequential, random, or unknown).
     @param ullStart The file offset at which to read.
     @param pulLen   On input, the number of bytes to attempt to read.  On
                     successful return, populated with the number of bytes
@@ -101,12 +105,13 @@ static uint32_t FreeBlockCount(void);
                         @p pulLen is `NULL`; or @p pBuffer is `NULL`.
 */
 REDSTATUS RedInodeDataRead(
-    CINODE     *pInode,
-    uint64_t    ullStart,
-    uint32_t   *pulLen,
-    void       *pBuffer)
+    CINODE         *pInode,
+    ACCESSPATTERN   pattern,
+    uint64_t        ullStart,
+    uint32_t       *pulLen,
+    void           *pBuffer)
 {
-    REDSTATUS   ret = 0;
+    REDSTATUS       ret = 0;
 
     if(!CINODE_IS_MOUNTED(pInode) || (pulLen == NULL) || (pBuffer == NULL))
     {
@@ -182,6 +187,15 @@ REDSTATUS RedInodeDataRead(
 
             ret = ReadUnaligned(pInode, ullStart + ulReadIndex, ulRemaining, &pbBuffer[ulReadIndex]);
         }
+
+      #if REDCONF_READAHEAD == 1
+        if((ret == 0) && (pattern == ACCESS_SEQUENTIAL))
+        {
+            ret = Readahead(pInode, ulLen, ullStart + ulReadIndex + ulRemaining);
+        }
+      #else
+        (void)pattern; /* Parameter not used. */
+      #endif
 
         if(ret == 0)
         {
@@ -1284,6 +1298,120 @@ static REDSTATUS ReadAligned(
 
     return ret;
 }
+
+
+#if REDCONF_READAHEAD == 1
+/** @brief Initiate readahead, if doing so makes sense.
+
+    @param pInode           A pointer to the cached inode structure.
+    @param ulReadLen        Length of the just-ended read.
+    @param ullReadEndOffset One byte beyond where the read ended.
+*/
+static REDSTATUS Readahead(
+    CINODE     *pInode,
+    uint32_t    ulReadLen,
+    uint64_t    ullReadEndOffset)
+{
+    REDSTATUS   ret = 0;
+
+    if(!CINODE_IS_MOUNTED(pInode))
+    {
+        REDERROR();
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        uint32_t    ulRALogicalBlock = pInode->ulLogicalBlock + 1U;
+        bool        fRA; /* Whether to perform readahead */
+
+        /*  Assume the next read will be the same length as the just-completed
+            read.  If it will cross over into the next logical block, then
+            kicking off readahead for that block makes sense.
+
+            Note ulReadLen > 0, so if the read ends on a block boundary, we will
+            readahead.
+        */
+        fRA = (ullReadEndOffset >> BLOCK_SIZE_P2) != ((ullReadEndOffset + ulReadLen) >> BLOCK_SIZE_P2);
+
+        if(fRA)
+        {
+            /*  Don't try to readahead beyond the end-of-file.
+            */
+            fRA = ((uint64_t)ulRALogicalBlock << BLOCK_SIZE_P2) < pInode->pInodeBuf->ullSize;
+        }
+
+        /*  If double indirect nodes or indirect nodes exist, ...
+        */
+      #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+        if(fRA)
+        {
+            /*  Compute which metadata nodes would be needed for the next block.
+            */
+            SeekCoord(pInode, ulRALogicalBlock);
+
+          #if DINDIR_POINTERS > 0U
+            /*  If a new double indirect node would need to be read in order to
+                readahead the next block, don't readahead.
+            */
+            if((pInode->uDindirEntry != COORD_ENTRY_INVALID) && (pInode->pDindir == NULL))
+            {
+                fRA = false;
+            }
+          #endif
+
+            /*  If a new indirect node would need to be read in order to
+                readahead the next block, don't readahead.
+            */
+            if((pInode->uIndirEntry != COORD_ENTRY_INVALID) && (pInode->pIndir == NULL))
+            {
+                fRA = false;
+            }
+        }
+      #endif
+
+        if(fRA)
+        {
+            ret = SeekInode(pInode, ulRALogicalBlock);
+            if(ret == -RED_ENODATA)
+            {
+                /*  If the data block is sparse, don't readahead.
+                */
+                ret = 0;
+                fRA = false;
+            }
+        }
+
+        /*  If the next read would go through the buffers...
+        */
+        if(    (ret == 0) && fRA
+            && (    (ulReadLen < REDCONF_BLOCK_SIZE)
+                 || ((ullReadEndOffset & (REDCONF_BLOCK_SIZE - 1U)) != 0U)))
+        {
+            /*  If the block is already buffered, don't readahead.
+
+                Note: If the block is buffered, as a side effect, the buffer
+                is moved to the tail of the LRU list, so that the buffer is
+                less likely to be repurposed before we get to use it.
+            */
+            fRA = !RedIsBuffered(pInode->ulDataBlock);
+        }
+
+        if((ret == 0) && fRA)
+        {
+            /*  Initiate the readahead.
+
+                TODO: This should probably go through the blockio.c and bdev.c
+                layers, rather than calling the OS service function directly.
+            */
+            RedOsBDevReadahead(gbRedVolNum,
+                ((uint64_t)pInode->ulDataBlock << gpRedVolume->bBlockSectorShift) + gpRedVolConf->ullSectorOffset,
+                1U << gpRedVolume->bBlockSectorShift);
+        }
+    }
+
+    return ret;
+}
+#endif /* REDCONF_READAHEAD == 1 */
 
 
 #if REDCONF_READ_ONLY == 0

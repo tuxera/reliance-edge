@@ -44,5 +44,15 @@ typedef enum
 } FTYPE;
 
 
+/** @brief Inode access pattern.
+*/
+typedef enum
+{
+    ACCESS_UNKNOWN,     /**< Unknown access pattern (not being tracked) */
+    ACCESS_SEQUENTIAL,  /**< Sequential access pattern. */
+    ACCESS_RANDOM       /**< Random access pattern.  Anything non-sequential is "random". */
+} ACCESSPATTERN;
+
+
 #endif
 

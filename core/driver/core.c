@@ -1502,6 +1502,7 @@ REDSTATUS RedCoreFileSizeGet(
     @p pulLen is populated with zero.
 
     @param ulInode  The inode number of the file to read.
+    @param pattern  Inode access pattern (sequential, random, or unknown).
     @param ullStart The file offset to read from.
     @param pulLen   On entry, contains the number of bytes to read; on
                     successful exit, contains the number of bytes actually
@@ -1518,12 +1519,13 @@ REDSTATUS RedCoreFileSizeGet(
     @retval -RED_EISDIR The inode is a directory inode.
 */
 REDSTATUS RedCoreFileRead(
-    uint32_t    ulInode,
-    uint64_t    ullStart,
-    uint32_t   *pulLen,
-    void       *pBuffer)
+    uint32_t        ulInode,
+    ACCESSPATTERN   pattern,
+    uint64_t        ullStart,
+    uint32_t       *pulLen,
+    void           *pBuffer)
 {
-    REDSTATUS   ret;
+    REDSTATUS       ret;
 
     if(!gpRedVolume->fMounted || (pulLen == NULL))
     {
@@ -1542,7 +1544,7 @@ REDSTATUS RedCoreFileRead(
         ret = RedInodeMount(&ino, FTYPE_FILE, fUpdateAtime);
         if(ret == 0)
         {
-            ret = RedInodeDataRead(&ino, ullStart, pulLen, pBuffer);
+            ret = RedInodeDataRead(&ino, pattern, ullStart, pulLen, pBuffer);
 
           #if (REDCONF_ATIME == 1) && (REDCONF_READ_ONLY == 0)
             RedInodePut(&ino, ((ret == 0) && fUpdateAtime) ? IPUT_UPDATE_ATIME : 0U);

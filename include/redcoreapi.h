@@ -85,7 +85,7 @@ REDSTATUS RedCoreStat(uint32_t ulInode, REDSTAT *pStat);
 REDSTATUS RedCoreFileSizeGet(uint32_t ulInode, uint64_t *pullSize);
 #endif
 
-REDSTATUS RedCoreFileRead(uint32_t ulInode, uint64_t ullStart, uint32_t *pulLen, void *pBuffer);
+REDSTATUS RedCoreFileRead(uint32_t ulInode, ACCESSPATTERN pattern, uint64_t ullStart, uint32_t *pulLen, void *pBuffer);
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedCoreFileWrite(uint32_t ulInode, uint64_t ullStart, uint32_t *pulLen, const void *pBuffer);
 #endif

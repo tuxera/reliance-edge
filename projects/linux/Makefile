@@ -25,6 +25,8 @@ INCLUDES=					\
 EXTRA_CFLAGS +=-Wall
 EXTRA_CFLAGS +=-Werror
 EXTRA_CFLAGS +=$(call cc-option,-Wframe-larger-than=4096)
+# pthreads needed for readahead simulation when REDCONF_READAHEAD==1
+EXTRA_CFLAGS +=-pthread
 
 ifneq ($(B_DEBUG),0)
 EXTRA_CFLAGS +=-g -DDEBUG

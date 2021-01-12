@@ -68,6 +68,7 @@ typedef struct
 } LINUXBDEV;
 
 
+static REDSTATUS ReadSub(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, void *pBuffer);
 static REDSTATUS RamDiskOpen(uint8_t bVolNum, BDEVOPENMODE mode);
 static REDSTATUS RamDiskClose(uint8_t bVolNum);
 static REDSTATUS RamDiskGetGeometry(uint8_t bVolNum, BDEVINFO *pInfo);
@@ -87,6 +88,170 @@ static REDSTATUS FileDiskFlush(uint8_t bVolNum);
 
 
 static LINUXBDEV gaDisk[REDCONF_VOLUME_COUNT];
+
+
+/*  Readahead simulation.
+*/
+#if REDCONF_READAHEAD == 1
+
+#include <pthread.h>
+
+/*  Determine whether a pair of offsets and lengths are overlapping.
+*/
+#define RANGES_OVERLAP(off1, len1, off2, len2) (((off2) < ((off1) + (len1))) && ((off1) < ((off2) + (len2))))
+
+#if 0
+#define RADBGPRT(...) printf(__VA_ARGS__)
+#else
+#define RADBGPRT(...)
+#endif
+
+/*  Sectors per block
+*/
+#define SPB(vol) (REDCONF_BLOCK_SIZE / gaRedBdevInfo[vol].ulSectorSize)
+
+#define VOLNUM_NONE UINT8_MAX
+#define SECTOR_NONE UINT64_MAX
+
+static bool gfRAThreadCreated; /* Whether readahead thread has been created */
+static pthread_t gRAThread;
+
+/*  Synchronization between the readahead thread and the main thread.
+*/
+static pthread_mutex_t gRAMut = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t gRACond = PTHREAD_COND_INITIALIZER;
+
+/*  Variables used to pass readahead request to readahead thred.
+*/
+static uint8_t gbRAReqVolNum = VOLNUM_NONE;
+static uint64_t gullRAReqSector = SECTOR_NONE;
+
+/*  The readahead block buffer and its current contents.
+*/
+static uint8_t gbRABufVolNum = VOLNUM_NONE;
+static uint64_t gullRABufSector = SECTOR_NONE;
+static uint8_t gabRABuf[REDCONF_BLOCK_SIZE];
+
+
+/** @brief Entry point for readahead simulation thread.
+*/
+static void *RAThreadStart(void *unused)
+{
+    (void)unused;
+
+    /*  pthread_cond_wait() requires a locked mutex.
+    */
+    (void)pthread_mutex_lock(&gRAMut); /* TODO: ignoring errors */
+
+    while(true)
+    {
+        /*  Sleep until signaled.  A signal indicates that readahead is
+            requested.
+
+            Per the man page: "pthread_cond_wait() never returns an error code."
+        */
+        (void)pthread_cond_wait(&gRACond, &gRAMut);
+
+        /*  Should never be signaled unless there is a readahead request.
+        */
+        REDASSERT(gbRAReqVolNum != VOLNUM_NONE);
+        REDASSERT(gullRAReqSector != SECTOR_NONE);
+
+        RADBGPRT("RAThread: Request Volume=%d Sector=%lld\n", (int)gbRAReqVolNum, (long long)gullRAReqSector);
+
+        /*  Unless the request is already buffered...
+        */
+        if((gbRAReqVolNum != gbRABufVolNum) || (gullRAReqSector != gullRABufSector))
+        {
+            REDSTATUS ret;
+
+            /*  Read the requested block.
+            */
+            ret = ReadSub(gbRAReqVolNum, gullRAReqSector, SPB(gbRAReqVolNum), gabRABuf);
+            if(ret == 0)
+            {
+                /*  The requested block is now buffered.
+                */
+                gbRABufVolNum = gbRAReqVolNum;
+                gullRABufSector = gullRAReqSector;
+            }
+            else
+            {
+                /*  Error.  Assume the buffer has been trashed, make sure it
+                    does not get used.
+                */
+                gbRABufVolNum = VOLNUM_NONE;
+                gullRABufSector = SECTOR_NONE;
+            }
+        }
+
+        /*  No active readahead request.
+        */
+        gbRAReqVolNum = VOLNUM_NONE;
+        gullRAReqSector = SECTOR_NONE;
+    }
+
+    return NULL; /* unreachable */
+}
+
+
+/** @brief Create the readahead simulation thread.
+*/
+static REDSTATUS RAThreadCreate(void)
+{
+    int                 status;
+    int                 policy;
+    struct sched_param  param;
+    pthread_attr_t      attr;
+
+    if(gfRAThreadCreated)
+    {
+        return 0; /* Thread already exists, do nothing. */
+    }
+
+    /*  Make sure the main thread is using round-robin scheduling.
+    */
+    status = pthread_getschedparam(pthread_self(), &policy, &param);
+    if(status == -1)
+    {
+        return (REDSTATUS)errno;
+    }
+    if(policy != SCHED_RR)
+    {
+        status = pthread_setschedparam(pthread_self(), SCHED_RR, &param);
+        if(status == -1)
+        {
+            return (REDSTATUS)errno;
+        }
+    }
+
+    /*  Readahead simulation thread uses round-robin scheduling with the same
+        priority as the main thread.
+    */
+    (void)pthread_attr_init(&attr);
+    (void)pthread_attr_setschedpolicy(&attr, SCHED_RR);
+    (void)pthread_attr_setschedparam(&attr, &param);
+
+    if(pthread_create(&gRAThread, &attr, RAThreadStart, NULL) == -1)
+    {
+        return (REDSTATUS)errno;
+    }
+
+    /*  Thread attributes are no longer needed.
+    */
+    (void)pthread_attr_destroy(&attr);
+
+    gfRAThreadCreated = true;
+
+    /*  Hack: wait for the readahead thread to be ready-to-go before this thread
+        tries to read anything.
+    */
+    sleep(1);
+
+    return 0;
+}
+
+#endif /* REDCONF_READAHEAD == 1 */
 
 
 /** @brief Configure a block device.
@@ -195,6 +360,15 @@ REDSTATUS RedOsBDevOpen(
             gaDisk[bVolNum].mode = mode;
         }
     }
+
+  #if REDCONF_READAHEAD == 1
+    /*  Create the readahead simulation thread, if it does not already exist.
+    */
+    if(ret == 0)
+    {
+        ret = RAThreadCreate();
+    }
+  #endif
 
     return ret;
 }
@@ -356,25 +530,148 @@ REDSTATUS RedOsBDevRead(
     }
     else
     {
-        switch(gaDisk[bVolNum].type)
+      #if REDCONF_READAHEAD == 1
+        /*  Lock the RA mutex.  This will only block if the RA thread is awake.
+        */
+        (void)pthread_mutex_lock(&gRAMut);
+
+        RADBGPRT("Read: Found RA buffer Volume %d, Sector %lld\n", (int)gbRABufVolNum, (long long)gullRABufSector);
+        RADBGPRT("Read: Want RA buffer Volume %d, Sector %lld\n", (int)bVolNum, (long long)ullSectorStart);
+
+        /*  If the RA thread has buffered the data that we want...
+
+            NOTE: Assuming the desired data would be at the beginning of the
+            request.
+        */
+        if((bVolNum == gbRABufVolNum) && (ullSectorStart == gullRABufSector))
         {
-            case BDEVTYPE_RAM_DISK:
-                ret = RamDiskRead(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
-                break;
+            uint32_t ulSPB = SPB(bVolNum);
+            uint32_t ulSectorsToCopy = REDMIN(ulSPB, ulSectorCount);
+            uint32_t ulBytesToCopy = ulSectorsToCopy * gaRedBdevInfo[bVolNum].ulSectorSize;
 
-            case BDEVTYPE_FILE_DISK:
-                ret = FileDiskRead(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
-                break;
+            RADBGPRT("Using RA result: Volume %d, Sector %lld\n", (int)bVolNum, (long long)ullSectorStart);
 
-            default:
-                REDERROR();
-                ret = -RED_EINVAL;
-                break;
+            /*  Copy the buffered readahead data instead of reading it.
+            */
+            RedMemCpy(pBuffer, gabRABuf, ulBytesToCopy);
+
+            /*  Update variables in case the requested read is larger than the
+                block size.
+            */
+            pBuffer = (uint8_t *)pBuffer + ulBytesToCopy;
+            ullSectorStart += ulSectorsToCopy;
+            ulSectorCount -= ulSectorsToCopy;
         }
+
+        (void)pthread_mutex_unlock(&gRAMut);
+
+        /*  If the RA buffer had all the data for the read, stop.
+        */
+        if(ulSectorCount == 0U)
+        {
+            return 0;
+        }
+
+        /*  The read request was not (entirely) in the RA buffer.  Read (the
+            rest of) it from disk.
+        */
+      #endif
+
+        ret = ReadSub(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
     }
 
     return ret;
 }
+
+
+/** @brief Read sectors from a physical block device.
+*/
+static REDSTATUS ReadSub(
+    uint8_t     bVolNum,
+    uint64_t    ullSectorStart,
+    uint32_t    ulSectorCount,
+    void       *pBuffer)
+{
+    REDSTATUS   ret;
+
+    /*  Parameters were already checked in RedOsBDevRead() or
+        RedOsBDevReadahead().
+    */
+
+    switch(gaDisk[bVolNum].type)
+    {
+        case BDEVTYPE_RAM_DISK:
+            ret = RamDiskRead(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
+            break;
+
+        case BDEVTYPE_FILE_DISK:
+            ret = FileDiskRead(bVolNum, ullSectorStart, ulSectorCount, pBuffer);
+            break;
+
+        default:
+            REDERROR();
+            ret = -RED_EINVAL;
+            break;
+    }
+
+    return ret;
+}
+
+
+#if REDCONF_READAHEAD == 1
+/** @brief Request asynchronous readahead of the specified sectors.
+
+    If the block device underlying @p bVolNum does not support readahead, or
+    would not benefit from it (think RAM disks), then this function can do
+    nothing and return.
+
+    This function cannot return an error since readahead is an optimization and
+    failures are not critical.
+
+    @param bVolNum          The volume number of the volume whose block device
+                            is being read from.
+    @param ullSectorStart   The starting sector number.
+    @param ulSectorCount    The number of sectors to readahead.
+*/
+void RedOsBDevReadahead(
+    uint8_t     bVolNum,
+    uint64_t    ullSectorStart,
+    uint32_t    ulSectorCount)
+{
+    /*  Current implementation has a block sized buffer and readahead always
+        uses the block size.  This sector count is thus unused, except in the
+        parameter checks below.
+    */
+    (void)ulSectorCount;
+
+    if(    (bVolNum >= REDCONF_VOLUME_COUNT)
+        || !gaDisk[bVolNum].fOpen
+        || (gaDisk[bVolNum].mode == BDEV_O_WRONLY)
+        || !VOLUME_SECTOR_RANGE_IS_VALID(bVolNum, ullSectorStart, ulSectorCount))
+    {
+        REDERROR();
+    }
+    else
+    {
+        /*  Lock the RA mutex.  This blocks only if the RA thread is awake.
+        */
+        (void)pthread_mutex_lock(&gRAMut);
+
+        /*  Variables which pass the request to the RA thread.
+        */
+        gbRAReqVolNum = bVolNum;
+        gullRAReqSector = ullSectorStart;
+
+        /*  Signal the RA thread, letting it know there is a pending request.
+        */
+        (void)pthread_cond_signal(&gRACond);
+
+        /*  Unlock the RA mutex, allowing the RA thread to run.
+        */
+        (void)pthread_mutex_unlock(&gRAMut);
+    }
+}
+#endif /* REDCONF_READAHEAD == 1 */
 
 
 #if REDCONF_READ_ONLY == 0
@@ -430,6 +727,30 @@ REDSTATUS RedOsBDevWrite(
                 ret = -RED_EINVAL;
                 break;
         }
+
+      #if REDCONF_READAHEAD == 1
+        if(ret == 0)
+        {
+            /*  Lock the RA mutex.  This will only block if the RA thread is
+                awake.
+            */
+            (void)pthread_mutex_lock(&gRAMut);
+
+            /*  If the RA buffer contains data that this write just made
+                stale...
+            */
+            if(    (bVolNum == gbRABufVolNum)
+                && RANGES_OVERLAP(ullSectorStart, ulSectorCount, gullRABufSector, SPB(bVolNum)))
+            {
+                /*  Invalidate the RA buffer.
+                */
+                gbRABufVolNum = VOLNUM_NONE;
+                gullRABufSector = SECTOR_NONE;
+            }
+
+            (void)pthread_mutex_unlock(&gRAMut);
+        }
+      #endif
     }
 
     return ret;

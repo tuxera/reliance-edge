@@ -192,6 +192,40 @@ REDSTATUS RedOsBDevRead(
 }
 
 
+#if REDCONF_READAHEAD == 1
+/** @brief Request asynchronous readahead of the specified sectors.
+
+    If the block device underlying @p bVolNum does not support readahead, or
+    would not benefit from it (think RAM disks), then this function can do
+    nothing and return.
+
+    This function cannot return an error since readahead is an optimization and
+    failures are not critical.
+
+    @param bVolNum          The volume number of the volume whose block device
+                            is being read from.
+    @param ullSectorStart   The starting sector number.
+    @param ulSectorCount    The number of sectors to readahead.
+*/
+void RedOsBDevReadahead(
+    uint8_t     bVolNum,
+    uint64_t    ullSectorStart,
+    uint32_t    ulSectorCount)
+{
+    if(    (bVolNum >= REDCONF_VOLUME_COUNT)
+        || !gaDisk[bVolNum].fOpen
+        || (gaDisk[bVolNum].mode == BDEV_O_WRONLY)
+        || !VOLUME_SECTOR_RANGE_IS_VALID(bVolNum, ullSectorStart, ulSectorCount))
+    {
+        REDERROR();
+    }
+    else
+    {
+    }
+}
+#endif /* REDCONF_READAHEAD == 1 */
+
+
 #if REDCONF_READ_ONLY == 0
 /** @brief Write sectors to a physical block device.
 

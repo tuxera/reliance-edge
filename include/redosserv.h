@@ -59,6 +59,9 @@ REDSTATUS RedOsBDevOpen(uint8_t bVolNum, BDEVOPENMODE mode);
 REDSTATUS RedOsBDevGetGeometry(uint8_t bVolNum, BDEVINFO *pInfo);
 REDSTATUS RedOsBDevClose(uint8_t bVolNum);
 REDSTATUS RedOsBDevRead(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, void *pBuffer);
+#if REDCONF_READAHEAD == 1
+void RedOsBDevReadahead(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount);
+#endif
 
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedOsBDevWrite(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, const void *pBuffer);

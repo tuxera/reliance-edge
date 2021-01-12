@@ -185,6 +185,15 @@
   #error "Configuration error: REDCONF_CHECKER must be defined."
 #endif
 
+/*  For the prototype, REDCONF_READAHEAD hasn't been added to all the redconf.h
+    files; assume it is disabled if undefined.
+*/
+#ifndef REDCONF_READAHEAD
+  #define REDCONF_READAHEAD 0
+#elif (REDCONF_READAHEAD != 0) && (REDCONF_READAHEAD != 1)
+  #error "Configuration error: REDCONF_READAHEAD must be either 0 or 1."
+#endif
+
 #if (REDCONF_READ_ONLY != 0) && (REDCONF_READ_ONLY != 1)
   #error "Configuration error: REDCONF_READ_ONLY must be either 0 or 1"
 #endif

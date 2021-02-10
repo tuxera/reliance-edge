@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                  Copyright (c) 2014-2020 Tuxera US Inc.
+                  Copyright (c) 2014-2021 Tuxera US Inc.
                       All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -40,7 +40,7 @@
 
     <!-- This macro is updated automatically: do not edit! -->
 */
-#define RED_BUILD_NUMBER "889"
+#define RED_BUILD_NUMBER "890"
 
 #define RED_KIT_GPL         0U  /* Open source GPL kit. */
 #define RED_KIT_COMMERCIAL  1U  /* Commercially-licensed kit. */
@@ -108,7 +108,7 @@
 
 /** @brief Product copyright.
 */
-#define RED_PRODUCT_LEGAL "Copyright (c) 2014-2020 Tuxera US Inc.  All Rights Reserved Worldwide."
+#define RED_PRODUCT_LEGAL "Copyright (c) 2014-2021 Tuxera US Inc.  All Rights Reserved Worldwide."
 
 
 /** @brief Product patents.

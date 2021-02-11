@@ -40,7 +40,7 @@
 
 ///
 /// \brief  The Setting class is used to represent settings displayed by the UI.
-///         This class controls validity checking and value storage; derrived
+///         This class controls validity checking and value storage; derived
 ///         classes may also control user interface interaction.
 ///
 /// \tparam T   The type which this setting holds

@@ -579,7 +579,7 @@ void FsstressDefaultParams(
 /** @brief Start fsstress.
 
     @param pParam   fsstress parameters, either from FsstressParseParams() or
-                    constructed programatically.
+                    constructed programmatically.
 
     @return Zero on success, otherwise nonzero.
 */

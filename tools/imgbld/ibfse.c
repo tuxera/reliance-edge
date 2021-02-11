@@ -169,7 +169,7 @@ int IbFseGetFileList(
         pFile = fopen(pszMapPath, "rt");
         if(pFile == NULL)
         {
-            fprintf(stderr, "Error openning specified mapping file.\n");
+            fprintf(stderr, "Error opening specified mapping file.\n");
             ret = -1;
         }
     }
@@ -440,7 +440,7 @@ int IbWriteFile(
     int                 ret = 0;
     int32_t             wResult;
 
-    /*  Only print out a mesage for the first write to a file.
+    /*  Only print out a message for the first write to a file.
     */
     if(ullOffset == 0U)
     {

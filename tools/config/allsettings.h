@@ -63,7 +63,7 @@ struct AllSettings
     ///
     /// \brief  Looks for settings in the given string \p text. The macro names
     ///         of any missing values are added to \p notFound and the macro
-    ///         names of any unparseable values are added to \p notParsed.
+    ///         names of any unparsable values are added to \p notParsed.
     ///
     static void ParseHeaderToSettings(const QString &text,
                                       QStringList &notFound,

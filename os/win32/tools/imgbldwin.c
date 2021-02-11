@@ -99,7 +99,7 @@ int IbPosixCopyDirRecursive(
             }
             else if(sFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
-                /*  Create the direcctory, then recurse!
+                /*  Create the directory, then recurse!
                 */
                 ret = IbPosixCreateDir(pszVolName, asCurrPath, pszBaseDir);
                 if(ret == 0)
@@ -150,7 +150,7 @@ int IbPosixCopyDirRecursive(
 
 
 #if REDCONF_API_FSE == 1
-/** @brief Reads the contents of the input directory, assignes a file index
+/** @brief Reads the contents of the input directory, assigns a file index
            to each file name, and fills a linked list structure with the
            names and indexes. Does not inspect subdirectories. Prints any
            error messages to stderr.
@@ -206,7 +206,7 @@ int IbFseBuildFileList(
 
         stat = sprintf(asSPath, "%s%s*", pszDirPath, pszToAppend);
 
-        /*  Strings are aready tested; sprintf shouldn't fail.
+        /*  Strings are already tested; sprintf shouldn't fail.
         */
         REDASSERT(stat >= 0);
         (void) stat;

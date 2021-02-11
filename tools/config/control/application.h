@@ -71,7 +71,7 @@ public slots:
     ///
     /// \brief  Calls Output::TrySave and handles results
     ///
-    /// If the user is editting existing configuration files, this attempts to
+    /// If the user is editing existing configuration files, this attempts to
     /// save over the existing files and shows the save dialogs if that fails.
     ///
     void TrySave();

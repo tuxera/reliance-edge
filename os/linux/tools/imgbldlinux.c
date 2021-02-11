@@ -166,7 +166,7 @@ static int FtwCopyFile(
 
 
 #if REDCONF_API_FSE == 1
-/** @brief Reads the contents of the input directory, assignes a file index
+/** @brief Reads the contents of the input directory, assigns a file index
            to each file name, and fills a linked list structure with the
            names and indexes. Does not inspect subdirectories. Prints any
            error messages to stderr.

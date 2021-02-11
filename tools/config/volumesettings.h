@@ -56,7 +56,7 @@ class VolumeSettings : QObject
     Q_OBJECT
 public:
     ///
-    /// \brief  The Volume class ontains the Setting objects associated with a
+    /// \brief  The Volume class contains the Setting objects associated with a
     ///         volume.
     ///
     class Volume

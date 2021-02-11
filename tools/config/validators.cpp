@@ -207,7 +207,7 @@ Validity validatePathSepChar(QString value, QString &msg)
         char c = value[0].toLatin1();
         if(c <= 0 || c >= 127)
         {
-            msg = "Path separator charactor must be a standard ASCII character.";
+            msg = "Path separator character must be a standard ASCII character.";
             return Invalid;
         }
         return Valid;
@@ -793,7 +793,7 @@ Validity validateAllocatedBuffers(unsigned long value, QString &msg)
         return Invalid;
     }
 
-    // Min buffer algorithm derrived from preprocessor logic in buffer.c
+    // Min buffer algorithm derived from preprocessor logic in buffer.c
 
     ulong dindirPointers = (getInodeEntries()
                             - allSettings.sbsDirectPtrs->GetValue())

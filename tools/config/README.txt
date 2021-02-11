@@ -20,28 +20,26 @@ processes described here have been tested on Windows 7 and 10 and on Ubuntu
 The most basic thing you will need is a C++ compiler.  On Windows, you can
 obtain one by downloading and installing a free version of Visual Studio, such
 as Visual Studio Community Edition (see visualstudio.com).  Versions older than
-2010 may not be compatible.  On Ubuntu, you can use your current version of GCC, 
+2010 may not be compatible.  On Ubuntu, you can use your current version of GCC,
 however the compiler used with this configuration was version 9.3.0.
 
 Installing Qt Creator
 =====================
 
 Update your install to the latest available software packages
-	$ sudo apt-get update
+    $ sudo apt-get update
 
 Install the build tools essential package
-	$ sudo apt-get install build-essential
+    $ sudo apt-get install build-essential
 
 Finally install the Qt product
-	$ sudo apt-get install qtcreator
+    $ sudo apt-get install qtcreator
 
-Ths README describes using Qt 5 
-	$ sudo apt install qt5-default
+This README describes using Qt 5
+    $ sudo apt install qt5-default
 
 You may also need to install OpenGL:
-
-    	$ sudo apt-get install mesa-common-dev libglu1-mesa-dev -y
-
+    $ sudo apt-get install mesa-common-dev libglu1-mesa-dev -y
 
 Once Qt Creator, Qt, and a C++ compiler are installed, open the file
 redconfig.pro in Qt Creator.  You may need to set up the compiler, Qt version,
@@ -71,4 +69,3 @@ executable:
 In a standard Qt installation, these files should be found in Qt's bin
 directory, except qwindows.dll, which is found in the plugins directory.  The
 ICU DLL files are not needed if Qt was compiled with the option -no-icu.
-

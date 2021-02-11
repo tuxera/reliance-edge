@@ -73,7 +73,7 @@ int IbApiUninit(void)
 /** @brief Writes file data to a file. This method may be called multiple times
            to write consecutive chunks of file data.
 
-    @param volNum           Unused parameter; maintained for compatability with
+    @param volNum           Unused parameter; maintained for compatibility with
                             FSE IbWriteFile.
     @param psFileMapping    The file being copied. File data will be written to
                             ::asOutFilePath.
@@ -98,7 +98,7 @@ int IbWriteFile(
 
     (void) volNum;
 
-    /*  Only print out a mesage for the first write to a file.
+    /*  Only print out a message for the first write to a file.
     */
     if(ullOffset == 0U)
     {

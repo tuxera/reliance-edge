@@ -602,7 +602,7 @@ REDSTATUS RedCoreTransMaskGet(
     @retval -RED_ENOTDIR        @p ulPInode is not a directory.
     @retval -RED_EBADF          @p ulPInode is not a valid inode.
     @retval -RED_ENOSPC         There is not enough space on the volume to
-                                createthe new directory entry; or the directory
+                                create the new directory entry; or the directory
                                 is full.
     @retval -RED_ENFILE         No available inode slots.
     @retval -RED_ENAMETOOLONG   @p pszName is too long.
@@ -957,7 +957,7 @@ static REDSTATUS CoreLink(
     @retval -RED_ENOSPC         The file system does not have enough space to
                                 modify the parent directory to perform the
                                 deletion.
-    @retval -RED_ENOTEMPTY      The inode refered to by @p pszName is a
+    @retval -RED_ENOTEMPTY      The inode referred to by @p pszName is a
                                 directory which is not empty.
     @retval -RED_EROFS          The requested unlink requires writing in a
                                 directory on a read-only file system.
@@ -1020,7 +1020,7 @@ REDSTATUS RedCoreUnlink(
     @retval -RED_ENOSPC         The file system does not have enough space to
                                 modify the parent directory to perform the
                                 deletion.
-    @retval -RED_ENOTEMPTY      The inode refered to by @p pszName is a
+    @retval -RED_ENOTEMPTY      The inode referred to by @p pszName is a
                                 directory which is not empty.
     @retval -RED_EROFS          The requested unlink requires writing in a
                                 directory on a read-only file system.

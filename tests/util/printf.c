@@ -28,7 +28,7 @@
     These functions are intended to be used in portable test code, which cannot
     assume the standard I/O functions will be available.  Similar to their ANSI
     C counterparts, these functions allow formatting text strings and (if the
-    configuration allows it) outputing formatted text.  The latter ability
+    configuration allows it) outputting formatted text.  The latter ability
     relies on the RedOsOutputString() OS service function.
 
     Do *not* use these functions in code which can safely assume the standard
@@ -294,7 +294,7 @@ int32_t RedSNPrintf(
 
     '*' is supported to specify variable length field widths.
 
-    Hexidecimal numbers are always displayed in upper case.  Formatting codes
+    Hexadecimal numbers are always displayed in upper case.  Formatting codes
     which specifically request upper case (e.g., "%lX") are not supported.
 
     Unsupported behaviors:

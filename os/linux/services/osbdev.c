@@ -59,7 +59,7 @@ typedef enum
 typedef struct
 {
     bool            fOpen;      /* The block device is open. */
-    BDEVOPENMODE    mode;       /* Acess mode. */
+    BDEVOPENMODE    mode;       /* Access mode. */
     BDEVTYPE        type;       /* Disk type: ram disk or file disk. */
     uint8_t        *pbRamDisk;  /* Buffer for RAM disks. */
     const char     *pszSpec;    /* Path for file and raw disks. */
@@ -827,7 +827,7 @@ static REDSTATUS FileDiskClose(uint8_t bVolNum)
 
 /** @brief Return the block device geometry.
 
-    Supported only on existing file disks.  Sector size must be spepcified in
+    Supported only on existing file disks.  Sector size must be specified in
     the volume config.
 
     @param bVolNum          The volume number of the volume whose block device

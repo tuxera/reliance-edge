@@ -117,7 +117,7 @@ int redfs_probe(
 
 /** @brief Unmount and uninitialize.
 
-    This function is called by u-boot fs interface when uninitialing the file
+    This function is called by u-boot fs interface when uninitializing the file
     system.
 
     Upon successful return, the file system is unmounted and uninitialized.
@@ -432,7 +432,7 @@ typedef struct {
     preparation for a readddir and closedir.
 
     @param pszPath  Path of directory to open.
-    @param dirsp    Populated with a open directory handle
+    @param dirsp    Populated with an open directory handle
 
     @return A value indicating the operation result.
 
@@ -477,7 +477,7 @@ int redfs_opendir(
     associated with an opendir.
 
     @param dirs  Path of directory to open.
-    @param dirsp    Populated with a open directory handle
+    @param dirsp    Populated with an open directory handle
 
     @return A value indicating the operation result.
 

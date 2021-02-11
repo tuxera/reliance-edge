@@ -672,7 +672,7 @@ static REDSTATUS TruncDindir(
 
 
 #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
-/** @brief Truncate a indirect.
+/** @brief Truncate an indirect.
 
     @param pInode   A pointer to the cached inode, whose coordinates indicate
                     the truncation boundary.

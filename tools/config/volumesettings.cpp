@@ -1189,7 +1189,7 @@ void VolumeSettings::listVolumes_currentRowChanged(int row)
     if(row < 0 || row == activeIndex)
     {
         // `row` will equal `activeIndex` when the row is
-        // changed programatically. `row` will equal -1
+        // changed programmatically. `row` will equal -1
         // when the listVolumes is cleared.
         return;
     }

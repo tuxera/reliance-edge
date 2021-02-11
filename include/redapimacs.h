@@ -59,7 +59,7 @@
 /** Mask of all supported unmount flags. */
 #define RED_UMOUNT_MASK     RED_UMOUNT_FORCE
 
-/** Defualt unmount flags. */
+/** Default unmount flags. */
 #define RED_UMOUNT_DEFAULT  0U
 
 

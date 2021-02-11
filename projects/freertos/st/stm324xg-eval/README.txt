@@ -9,7 +9,7 @@ STM324xG-EVAL platform.
 
 The program does nothing more than formatting the SD card and mounting it as a
 Reliance Edge volume.  A separate task monitors the joystick control and scrolls
-outputted text up or down in response.  This feature is not currently useable
+outputted text up or down in response.  This feature is not currently usable
 because the example program does not print more text than fits on the screen,
 but it is included for the developer's convenience should you wish to run an
 actual test instead of the example code.
@@ -17,7 +17,7 @@ actual test instead of the example code.
 This project includes a customized osoutput.c file instead of
 os/freertos/services/osoutput.c.  This is because putchar() did not work as
 expected using the Atollic GCC toolchain; the customized file calls
-__io_putchar() directly instead. 
+__io_putchar() directly instead.
 
 
 Project Setup
@@ -44,7 +44,7 @@ The STM32CubeF4 package also contains a copy of the FreeRTOS source code, which
 is used by this project.
 
 This project has been tested to work with versions 1.9.0 and 1.11.0 of
-STM32CubeF4. 
+STM32CubeF4.
 
 Reliance Edge Block Device
 --------------------------

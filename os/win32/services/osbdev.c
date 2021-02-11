@@ -45,7 +45,7 @@ typedef enum
 typedef struct
 {
     bool            fOpen;      /* The block device is open. */
-    BDEVOPENMODE    mode;       /* Acess mode. */
+    BDEVOPENMODE    mode;       /* Access mode. */
     BDEVTYPE        type;       /* Disk type: ram disk, file disk, raw disk. */
     uint8_t        *pbRamDisk;  /* Buffer for RAM disks. */
     const char     *pszSpec;    /* Path for file and raw disks. */
@@ -876,7 +876,7 @@ static REDSTATUS FileDiskClose(
 
 /** @brief Return the block device geometry.
 
-    Supported only on existing file disks.  Sector size must be spepcified in
+    Supported only on existing file disks.  Sector size must be specified in
     the volume config.
 
     @param bVolNum          The volume number of the volume whose block device
@@ -1271,7 +1271,7 @@ static REDSTATUS RawDiskGetGeometry(
 
         /*  Try querying the partition info.  If the specified drive is a
             partition, this should succeed and provide an accurate length.
-            Otherwise, the a physical drive was specified, not a partition.
+            Otherwise, a physical drive was specified, not a partition.
         */
         if(DeviceIoControl(gaDisk[bVolNum].hDevice, IOCTL_DISK_GET_PARTITION_INFO_EX, NULL, 0, &partInfo, sizeof(partInfo), &dwUnused, NULL))
         {

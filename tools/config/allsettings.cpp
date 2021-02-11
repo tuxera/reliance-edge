@@ -48,7 +48,7 @@ static void parseToEnabledDisabledSetting(const QString &text,
 static void parseToTrSetting(const QString &text, BoolSetting *setting);
 static QString findValue(const QString &text, const QString &macroName, bool &found);
 
-// Constant strings to save some malloc's and code duplicaiton
+// Constant strings to save some malloc's and code duplication
 const QString str1 = QString("1"),
               str0 = QString("0"),
               strU = QString("U");
@@ -71,7 +71,7 @@ static inline void addIntSetting(QString &outputString, IntSetting *intSetting)
 
 // Add a transaction point to the mask at the end of outputString
 // if trSetting is set to true.
-// Trasnaction point will be exluded without evaluating trSetting
+// Trasnaction point will be excluded without evaluating trSetting
 // if override is set to false. Evaluated normally if override
 // is true or unspecified.
 static inline void addTrIfChecked(QString &outputString, BoolSetting *trSetting,
@@ -441,7 +441,7 @@ void AllSettings::CheckError(SettingBase *setting,
             break;
         default:
             // Nothing to append.
-            // Default clause included to supress GCC's Wswitch.
+            // Default clause included to suppress GCC's Wswitch.
             break;
     }
 }

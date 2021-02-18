@@ -40,7 +40,7 @@
 
     <!-- This macro is updated automatically: do not edit! -->
 */
-#define RED_BUILD_NUMBER "891"
+#define RED_BUILD_NUMBER "892"
 
 #define RED_KIT_GPL         0U  /* Open source GPL kit. */
 #define RED_KIT_COMMERCIAL  1U  /* Commercially-licensed kit. */
@@ -59,13 +59,13 @@
 
 /** @brief Version number to display in output.
 */
-#define RED_VERSION "v2.5.1"
+#define RED_VERSION "v2.x"
 
 /** @brief Version number in hex.
 
     The most significant byte is the major version number, etc.
 */
-#define RED_VERSION_VAL 0x02050100U
+#define RED_VERSION_VAL 0x02FF0000U
 
 /** @brief On-disk version number.
 
@@ -82,8 +82,8 @@
 
 /*  Specifies whether the product is in alpha stage, beta stage, or neither.
 */
-#if 0
-  #if 0
+#if 1
+  #if 1
     #define ALPHABETA   " (Alpha)"
   #else
     #define ALPHABETA   " (Beta)"

@@ -45,6 +45,10 @@ static bool MetarootIsValid(METAROOT *pMR, bool *pfSectorCRCIsValid);
 #ifdef REDCONF_ENDIAN_SWAP
 static void MetaRootEndianSwap(METAROOT *pMetaRoot);
 #endif
+#if REDCONF_OUTPUT == 1
+static void OutputCriticalError(const char *pszFileName, uint32_t ulLineNum);
+static uint32_t U32toStr(char *pcBuffer, uint32_t ulBufferLen, uint32_t ulNum);
+#endif
 
 
 /** @brief Populate and validate the volume geometry.
@@ -683,17 +687,13 @@ void RedVolCriticalError(
     const char *pszFileName,
     uint32_t    ulLineNum)
 {
+    /*  Unused in some configurations
+    */
+    (void)pszFileName;
+    (void)ulLineNum;
+
   #if REDCONF_OUTPUT == 1
-  #if REDCONF_READ_ONLY == 0
-    if(!gpRedVolume->fReadOnly)
-    {
-        RedOsOutputString("Critical file system error in Reliance Edge, setting volume to READONLY\n");
-    }
-    else
-  #endif
-    {
-        RedOsOutputString("Critical file system error in Reliance Edge (volume already READONLY)\n");
-    }
+    OutputCriticalError(pszFileName, ulLineNum);
   #endif
 
   #if REDCONF_READ_ONLY == 0
@@ -702,9 +702,6 @@ void RedVolCriticalError(
 
   #if REDCONF_ASSERTS == 1
     RedOsAssertFail(pszFileName, ulLineNum);
-  #else
-    (void)pszFileName;
-    (void)ulLineNum;
   #endif
 }
 
@@ -750,3 +747,144 @@ REDSTATUS RedVolSeqNumIncrement(
     return ret;
 }
 
+
+#if REDCONF_OUTPUT == 1
+/** @brief Output a critical error message.
+
+    @param pszFileName  The file in which the error occurred.
+    @param ulLineNum    The line number at which the error occurred.
+*/
+static void OutputCriticalError(
+    const char *pszFileName,
+    uint32_t    ulLineNum)
+{
+  #if REDCONF_READ_ONLY == 0
+    if(!gpRedVolume->fReadOnly)
+    {
+        RedOsOutputString("Critical file system error in Reliance Edge, setting volume to READONLY\n");
+    }
+    else
+  #endif
+    {
+        RedOsOutputString("Critical file system error in Reliance Edge (volume already READONLY)\n");
+    }
+
+    /*  Print @p pszFileName and @p ulLineNum.
+    */
+    if(pszFileName == NULL)
+    {
+        REDERROR();
+    }
+    else
+    {
+        #define FILENAME_MAX_LEN 24U /* 2x the longest core source file name */
+        #define LINENUM_MAX_LEN 10U /* Big enough for UINT32_MAX */
+        #define PREFIX_LEN (sizeof(szPrefix) - 1U)
+        #define OUTBUFSIZE (PREFIX_LEN + FILENAME_MAX_LEN + 1U /* ':' */ + LINENUM_MAX_LEN + 2U /* "\n\0" */)
+
+        const char  szPrefix[] = "Reliance Edge critical error at ";
+        char        szBuffer[OUTBUFSIZE];
+        const char *pszBaseName;
+        uint32_t    ulNameLen;
+        uint32_t    ulIdx;
+
+        /*  Many compilers include the path in __FILE__ strings.  szBuffer
+            isn't large enough to print paths, so find the basename.
+        */
+        pszBaseName = pszFileName;
+        ulIdx = 0U;
+        while(pszFileName[ulIdx] != '\0')
+        {
+            /*  Currently it's safe to assume that the host system uses slashes
+                as path separators.  On Unix-like hosts, a backslash is also a
+                legal file name character, but we don't need to worry about that
+                edge case, since only the last slash matters, and _our_ file
+                names will never include backslashes.
+            */
+            if((pszFileName[ulIdx] == '/') || (pszFileName[ulIdx] == '\\'))
+            {
+                pszBaseName = &pszFileName[ulIdx + 1U];
+            }
+
+            ulIdx++;
+        }
+
+        ulNameLen = RedStrLen(pszBaseName);
+        ulNameLen = REDMIN(ulNameLen, FILENAME_MAX_LEN); /* Paranoia */
+
+        /*  We never use printf() in the core, for the sake of portability
+            and minimal code size.  Instead, craft a string buffer for
+            RedOsOutputString().
+
+            E.g., "Reliance Edge critical error at file.c:123\n"
+        */
+        RedMemCpy(szBuffer, szPrefix, PREFIX_LEN);
+        ulIdx = PREFIX_LEN;
+        RedMemCpy(&szBuffer[ulIdx], pszBaseName, ulNameLen);
+        ulIdx += ulNameLen;
+        szBuffer[ulIdx] = ':';
+        ulIdx++;
+        ulIdx += U32toStr(&szBuffer[ulIdx], sizeof(szBuffer) - ulIdx, ulLineNum);
+        szBuffer[ulIdx] = '\n';
+        ulIdx++;
+        szBuffer[ulIdx] = '\0';
+
+        RedOsOutputString(szBuffer);
+    }
+}
+
+
+/** @brief Output a decimal string representation of a uint32_t value.
+
+    @note This function does _not_ null-terminate the output buffer.
+
+    @param pcBuffer     The output buffer.
+    @param ulBufferLen  The size of @p pcBuffer.
+    @param ulNum        The unsigned 32-bit number.
+
+    @return The number of bytes written to @p pcBuffer.
+*/
+static uint32_t U32toStr(
+    char       *pcBuffer,
+    uint32_t    ulBufferLen,
+    uint32_t    ulNum)
+{
+    uint32_t    ulBufferIdx = 0U;
+
+    if((pcBuffer == NULL) || (ulBufferLen == 0U))
+    {
+        REDERROR();
+    }
+    else
+    {
+        const char  szDigits[] = "0123456789";
+        char        ach[10U]; /* Big enough for a uint32_t in radix 10 */
+        uint32_t    ulDigits = 0U;
+        uint32_t    ulRemaining = ulNum;
+
+        /*  Compute the digit characters, from least significant to most
+            significant.  For example, if @p ulNum is 123, the ach array
+            is populated with "321".
+        */
+        do
+        {
+            ach[ulDigits] = szDigits[ulRemaining % 10U];
+            ulRemaining /= 10U;
+            ulDigits++;
+        }
+        while(ulRemaining > 0U);
+
+        /*  Copy and reverse the string.  For example, if the ach array
+            contains "321", then "123" is written to @p pcBuffer.
+        */
+        while((ulDigits > 0U) && (ulBufferIdx < ulBufferLen))
+        {
+            ulDigits--;
+            pcBuffer[ulBufferIdx] = ach[ulDigits];
+            ulBufferIdx++;
+        }
+    }
+
+    return ulBufferIdx;
+}
+#endif /* REDCONF_OUTPUT == 1 */

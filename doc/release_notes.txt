@@ -9,6 +9,44 @@ course of recent releases and a list of known issues.
 
 Release History and Changes
 
+Reliance Edge vNext, TBD 2021
+
+Common Code Changes
+
+-   Add new "rollback" APIs: red_rollback() and RedFseRollback(). Thanks
+    to Jean-Christophe Dubois for suggesting and implementing these
+    APIs.
+-   Optimized block-aligned writes to make one pass over the metadata
+    rather than two passes, which slightly improves performance of such
+    writes.
+-   Critical error messages now print the file name and line number
+    where the error message originated, to assist with debugging.
+-   Fixed an endian-swapping bug that prevented little-endian host tools
+    from operating an a volume from a big-endian target, and vice versa.
+-   Fix a bug where, after deleting all the files in a directory, the
+    directory could still have a nonzero size, preventing it from being
+    deleted. This bug could only manifest when the directory entry size
+    was _not_ an integral divisor of the block size. In other words,
+    when the following was true:
+    REDCONF_BLOCK_SIZE % (REDCONF_NAME_MAX + 4) != 0
+
+INTEGRITY Port Changes
+
+Fixed several bugs which affected the client-server configuration
+(libredfs.a). The unified configuration (libredfs_unified.a) was
+unaffected by these issues. The bugs were:
+
+-   A client was unable to mount a volume that was already mounted by
+    another client.
+-   If a client unmounted a volume with the MNT_FORCE flag, it would
+    fail to close its open handles if another client had the volume
+    mounted, which could lead to spurious EMFILE or EBUSY errors later
+    on. Note that this bug could not manifest, due to the prior bug
+    preventing multiple client mounts.
+-   When the Reliance Edge checker (fsck_redfs) was invoked, the client
+    library was sending the wrong opcode to the server, causing the
+    volume to be reformatted rather than checked.
+
 Reliance Edge v2.5.1, May 2020
 
 Common Code Changes

@@ -5,6 +5,37 @@ recent releases and a list of known issues.
 
 ## Release History and Changes
 
+### Reliance Edge v2.5.1a, May 2021
+
+#### Common Code Changes
+
+- Fixed an endian-swapping bug that prevented little-endian host tools from
+  operating an a volume from a big-endian target, and vice versa.
+- Fix a bug where, after deleting all the files in a directory, the directory
+  could still have a nonzero size, preventing it from being deleted.  This bug
+  could only manifest when the directory entry size was _not_ an integral
+  divisor of the block size.  In other words, when the following was true:
+  `REDCONF_BLOCK_SIZE % (REDCONF_NAME_MAX + 4) != 0`
+
+#### INTEGRITY Port Changes
+
+Fixed several bugs affecting the client-server configuration (libredfs.a):
+
+- A client was unable to mount a volume that was already mounted by another
+  client.
+- If a client unmounted a volume with the `MNT_FORCE` flag, it would fail to
+  close its open handles if another client had the volume mounted, which could
+  lead to spurious `EMFILE` or `EBUSY` errors later on.  Note that this bug
+  could not manifest, due to the prior bug preventing multiple client mounts.
+- When the Reliance Edge checker (fsck\_redfs) was invoked, the client library
+  was sending the wrong opcode to the server, causing the volume to be
+  reformatted rather than checked.
+- Fix a bug where readdir() could skip entries in large directories.
+
+Fixed one bug affecting the unified configuration (libredfs\_unified.a):
+
+- Fix a potential buffer overrun in the readdir() implementation.
+
 ### Reliance Edge v2.5.1, May 2020
 
 #### Common Code Changes

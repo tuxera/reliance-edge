@@ -1836,46 +1836,73 @@ static void write_f(int opno, long r)
 #if REDCONF_CHECKER == 1
 static void check_f(int opno, long r)
 {
-    int32_t ret;
     const char *pszVolume = gpRedVolConf->pszPathPrefix;
+    char *pszCwd;
+    int32_t ret;
 
     (void)r;
 
     errno = 0;
 
-    ret = red_transact(pszVolume);
+    /*  Unmounting resets the CWD.  Save the CWD so we can restore it when
+        the volume is mounted again.
+    */
+    pszCwd = fsstress_getcwd(NULL, 0);
+    ret = (pszCwd == NULL) ? -1 : 0;
 
+    /*  Transact so that red_umount() won't revert recent changes, even if
+        unmount transactions are disabled.
+    */
+    if(ret == 0)
+    {
+        ret = red_transact(pszVolume);
+    }
+
+    /*  The checker can only be run on unmounted volumes.
+    */
     if(ret == 0)
     {
         ret = red_umount(pszVolume);
+    }
 
-        if(ret == 0)
-        {
-            int32_t ret2;
+    if(ret == 0)
+    {
+        errno = -RedCoreVolCheck(stderr, NULL, 0U);
+        ret = (errno != 0) ? -1 : 0;
+    }
 
-            errno = -RedCoreVolCheck(stderr, NULL, 0U);
-            if(errno != 0)
-            {
-                ret = -1;
-            }
+    /*  Mount the volume for the subsequent test cases.
+    */
+    if(ret == 0)
+    {
+        ret = red_mount(pszVolume);
+    }
 
-            ret2 = red_mount(pszVolume);
-
-            if(ret == 0)
-            {
-                ret = ret2;
-            }
-
-            if(ret2 != 0)
-            {
-                exit(1);
-            }
-        }
+    /*  Restore the original CWD.  If this isn't done, check_cwd() will fail.
+    */
+    if(ret == 0)
+    {
+        ret = red_chdir(pszCwd);
+    }
+    if(pszCwd != NULL)
+    {
+        free(pszCwd);
     }
 
     if (verbose)
     {
         RedPrintf("%d/%d: check %s %d\n", procid, opno, pszVolume, errno);
+    }
+
+    /*  Nothing in this function is expected to fail.  If it does fail, abort.
+        We don't want to overlook a checker error.  Also, if this function fails
+        at certain points (while the volume is unmounted or before restoring the
+        CWD), then all subsequent operations will fail.  Just keep it simple and
+        abort if this test case doesn't succeeed.
+    */
+    if(ret != 0)
+    {
+        exit(1);
     }
 }
 #endif

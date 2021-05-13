@@ -1373,6 +1373,19 @@ static REDSTATUS WriteAligned(
         uint32_t    ulBlockIndex = 0U;
         uint32_t    ulNextDataBlock = BLOCK_SPARSE;
 
+        /*  Put the data buffer.  If we did _not_ do this, and the initial
+            values in pInode were pInode->ulLogicalBlock == ulBlockStart and
+            pInode->pbData != NULL, then RedBufferDiscardRange() (called below)
+            would try to discard a referenced buffer, which is a critical error.
+
+            Currently, DirEntryWrite() is the only place which invokes
+            RedInodeDataWrite() with pInode in that state, and that will only
+            end up here if DIRENT_SIZE == REDCONF_BLOCK_SIZE.  Nonetheless, put
+            the buffer unconditionally in case other functions are modified such
+            that they call this function with pInode in that state.
+        */
+        RedInodePutData(pInode);
+
         while((ret == 0) && (ulBlockIndex < ulBlockCount))
         {
             bool        fFull = false;

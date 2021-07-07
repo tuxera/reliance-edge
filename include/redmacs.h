@@ -118,6 +118,18 @@
 */
 #define IS_ALIGNED_PTR(ptr, alignment) (((uintptr_t)(ptr) & ((alignment) - 1U)) == 0U)
 
+/** @brief Increment a uint8_t pointer so that it has the given alignment.
+
+    @param u8ptr        The uint8_t pointer to be aligned.
+    @param alignment    The desired alignment (must be a power of two).
+
+    @return Returns @p u8ptr plus however many bytes are necessary for the
+            pointer to be aligned by @p alignment bytes.
+*/
+#define UINT8_PTR_ALIGN(u8ptr, alignment) \
+    ((((uintptr_t)(u8ptr) & ((alignment) - 1U)) == 0U) ? (u8ptr) : \
+    (&(u8ptr)[(alignment) - ((uintptr_t)(u8ptr) & ((alignment) - 1U))]))
+
 #define REDMIN(a, b) (((a) < (b)) ? (a) : (b))
 #define REDMAX(a, b) (((a) > (b)) ? (a) : (b))
 
@@ -125,7 +137,7 @@
 #define ARRAY_SIZE(ARRAY)   (sizeof(ARRAY) / sizeof((ARRAY)[0U]))
 #endif
 
-/** @brief Does the given pointer point at an element of the given array?
+/** @brief Determine whether a pointer is a member of an array.
 
     Returns true only if: 1) the pointer address falls within the bounds of the
     array; and 2) the pointer address is aligned such that it points to the
@@ -137,15 +149,28 @@
     - The alignment check casts the pointer offset to uint32_t, to avoid doing
       modulus on uintptr_t, which might be a 64-bit type.  It is assumed that
       this macro won't be used on arrays that are >4GB in size.
+
+    @param ptr          The pointer to examine.
+    @param array        Start of the array.
+    @param nelem        The number of elements in the array.
+    @param elemalign    The alignment of each element in the array.
+
+    @return Whether @p ptr is an aligned element of the @p array array.
 */
-#define PTR_IS_ARRAY_ELEMENT(ptr, array) \
+#define PTR_IS_ARRAY_ELEMENT(ptr, array, nelem, elemalign) \
     ( \
          ((uintptr_t)(ptr) >= (uintptr_t)&(array)[0U]) \
-      && ((uintptr_t)(ptr) <= (uintptr_t)(&(array)[ARRAY_SIZE(array) - 1U])) \
-      && (((uint32_t)((uintptr_t)(ptr) - (uintptr_t)&(array)[0U]) % sizeof((array)[0U])) == 0U) \
+      && ((uintptr_t)(ptr) < (uintptr_t)&(array)[nelem]) \
+      && (((uint32_t)((uintptr_t)(ptr) - (uintptr_t)&(array)[0U]) % (uint32_t)(elemalign)) == 0U) \
     )
 
 #define BITMAP_SIZE(bitcnt) (((bitcnt) + 7U) / 8U)
+
+/** @brief Determine whether an unsigned integer value is a power of two.
+
+    Note that zero is _not_ a power of two.
+*/
+#define IS_POWER_OF_2(val)  (((val) > 0U) && (((val) & ((~(val)) + 1U)) == (val)))
 
 #define INODE_INVALID       (0U) /* General-purpose invalid inode number (must be zero). */
 #define INODE_FIRST_VALID   (2U) /* First valid inode number. */

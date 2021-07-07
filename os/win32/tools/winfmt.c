@@ -28,6 +28,8 @@
 */
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <limits.h>
 
 #include <redfs.h>
 
@@ -55,10 +57,12 @@ int main(
 {
     int32_t         c;
     const char     *pszDrive = NULL;
+    REDFMTOPT       fo = {0U};
     uint8_t         bVolNum;
     REDSTATUS       ret;
     const REDOPTION aLongopts[] =
     {
+        { "version", red_required_argument, NULL, 'V' },
         { "dev", red_required_argument, NULL, 'D' },
         { "help", red_no_argument, NULL, 'H' },
         { NULL }
@@ -73,10 +77,31 @@ int main(
         goto Help;
     }
 
-    while((c = RedGetoptLong(argc, argv, "D:H", aLongopts, NULL)) != -1)
+    while((c = RedGetoptLong(argc, argv, "V:D:H", aLongopts, NULL)) != -1)
     {
         switch(c)
         {
+            case 'V': /* --version */
+            {
+                unsigned long   ulVer;
+                char           *pszEnd;
+
+                errno = 0;
+                ulVer = strtoul(red_optarg, &pszEnd, 10);
+                if((ulVer == ULONG_MAX) || (errno != 0) || (*pszEnd != '\0'))
+                {
+                    fprintf(stderr, "Invalid on-disk layout version number: %s\n", red_optarg);
+                    goto BadOpt;
+                }
+                if(!RED_DISK_LAYOUT_IS_SUPPORTED(ulVer))
+                {
+                    fprintf(stderr, "Unsupported on-disk layout version number: %lu\n", ulVer);
+                    goto BadOpt;
+                }
+
+                fo.ulVersion = (uint32_t)ulVer;
+                break;
+            }
             case 'D': /* --dev */
                 pszDrive = red_optarg;
                 break;
@@ -150,7 +175,7 @@ int main(
     }
   #endif
 
-    ret = RedCoreVolFormat();
+    ret = RedCoreVolFormat(&fo);
     if(ret == 0)
     {
         printf("Format successful.\n");
@@ -182,8 +207,10 @@ static void Usage(
     const char *pszProgramName,
     bool        fError)
 {
+    int         iExitStatus = fError ? 1 : 0;
+    FILE       *pOut = fError ? stderr : stdout;
     static const char szUsage[] =
-"usage: %s VolumeID --dev=devname [--help]\n"
+"usage: %s VolumeID --dev=devname [--version=layout_ver] [--help]\n"
 "Format a Reliance Edge file system volume.\n"
 "\n"
 "Where:\n"
@@ -200,19 +227,14 @@ static void Usage(
 "      drive letter like G: or a device name like \\\\.\\PhysicalDrive7; the\n"
 "      latter might be better than using a drive letter, which might only format\n"
 "      a partition instead of the entire physical media).\n"
+"  --version=layout_ver, -V layout_ver\n"
+"      Specify the on-disk layout version to use.  If unspecified, the default\n"
+"      is %u.  Supported versions are %u and %u.\n"
 "  --help, -H\n"
 "      Prints this usage text and exits.\n\n";
 
-    if(fError)
-    {
-        fprintf(stderr, szUsage, pszProgramName);
-        exit(1);
-    }
-    else
-    {
-        printf(szUsage, pszProgramName);
-        exit(0);
-    }
+    fprintf(pOut, szUsage, pszProgramName, RED_DISK_LAYOUT_VERSION, RED_DISK_LAYOUT_ORIGINAL, RED_DISK_LAYOUT_DIRCRC);
+    exit(iExitStatus);
 }
 
 #else

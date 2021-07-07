@@ -162,6 +162,12 @@
 #ifndef REDCONF_BUFFER_COUNT
   #error "Configuration error: REDCONF_BUFFER_COUNT must be defined."
 #endif
+#ifndef REDCONF_BUFFER_ALIGNMENT
+  #error "Configuration error: REDCONF_BUFFER_ALIGNMENT must be defined."
+#endif
+#ifndef REDCONF_BUFFER_WRITE_GATHER_SIZE_KB
+  #error "Configuration error: REDCONF_BUFFER_WRITE_GATHER_SIZE_KB must be defined."
+#endif
 #ifndef REDCONF_BLOCK_SIZE
   #error "Configuration error: REDCONF_BLOCK_SIZE must be defined."
 #endif
@@ -248,6 +254,10 @@
     #error "REDCONF_API_POSIX_FSTRIM not supported in Reliance Edge under GPL. Contact sales@tuxera.com to upgrade."
   #endif
 
+  /*  Maximum is either block size minus 4 or block size minus 20, depending on
+      the on-disk layout version.  Since we don't know the layout version, check
+      the looser limit.
+  */
   #if (REDCONF_NAME_MAX < 1U) || (REDCONF_NAME_MAX > (REDCONF_BLOCK_SIZE - 4U))
     #error "Configuration error: invalid value of REDCONF_NAME_MAX"
   #endif
@@ -352,12 +362,6 @@
 
 #if (REDCONF_DISCARDS == 1) && (RED_KIT == RED_KIT_GPL)
   #error "REDCONF_DISCARDS not supported in Reliance Edge under GPL. Contact sales@tuxera.com to upgrade."
-#endif
-
-/*  REDCONF_BUFFER_COUNT lower limit checked in buffer.c
-*/
-#if REDCONF_BUFFER_COUNT > 255U
-  #error "REDCONF_BUFFER_COUNT cannot be greater than 255"
 #endif
 
 #if (REDCONF_IMAGE_BUILDER != 0) && (REDCONF_IMAGE_BUILDER != 1)

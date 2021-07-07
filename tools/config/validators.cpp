@@ -793,7 +793,7 @@ Validity validateAllocatedBuffers(unsigned long value, QString &msg)
         return Invalid;
     }
 
-    // Min buffer algorithm derived from preprocessor logic in buffer.c
+    // Min buffer algorithm derived from preprocessor logic in redbufferpriv.h
 
     ulong dindirPointers = (getInodeEntries()
                             - allSettings.sbsDirectPtrs->GetValue())

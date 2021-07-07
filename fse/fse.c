@@ -260,7 +260,7 @@ REDSTATUS RedFseFormat(
 
     if(ret == 0)
     {
-        ret = RedCoreVolFormat();
+        ret = RedCoreVolFormat(NULL);
 
         FseLeave();
     }

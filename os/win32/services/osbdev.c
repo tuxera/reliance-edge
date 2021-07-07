@@ -27,6 +27,7 @@
 */
 #include <windows.h>
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -829,6 +830,62 @@ static REDSTATUS FileDiskOpen(
         else
         {
             ret = 0;
+        }
+    }
+
+    /*  Since this is a file disk, make sure that it's big enough that block 0
+        can be read successfully.  In most cases blocks will be written before
+        they are read, but many tests will try to mount the volume before
+        formatting in order to preserve format options.  If the file size is too
+        small, reading the master block will assert.  If instead there is zeroed
+        data in the master block, mount will cleanly return an error.
+    */
+    if(ret == 0)
+    {
+        LARGE_INTEGER fileSize;
+
+        /*  Get the current file size.
+        */
+        if(!GetFileSizeEx(pDisk->hDevice, &fileSize))
+        {
+            fprintf(stderr, "GetFileSizeEx() failed with error %lu\n", (unsigned long)GetLastError());
+            ret = -RED_EIO;
+        }
+        else
+        {
+            BDEVINFO bi;
+
+            /*  Get the sector size.
+            */
+            ret = FileDiskGetGeometry(bVolNum, &bi);
+            if(ret == 0)
+            {
+                LONGLONG block1offset = (LONGLONG)(gaRedVolConf[bVolNum].ullSectorOffset * bi.ulSectorSize) + REDCONF_BLOCK_SIZE;
+
+                /*  If the file size is too small...
+                */
+                if(fileSize.QuadPart < block1offset)
+                {
+                    /*  Extend the file.
+                    */
+                    fileSize.QuadPart = block1offset;
+                    if(!SetFilePointerEx(pDisk->hDevice, fileSize, NULL, FILE_BEGIN))
+                    {
+                        fprintf(stderr, "SetFilePointerEx() failed with error %lu\n", (unsigned long)GetLastError());
+                        ret = -RED_EIO;
+                    }
+                    else if(!SetEndOfFile(pDisk->hDevice))
+                    {
+                        fprintf(stderr, "SetEndOfFile() failed with error %lu\n", (unsigned long)GetLastError());
+                        ret = -RED_EIO;
+                    }
+                }
+            }
+        }
+
+        if(ret != 0)
+        {
+            (void)FileDiskClose(bVolNum);
         }
     }
 

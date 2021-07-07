@@ -28,6 +28,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
+#include <limits.h>
 
 #include <redfs.h>
 
@@ -121,7 +123,7 @@ int ImgbldStart(
 
         if(ret == 0)
         {
-            REDSTATUS formaterr = RedCoreVolFormat();
+            REDSTATUS formaterr = RedCoreVolFormat(&pParam->fmtopt);
 
             fFormatted = true;
 
@@ -232,14 +234,15 @@ void ImgbldParseParams(
         { "defines", red_required_argument, NULL, 'd' },
         { "no-warn", red_no_argument, NULL, 'W' },
       #endif
+        { "version", red_required_argument, NULL, 'V' },
         { "dev", red_required_argument, NULL, 'D' },
         { "help", red_no_argument, NULL, 'H' },
         { NULL }
     };
   #if REDCONF_API_FSE == 1
-    const char     *pszOptions = "i:m:d:WD:H";
+    const char     *pszOptions = "i:m:d:WV:D:H";
   #else
-    const char     *pszOptions = "i:D:H";
+    const char     *pszOptions = "i:V:D:H";
   #endif
 
     /*  If run without parameters, treat as a help request.
@@ -271,6 +274,27 @@ void ImgbldParseParams(
                 pParam->fNowarn = true;
                 break;
           #endif
+            case 'V': /* --version */
+            {
+                unsigned long   ulVer;
+                char           *pszEnd;
+
+                errno = 0;
+                ulVer = strtoul(red_optarg, &pszEnd, 10);
+                if((ulVer == ULONG_MAX) || (errno != 0) || (*pszEnd != '\0'))
+                {
+                    fprintf(stderr, "Invalid on-disk layout version number: %s\n", red_optarg);
+                    goto BadOpt;
+                }
+                if(!RED_DISK_LAYOUT_IS_SUPPORTED(ulVer))
+                {
+                    fprintf(stderr, "Unsupported on-disk layout version number: %lu\n", ulVer);
+                    goto BadOpt;
+                }
+
+                pParam->fmtopt.ulVersion = (uint32_t)ulVer;
+                break;
+            }
             case 'D': /* --dev */
                 pParam->pszOutputFile = red_optarg;
                 break;
@@ -357,17 +381,23 @@ static void Usage(
     const char *pszProgramName,
     bool        fError)
 {
-    FILE   *fout = fError ? stderr : stdout;
-
-  #if REDCONF_API_POSIX == 1
-    fprintf(fout,
-"usage: %s VolumeID --dev=devname --dir=inputDir [--help]\n"
+    int         iExitStatus = fError ? 1 : 0;
+    FILE       *pOut = fError ? stderr : stdout;
+    static const char szUsage[] =
+"usage: %s VolumeID --dev=devname --dir=inputDir [--version=layout_ver] [--help]\n"
+#if REDCONF_API_FSE == 1
+"                  [--map=mappath] [--defines=file] [--no-warn]\n"
+#endif
 "Build a Reliance Edge volume image which includes the given set of input files.\n"
 "\n"
 "Where:\n"
 "  VolumeID\n"
+#if REDCONF_API_POSIX == 1
 "      A volume number (e.g., 2) or a volume path prefix (e.g., VOL1: or /data)\n"
 "      of the volume to format.\n"
+#else
+"      A volume number (e.g., 2) of the volume to format.\n"
+#endif
 "  --dev=devname, -D devname\n"
 "      Specifies the device name.  This can be the path and name of a file disk\n"
   #if _WIN32
@@ -379,30 +409,18 @@ static void Usage(
 "      (e.g., red.bin); or an OS-specific reference to a device (on Linux, a\n"
 "      device file like /dev/sdb).\n"
   #endif
+"  --version=layout_ver, -V layout_ver\n"
+"      Specify the on-disk layout version to use.  If unspecified, the default\n"
+"      is %u.  Supported versions are %u and %u.\n"
 "  --dir=inputDir, -i inputDir\n"
 "      A path to a directory that contains all of the files to be copied into\n"
+#if REDCONF_API_POSIX == 1
 "      the image.\n"
-"  --help, -H\n"
-"      Prints this usage text and exits.\n\n", pszProgramName);
-  #else
-    fprintf(fout,
-"usage: %s VolumeID --dev=devname [--dir=inputDir] [--map=mappath]\n"
-"                          [--defines=file] [--help]\n"
-"Build a Reliance Edge volume image which includes the given set of input files.\n"
-"\n"
-"Where:\n"
-"  VolumeID\n"
-"      A volume number (e.g., 2) of the volume to format.\n"
-"  --dev=devname, -D devname\n"
-"      Specifies the device name.  This can be the path and name of a file disk\n"
-"      (e.g., red.bin); or an OS-specific reference to a device (on Windows, a\n"
-"      drive letter like G: or a device name like \\\\.\\PhysicalDrive7; the\n"
-"      latter might be better than using a drive letter, which might only format\n"
-"      a partition instead of the entire physical media).\n"
-"  --dir=inputDir, -i inputDir\n"
-"      A path to a directory that contains all of the files to be copied into\n"
+#else
 "      the image.  If not specified, the file at --map=mappath must contain full\n"
 "      absolute file paths for all input files.\n"
+#endif
+#if REDCONF_API_FSE == 1
 "  --map=mappath, -m mappath\n"
 "      Path to the file which maps file names (or paths) in --dir=inputDir to\n"
 "      file indices in the outputted image.\n"
@@ -411,11 +429,12 @@ static void Usage(
 "      accessing files by assigned index if --map=mappath is not specified.\n"
 "  --no-warn, -W\n"
 "      Replace the --defines file if it exists without prompting.\n"
+#endif
 "  --help, -H\n"
-"      Prints this usage text and exits.\n\n", pszProgramName);
-  #endif
+"      Prints this usage text and exits.\n\n";
 
-    exit(fError ? 1 : 0);
+    fprintf(pOut, szUsage, pszProgramName, RED_DISK_LAYOUT_VERSION, RED_DISK_LAYOUT_ORIGINAL, RED_DISK_LAYOUT_DIRCRC);
+    exit(iExitStatus);
 }
 
 

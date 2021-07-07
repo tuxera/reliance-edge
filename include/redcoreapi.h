@@ -33,6 +33,7 @@
 #endif
 
 #include <redstat.h>
+#include <redformat.h>
 
 
 REDSTATUS RedCoreInit(void);
@@ -41,7 +42,7 @@ REDSTATUS RedCoreUninit(void);
 REDSTATUS RedCoreVolSetCurrent(uint8_t bVolNum);
 
 #if FORMAT_SUPPORTED
-REDSTATUS RedCoreVolFormat(void);
+REDSTATUS RedCoreVolFormat(const REDFMTOPT *pOptions);
 #endif
 #if REDCONF_CHECKER == 1
 REDSTATUS RedCoreVolCheck(FILE *pOutputFile, char *pszOutputBuffer, uint32_t nOutputBufferSize);

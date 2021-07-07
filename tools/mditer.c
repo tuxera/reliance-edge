@@ -71,6 +71,10 @@ typedef struct
     */
     const MDITERPARAM *pParam;
 
+    /** On-disk layout version found in the master block.
+    */
+    uint32_t    ulVersion;
+
     /** Maximum sequence number found in the master block and the valid
         metaroots.  Used to validate the sequence numbers of other metadata
         nodes.
@@ -341,6 +345,25 @@ static REDSTATUS MDIterMB(
             sequence number.
         */
         pCtx->ullSeqMax = hdr.ullSequence;
+    }
+
+    /*  Save the on-disk layout number so we know how to interpret the other
+        metadata.
+    */
+    if(pMB->hdr.ulSignature == SWAP32(META_SIG_MASTER))
+    {
+        pCtx->ulVersion = SWAP32(pMB->ulVersion);
+    }
+    else
+    {
+        pCtx->ulVersion = pMB->ulVersion;
+    }
+
+    /*  If the version is junk, assume the default.
+    */
+    if(!RED_DISK_LAYOUT_IS_SUPPORTED(pCtx->ulVersion))
+    {
+        pCtx->ulVersion = RED_DISK_LAYOUT_VERSION;
     }
 
     ret = pCtx->pParam->pfnCallback(pCtx->pParam->pContext, MDTYPE_MASTER, 0U, pMB);
@@ -961,6 +984,37 @@ static REDSTATUS MDIterDirectoryBlock(
         goto Out;
     }
 
+    if(pCtx->pParam->fVerify && (pCtx->ulVersion >= RED_DISK_LAYOUT_DIRCRC))
+    {
+        NODEHEADER hdr = NodeHdrExtract(pDirData);
+
+        if(hdr.ulSignature != META_SIG_DIRECTORY)
+        {
+            fprintf(stderr, "Missing directory signature in block %lu: found 0x%08lx, expected 0x%08lx\n",
+                (unsigned long)ulBlock, (unsigned long)hdr.ulSignature, (unsigned long)META_SIG_DIRECTORY);
+            ret = -RED_EIO;
+        }
+
+        if(hdr.ulCRC != RedCrcNode(pDirData))
+        {
+            fprintf(stderr, "Invalid directory CRC in block %lu: found 0x%08lx, expected 0x%08lx\n",
+                (unsigned long)ulBlock, (unsigned long)hdr.ulCRC, (unsigned long)RedCrcNode(pDirData));
+            ret = -RED_EIO;
+        }
+
+        if(hdr.ullSequence >= pCtx->ullSeqMax)
+        {
+            fprintf(stderr, "Invalid directory seqnum in block %lu: found 0x%08llx, expected < 0x%08llx\n",
+                (unsigned long)ulBlock, (unsigned long long)hdr.ullSequence, (unsigned long long)pCtx->ullSeqMax);
+            ret = -RED_EIO;
+        }
+
+        if(ret != 0)
+        {
+            goto Out;
+        }
+    }
+
     ret = pCtx->pParam->pfnCallback(pCtx->pParam->pContext, MDTYPE_DIRECTORY, ulBlock, pDirData);
 
   Out:
@@ -1121,7 +1175,8 @@ static NODEHEADER NodeHdrExtract(
         || (hdr.ulSignature == SWAP32(META_SIG_IMAP))
         || (hdr.ulSignature == SWAP32(META_SIG_INODE))
         || (hdr.ulSignature == SWAP32(META_SIG_DINDIR))
-        || (hdr.ulSignature == SWAP32(META_SIG_INDIR)))
+        || (hdr.ulSignature == SWAP32(META_SIG_INDIR))
+        || (hdr.ulSignature == SWAP32(META_SIG_DIRECTORY)))
     {
         hdr.ulSignature = SWAP32(hdr.ulSignature);
         MemCpyAndReverse(&hdr.ulCRC, &pbBuffer[NODEHEADER_OFFSET_CRC], sizeof(hdr.ulCRC));

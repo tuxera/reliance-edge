@@ -29,6 +29,15 @@
 #include <redcore.h>
 
 
+/*  Get the buffer flag for an inode's data block.
+*/
+#if REDCONF_API_POSIX == 1
+#define CINODE_DATA_BFLAG(cino) \
+    (((cino)->fDirectory && (gpRedCoreVol->ulVersion >= RED_DISK_LAYOUT_DIRCRC)) ? BFLAG_META_DIRECTORY : 0U)
+#else
+#define CINODE_DATA_BFLAG(cino) 0U
+#endif
+
 /*  This value is used to initialize the uIndirEntry and uDindirEntry members of
     the CINODE structure.  After seeking, a value of COORD_ENTRY_INVALID in
     uIndirEntry indicates that there is no indirect node in the path through the
@@ -902,7 +911,7 @@ REDSTATUS RedInodeDataSeekAndRead(
     {
         REDASSERT(pInode->ulDataBlock != BLOCK_SPARSE);
 
-        ret = RedBufferGet(pInode->ulDataBlock, 0U, (void **)&pInode->pbData);
+        ret = RedBufferGet(pInode->ulDataBlock, CINODE_DATA_BFLAG(pInode), (void **)&pInode->pbData);
     }
 
     return ret;
@@ -1249,21 +1258,11 @@ static REDSTATUS ReadAligned(
 
             if(ret == 0)
             {
-              #if REDCONF_READ_ONLY == 0
-                /*  Before reading directly from disk, flush any dirty file data
-                    buffers in the range to avoid reading stale data.
-                */
-                ret = RedBufferFlushRange(ulExtentStart, ulExtentLen);
+                ret = RedBufferReadRange(ulExtentStart, ulExtentLen, &pbBuffer[ulBlockIndex << BLOCK_SIZE_P2]);
 
                 if(ret == 0)
-              #endif
                 {
-                    ret = RedIoRead(gbRedVolNum, ulExtentStart, ulExtentLen, &pbBuffer[ulBlockIndex << BLOCK_SIZE_P2]);
-
-                    if(ret == 0)
-                    {
-                        ulBlockIndex += ulExtentLen;
-                    }
+                    ulBlockIndex += ulExtentLen;
                 }
             }
             else if(ret == -RED_ENODATA)
@@ -1459,15 +1458,7 @@ static REDSTATUS WriteAligned(
 
             if(ret == 0)
             {
-                ret = RedIoWrite(gbRedVolNum, ulExtentStart, ulExtentLen, &pbBuffer[ulBlockIndex << BLOCK_SIZE_P2]);
-
-                if(ret == 0)
-                {
-                    /*  If there is any buffered file data for the extent we
-                        just wrote, those buffers are now stale.
-                    */
-                    ret = RedBufferDiscardRange(ulExtentStart, ulExtentLen);
-                }
+                ret = RedBufferWriteRange(ulExtentStart, ulExtentLen, &pbBuffer[ulBlockIndex << BLOCK_SIZE_P2]);
 
                 if(ret == 0)
                 {
@@ -1654,7 +1645,7 @@ static REDSTATUS BranchBlock(
               #endif
                 void  **ppBufPtr = (fBuffer || (pInode->pbData != NULL)) ? (void **)&pInode->pbData : NULL;
 
-                ret = BranchOneBlock(&pInode->ulDataBlock, ppBufPtr, 0U);
+                ret = BranchOneBlock(&pInode->ulDataBlock, ppBufPtr, CINODE_DATA_BFLAG(pInode));
 
                 if(ret == 0)
                 {

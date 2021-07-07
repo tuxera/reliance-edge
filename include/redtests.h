@@ -31,6 +31,7 @@
 #include <redtypes.h>
 #include "redtestutils.h"
 #include "redver.h"
+#include "redformat.h"
 
 /*  This macro is only defined by the error injection project.
 */
@@ -295,6 +296,14 @@ typedef struct
 PARAMSTATUS MultiVolStressTestParseParams(int argc, char *argv[], MVSTRESSTESTPARAM *pParam);
 void MultiVolStressTestDefaultParams(MVSTRESSTESTPARAM *pParam);
 int MultiVolStressTestStart(const MVSTRESSTESTPARAM *pParam);
+#endif
+
+
+/*  Not tests, but utilities needed by test entry points.
+*/
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FORMAT == 1)
+int32_t RedTestFmtOptionsGet(const char *pszVolume, REDFMTOPT *pFmtOpt);
+int32_t RedTestFmtOptionsPreserve(const char *pszVolume);
 #endif
 
 

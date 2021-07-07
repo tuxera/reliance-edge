@@ -29,6 +29,7 @@
 
 
 #include <redstat.h>
+#include <redformat.h>
 #include <redvolume.h>
 #include "rednodes.h"
 #include "redcoremacs.h"
@@ -41,6 +42,7 @@
 #define META_SIG_INODE      (0x444F4E49U)   /* 'INOD' */
 #define META_SIG_DINDIR     (0x494C4244U)   /* 'DBLI' */
 #define META_SIG_INDIR      (0x49444E49U)   /* 'INDI' */
+#define META_SIG_DIRECTORY  (0x44524944U)   /* 'DIRD' */
 
 
 REDSTATUS RedIoRead(uint8_t bVolNum, uint32_t ulBlockStart, uint32_t ulBlockCount, void *pBuffer);
@@ -54,38 +56,43 @@ REDSTATUS RedIoFlush(uint8_t bVolNum);
     contents of the corresponding block on disk); or, when passed into
     RedBufferGet(), indicates that the buffer should be marked dirty.
 */
-#define BFLAG_DIRTY         ((uint16_t) 0x0001U)
+#define BFLAG_DIRTY             ((uint16_t) 0x0001U)
 
 /** Tells RedBufferGet() that the buffer is for a newly allocated block, and its
     contents should be zeroed instead of being read from disk.  Always used in
     combination with BFLAG_DIRTY.
 */
-#define BFLAG_NEW           ((uint16_t) 0x0002U)
+#define BFLAG_NEW               ((uint16_t) 0x0002U)
 
 /** Indicates that a block buffer is a master block (MASTERBLOCK) metadata node.
 */
-#define BFLAG_META_MASTER   ((uint16_t)(0x0004U | BFLAG_META))
+#define BFLAG_META_MASTER       ((uint16_t)(0x0004U | BFLAG_META))
 
 /** Indicates that a block buffer is an imap (IMAPNODE) metadata node.
 */
-#define BFLAG_META_IMAP     ((uint16_t)(0x0008U | BFLAG_META))
+#define BFLAG_META_IMAP         ((uint16_t)(0x0008U | BFLAG_META))
 
 /** Indicates that a block buffer is an inode (INODE) metadata node.
 */
-#define BFLAG_META_INODE    ((uint16_t)(0x0010U | BFLAG_META))
+#define BFLAG_META_INODE        ((uint16_t)(0x0010U | BFLAG_META))
 
 /** Indicates that a block buffer is an indirect (INDIR) metadata node.
 */
-#define BFLAG_META_INDIR    ((uint16_t)(0x0020U | BFLAG_META))
+#define BFLAG_META_INDIR        ((uint16_t)(0x0020U | BFLAG_META))
 
 /** Indicates that a block buffer is a double indirect (DINDIR) metadata node.
 */
-#define BFLAG_META_DINDIR   ((uint16_t)(0x0040U | BFLAG_META))
+#define BFLAG_META_DINDIR       ((uint16_t)(0x0040U | BFLAG_META))
+
+/** Indicates that a block buffer is a directory data block.  Only used with
+    on-disk layouts where directory blocks have metadata headers.
+*/
+#define BFLAG_META_DIRECTORY    ((uint16_t)(0x0080U | BFLAG_META))
 
 /** Indicates that a block buffer is a metadata node.  Callers of RedBufferGet()
     should not use this flag; instead, use one of the BFLAG_META_* flags.
 */
-#define BFLAG_META          ((uint16_t) 0x8000U)
+#define BFLAG_META              ((uint16_t) 0x8000U)
 
 
 void RedBufferInit(void);
@@ -100,6 +107,10 @@ void RedBufferDiscard(const void *pBuffer);
 #endif
 #endif
 REDSTATUS RedBufferDiscardRange(uint32_t ulBlockStart, uint32_t ulBlockCount);
+REDSTATUS RedBufferReadRange(uint32_t ulBlockStart, uint32_t ulBlockCount, uint8_t *pbDataBuffer);
+#if REDCONF_READ_ONLY == 0
+REDSTATUS RedBufferWriteRange(uint32_t ulBlockStart, uint32_t ulBlockCount, const uint8_t *pbDataBuffer);
+#endif
 
 
 /** @brief Allocation state of a block.
@@ -259,7 +270,7 @@ void RedVolCriticalError(const char *pszFileName, uint32_t ulLineNum);
 REDSTATUS RedVolSeqNumIncrement(uint8_t bVolNum);
 
 #if FORMAT_SUPPORTED
-REDSTATUS RedVolFormat(void);
+REDSTATUS RedVolFormat(const REDFMTOPT *pOptions);
 #endif
 
 

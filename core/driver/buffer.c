@@ -34,74 +34,25 @@
 */
 #include <redfs.h>
 #include <redcore.h>
+#include "redbufferpriv.h"
+
+#if BUFFER_MODULE == BM_SIMPLE
 
 
-#if DINDIR_POINTERS > 0U
-  #define INODE_META_BUFFERS 3U /* Inode, double indirect, indirect */
-#elif REDCONF_INDIRECT_POINTERS > 0U
-  #define INODE_META_BUFFERS 2U /* Inode, indirect */
-#elif REDCONF_DIRECT_POINTERS == INODE_ENTRIES
-  #define INODE_META_BUFFERS 1U /* Inode only */
+#if REDCONF_BUFFER_COUNT > 255U
+#error "REDCONF_BUFFER_COUNT cannot be greater than 255"
 #endif
 
-#define INODE_BUFFERS (INODE_META_BUFFERS + 1U) /* Add data buffer */
-
-#if REDCONF_IMAP_EXTERNAL == 1
-  #define IMAP_BUFFERS 1U
-#else
-  #define IMAP_BUFFERS 0U
-#endif
-
-#if (REDCONF_READ_ONLY == 1) || (REDCONF_API_FSE == 1)
-  /*  Read, write, truncate, lookup: One inode all the way down, plus imap.
-  */
-  #define MINIMUM_BUFFER_COUNT (INODE_BUFFERS + IMAP_BUFFERS)
-#elif REDCONF_API_POSIX == 1
-  #if REDCONF_API_POSIX_RENAME == 1
-    #if REDCONF_RENAME_ATOMIC == 1
-      /*  Two parent directories all the way down.  Source and destination inode
-          buffer.  One inode buffer for cyclic rename detection.  Imap.  The
-          parent inode buffers are released before deleting the destination
-          inode, so that does not increase the minimum.
-      */
-      #define MINIMUM_BUFFER_COUNT (INODE_BUFFERS + INODE_BUFFERS + 3U + IMAP_BUFFERS)
-    #else
-      /*  Two parent directories all the way down.  Source inode buffer.  One
-          inode buffer for cyclic rename detection.  Imap.
-      */
-      #define MINIMUM_BUFFER_COUNT (INODE_BUFFERS + INODE_BUFFERS + 2U + IMAP_BUFFERS)
-    #endif
-  #else
-    /*  Link/create: Needs a parent inode all the way down, an extra inode
-        buffer, and an imap buffer.
-
-        Unlink is the same, since the parent inode buffers are released before
-        the inode is deleted.
-    */
-    #define MINIMUM_BUFFER_COUNT (INODE_BUFFERS + 1U + IMAP_BUFFERS)
-  #endif
-#endif
-
-#if REDCONF_BUFFER_COUNT < MINIMUM_BUFFER_COUNT
-#error "REDCONF_BUFFER_COUNT is too low for the configuration"
-#endif
-
-
-/*  A note on the typecasts in the below macros: Operands to bitwise operators
-    are subject to the "usual arithmetic conversions".  This means that the
-    flags, which have uint16_t values, are promoted to int (if int is larger
-    than 16 bits).  To avoid using signed integers in bitwise operations, we
-    cast to uint32_t to avoid the integer promotion, then back to uint16_t to
-    reflect the actual type.
+/*  This implementation does not support the write-gather buffer.
 */
-#define BFLAG_META_MASK (uint16_t)((uint32_t)BFLAG_META_MASTER | BFLAG_META_IMAP | BFLAG_META_INODE | BFLAG_META_INDIR | BFLAG_META_DINDIR)
-#define BFLAG_MASK (uint16_t)((uint32_t)BFLAG_DIRTY | BFLAG_NEW | BFLAG_META_MASK)
+#if REDCONF_BUFFER_WRITE_GATHER_SIZE_KB != 0U
+  #error "Configuration error: REDCONF_BUFFER_WRITE_GATHER_SIZE_KB must be zero"
+#endif
 
 
-/*  An invalid block number.  Used to indicate buffers which are not currently
-    in use.
+/** @brief Convert a buffer index into a block buffer pointer.
 */
-#define BBLK_INVALID UINT32_MAX
+#define BIDX2BUF(idx) (&gBufCtx.pbBlkBuf[(uint32_t)(idx) << BLOCK_SIZE_P2])
 
 
 /** @brief Metadata stored for each block buffer.
@@ -138,37 +89,26 @@ typedef struct
     */
     BUFFERHEAD  aHead[REDCONF_BUFFER_COUNT];
 
-    /** Array of memory for the block buffers themselves.
-
-        Force the aabBuffer array to be aligned adequately for a uint64_t, to
-        ensure that it is safe to cast buffer pointers to node structure
-        pointers.
+    /** Byte array used as the heap for the block buffers.
     */
-    union
-    {
-        uint8_t     aabBuffer[REDCONF_BUFFER_COUNT][REDCONF_BLOCK_SIZE];
-        uint64_t    DummyAlign;
-    } b;
+    uint8_t     abBlkHeap[(REDCONF_BUFFER_ALIGNMENT - 1U) + (REDCONF_BUFFER_COUNT * REDCONF_BLOCK_SIZE)];
+
+    /** Pointer to the start of the block buffers.  This points into the
+        abBlkHeap array, skipping over the initial bytes if necessary for the
+        block buffers to be aligned.  Each block-sized chunk of this buffer
+        is associated with the corresponding element in the aHead array.
+    */
+    uint8_t    *pbBlkBuf;
 } BUFFERCTX;
 
 
-static bool BufferIsValid(const uint8_t *pbBuffer, uint16_t uFlags);
 static bool BufferToIdx(const void *pBuffer, uint8_t *pbIdx);
 #if REDCONF_READ_ONLY == 0
 static REDSTATUS BufferWrite(uint8_t bIdx);
-static REDSTATUS BufferFinalize(uint8_t *pbBuffer, uint8_t bVolNum, uint16_t uFlags);
 #endif
 static void BufferMakeLRU(uint8_t bIdx);
 static void BufferMakeMRU(uint8_t bIdx);
 static bool BufferFind(uint32_t ulBlock, uint8_t *pbIdx);
-
-#ifdef REDCONF_ENDIAN_SWAP
-static void BufferEndianSwap(const void *pBuffer, uint16_t uFlags);
-static void BufferEndianSwapHeader(NODEHEADER *pHeader);
-static void BufferEndianSwapMaster(MASTERBLOCK *pMaster);
-static void BufferEndianSwapInode(INODE *pInode);
-static void BufferEndianSwapIndir(INDIR *pIndir);
-#endif
 
 
 static BUFFERCTX gBufCtx;
@@ -190,6 +130,10 @@ void RedBufferInit(void)
         gBufCtx.abMRU[bIdx] = (uint8_t)((REDCONF_BUFFER_COUNT - bIdx) - 1U);
         gBufCtx.aHead[bIdx].ulBlock = BBLK_INVALID;
     }
+
+    /*  Get an aligned pointer for the block buffers.
+    */
+    gBufCtx.pbBlkBuf = UINT8_PTR_ALIGN(gBufCtx.abBlkHeap, REDCONF_BUFFER_ALIGNMENT);
 }
 
 
@@ -214,7 +158,11 @@ REDSTATUS RedBufferGet(
     REDSTATUS   ret = 0;
     uint8_t     bIdx;
 
-    if((ulBlock >= gpRedVolume->ulBlockCount) || ((uFlags & BFLAG_MASK) != uFlags) || (ppBuffer == NULL))
+    if(    (ulBlock >= gpRedVolume->ulBlockCount)
+        || ((uFlags & BFLAG_MASK) != uFlags)
+        || (((uFlags & BFLAG_NEW) != 0U) && ((uFlags & BFLAG_DIRTY) == 0U))
+        || !BFLAG_TYPE_IS_VALID(uFlags)
+        || (ppBuffer == NULL))
     {
         REDERROR();
         ret = -RED_EINVAL;
@@ -290,6 +238,8 @@ REDSTATUS RedBufferGet(
 
             if(ret == 0)
             {
+                uint8_t *pbBuffer = BIDX2BUF(bIdx);
+
                 if((uFlags & BFLAG_NEW) == 0U)
                 {
                     /*  Invalidate the LRU buffer.  If the read fails, we do not
@@ -303,11 +253,11 @@ REDSTATUS RedBufferGet(
                     */
                     pHead->ulBlock = BBLK_INVALID;
 
-                    ret = RedIoRead(gbRedVolNum, ulBlock, 1U, gBufCtx.b.aabBuffer[bIdx]);
+                    ret = RedIoRead(gbRedVolNum, ulBlock, 1U, pbBuffer);
 
                     if((ret == 0) && ((uFlags & BFLAG_META) != 0U))
                     {
-                        if(!BufferIsValid(gBufCtx.b.aabBuffer[bIdx], uFlags))
+                        if(!RedBufferIsValid(pbBuffer, uFlags))
                         {
                             /*  A corrupt metadata node is usually a critical
                                 error.  The master block is an exception since
@@ -323,13 +273,13 @@ REDSTATUS RedBufferGet(
                   #ifdef REDCONF_ENDIAN_SWAP
                     if(ret == 0)
                     {
-                        BufferEndianSwap(gBufCtx.b.aabBuffer[bIdx], uFlags);
+                        RedBufferEndianSwap(pbBuffer, uFlags);
                     }
                   #endif
                 }
                 else
                 {
-                    RedMemSet(gBufCtx.b.aabBuffer[bIdx], 0U, REDCONF_BLOCK_SIZE);
+                    RedMemSet(pbBuffer, 0U, REDCONF_BLOCK_SIZE);
                 }
             }
 
@@ -365,7 +315,7 @@ REDSTATUS RedBufferGet(
 
             BufferMakeMRU(bIdx);
 
-            *ppBuffer = gBufCtx.b.aabBuffer[bIdx];
+            *ppBuffer = BIDX2BUF(bIdx);
         }
     }
 
@@ -458,7 +408,7 @@ REDSTATUS RedBufferFlushRange(
 }
 
 
-/** @brief Mark a buffer dirty
+/** @brief Mark a buffer dirty.
 
     @param pBuffer  The buffer to mark dirty.
 */
@@ -612,106 +562,104 @@ REDSTATUS RedBufferDiscardRange(
 }
 
 
-/** Determine whether a metadata buffer is valid.
+/** @brief Read a range of data, either from the buffers or from disk.
 
-    This includes checking its signature, CRC, and sequence number.
+    @param ulBlockStart The first block number to read.
+    @param ulBlockCount The number of blocks, starting at @p ulBlockStart, to be
+                        read.  Must not be zero.
+    @param pbDataBuffer The buffer to read into.
 
-    @param pbBuffer Pointer to the metadata buffer to validate.
-    @param uFlags   The buffer flags provided by the caller.  Used to determine
-                    the expected signature.
+    @return A negated ::REDSTATUS code indicating the operation result.
 
-    @return Whether the metadata buffer is valid.
-
-    @retval true    The metadata buffer is valid.
-    @retval false   The metadata buffer is invalid.
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL Invalid parameters.
+    @retval -RED_EIO    A disk I/O error occurred.
 */
-static bool BufferIsValid(
-    const uint8_t  *pbBuffer,
-    uint16_t        uFlags)
+REDSTATUS RedBufferReadRange(
+    uint32_t    ulBlockStart,
+    uint32_t    ulBlockCount,
+    uint8_t    *pbDataBuffer)
 {
-    bool            fValid;
+    REDSTATUS   ret = 0;
 
-    if((pbBuffer == NULL) || ((uFlags & BFLAG_MASK) != uFlags))
+    if(    (ulBlockStart >= gpRedVolume->ulBlockCount)
+        || ((gpRedVolume->ulBlockCount - ulBlockStart) < ulBlockCount)
+        || (ulBlockCount == 0U)
+        || (pbDataBuffer == NULL))
     {
         REDERROR();
-        fValid = false;
+        ret = -RED_EINVAL;
     }
     else
     {
-        const NODEHEADER   *pHdr = (const NODEHEADER *)pbBuffer;
-        uint16_t            uMetaFlags = uFlags & BFLAG_META_MASK;
-      #ifdef REDCONF_ENDIAN_SWAP
-        NODEHEADER          bufSwap;
-
-        bufSwap.ulCRC = RedRev32(pHdr->ulCRC);
-        bufSwap.ulSignature = RedRev32(pHdr->ulSignature);
-        bufSwap.ullSequence = RedRev64(pHdr->ullSequence);
-        pHdr = &bufSwap;
-      #endif
-
-        /*  Make sure the signature is correct for the type of metadata block
-            requested by the caller.
+      #if REDCONF_READ_ONLY == 0
+        /*  If there are any dirty buffers in the range, it would be erroneous
+            to return stale data from the disk, so flush dirty buffers prior to
+            reading from disk.
         */
-        switch(pHdr->ulSignature)
+        ret = RedBufferFlushRange(ulBlockStart, ulBlockCount);
+        if(ret == 0)
+      #endif
         {
-            case META_SIG_MASTER:
-                fValid = (uMetaFlags == BFLAG_META_MASTER);
-                break;
-          #if REDCONF_IMAP_EXTERNAL == 1
-            case META_SIG_IMAP:
-                fValid = (uMetaFlags == BFLAG_META_IMAP);
-                break;
-          #endif
-            case META_SIG_INODE:
-                fValid = (uMetaFlags == BFLAG_META_INODE);
-                break;
-          #if DINDIR_POINTERS > 0U
-            case META_SIG_DINDIR:
-                fValid = (uMetaFlags == BFLAG_META_DINDIR);
-                break;
-          #endif
-          #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
-            case META_SIG_INDIR:
-                fValid = (uMetaFlags == BFLAG_META_INDIR);
-                break;
-          #endif
-            default:
-                fValid = false;
-                break;
-        }
-
-        if(fValid)
-        {
-            uint32_t ulComputedCrc;
-
-            /*  Check for disk corruption by comparing the stored CRC with one
-                computed from the data.
-
-                Also check the sequence number: if it is greater than the
-                current sequence number, the block is from a previous format
-                or the disk is writing blocks out of order.  During mount,
-                before the metaroots have been read, the sequence number will
-                be unknown, and the check is skipped.
+            /*  This implementation always reads directly from disk, bypassing
+                the buffers.
             */
-            ulComputedCrc = RedCrcNode(pbBuffer);
-            if(pHdr->ulCRC != ulComputedCrc)
-            {
-                fValid = false;
-            }
-            else if(gpRedVolume->fMounted && (pHdr->ullSequence >= gpRedVolume->ullSequence))
-            {
-                fValid = false;
-            }
-            else
-            {
-                /*  Buffer is valid.  No action, fValid is already true.
-                */
-            }
+            ret = RedIoRead(gbRedVolNum, ulBlockStart, ulBlockCount, pbDataBuffer);
         }
     }
 
-    return fValid;
+    return ret;
 }
+
+
+#if REDCONF_READ_ONLY == 0
+/** @brief Write a range of data, either to the buffers or to disk.
+
+    @param ulBlockStart The first block number to write.
+    @param ulBlockCount The number of blocks, starting at @p ulBlockStart, to be
+                        written.  Must not be zero.
+    @param pbDataBuffer The buffer containing the data to be written.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EBUSY  A block in the desired range is referenced.
+    @retval -RED_EINVAL Invalid parameters.
+    @retval -RED_EIO    A disk I/O error occurred.
+*/
+REDSTATUS RedBufferWriteRange(
+    uint32_t        ulBlockStart,
+    uint32_t        ulBlockCount,
+    const uint8_t  *pbDataBuffer)
+{
+    REDSTATUS       ret = 0;
+
+    if(    (ulBlockStart >= gpRedVolume->ulBlockCount)
+        || ((gpRedVolume->ulBlockCount - ulBlockStart) < ulBlockCount)
+        || (ulBlockCount == 0U)
+        || (pbDataBuffer == NULL))
+    {
+        REDERROR();
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        /*  This implementation always writes directly to disk, bypassing the
+            buffers.
+        */
+        ret = RedIoWrite(gbRedVolNum, ulBlockStart, ulBlockCount, pbDataBuffer);
+        if(ret == 0)
+        {
+            /*  If there is any buffered data for the blocks we just wrote,
+                those buffers are now stale.
+            */
+            ret = RedBufferDiscardRange(ulBlockStart, ulBlockCount);
+        }
+    }
+
+    return ret;
+}
+#endif
 
 
 /** @brief Derive the index of the buffer.
@@ -730,9 +678,10 @@ static bool BufferToIdx(
 {
     bool        fRet = false;
 
-    if(PTR_IS_ARRAY_ELEMENT(pBuffer, gBufCtx.b.aabBuffer) && (pbIdx != NULL))
+    if(    PTR_IS_ARRAY_ELEMENT(pBuffer, gBufCtx.pbBlkBuf, REDCONF_BUFFER_COUNT << BLOCK_SIZE_P2, REDCONF_BLOCK_SIZE)
+        && (pbIdx != NULL))
     {
-        uint8_t bIdx = (uint8_t)(((uintptr_t)pBuffer - (uintptr_t)gBufCtx.b.aabBuffer) >> BLOCK_SIZE_P2);
+        uint8_t bIdx = (uint8_t)(((uintptr_t)pBuffer - (uintptr_t)gBufCtx.pbBlkBuf) >> BLOCK_SIZE_P2);
 
         /*  This should be guaranteed, since PTR_IS_ARRAY_ELEMENT() was true.
         */
@@ -772,21 +721,22 @@ static REDSTATUS BufferWrite(
 
     if(bIdx < REDCONF_BUFFER_COUNT)
     {
-        const BUFFERHEAD *pHead = &gBufCtx.aHead[bIdx];
+        const BUFFERHEAD   *pHead = &gBufCtx.aHead[bIdx];
+        uint8_t            *pbBuffer = BIDX2BUF(bIdx);
 
         REDASSERT((pHead->uFlags & BFLAG_DIRTY) != 0U);
 
         if((pHead->uFlags & BFLAG_META) != 0U)
         {
-            ret = BufferFinalize(gBufCtx.b.aabBuffer[bIdx], pHead->bVolNum, pHead->uFlags);
+            ret = RedBufferFinalize(pbBuffer, pHead->bVolNum, pHead->uFlags);
         }
 
         if(ret == 0)
         {
-            ret = RedIoWrite(pHead->bVolNum, pHead->ulBlock, 1U, gBufCtx.b.aabBuffer[bIdx]);
+            ret = RedIoWrite(pHead->bVolNum, pHead->ulBlock, 1U, pbBuffer);
 
           #ifdef REDCONF_ENDIAN_SWAP
-            BufferEndianSwap(gBufCtx.b.aabBuffer[bIdx], pHead->uFlags);
+            RedBufferEndianSwap(pbBuffer, pHead->uFlags);
           #endif
         }
     }
@@ -794,277 +744,11 @@ static REDSTATUS BufferWrite(
     {
         REDERROR();
         ret = -RED_EINVAL;
-    }
-
-    return ret;
-}
-
-
-/** @brief Finalize a metadata buffer.
-
-    This updates the CRC and the sequence number.  It also sets the signature,
-    though this is only truly needed if the buffer is new.
-
-    @param pbBuffer Pointer to the metadata buffer to finalize.
-    @param bVolNum  The volume number for the metadata buffer.
-    @param uFlags   The associated buffer flags.  Used to determine the expected
-                    signature.
-
-    @return A negated ::REDSTATUS code indicating the operation result.
-
-    @retval 0           Operation was successful.
-    @retval -RED_EINVAL Invalid parameter; or maximum sequence number reached.
-*/
-static REDSTATUS BufferFinalize(
-    uint8_t    *pbBuffer,
-    uint8_t     bVolNum,
-    uint16_t    uFlags)
-{
-    REDSTATUS   ret = 0;
-
-    if((pbBuffer == NULL) || (bVolNum >= REDCONF_VOLUME_COUNT) || ((uFlags & BFLAG_MASK) != uFlags))
-    {
-        REDERROR();
-        ret = -RED_EINVAL;
-    }
-    else
-    {
-        uint32_t ulSignature;
-
-        switch(uFlags & BFLAG_META_MASK)
-        {
-            case BFLAG_META_MASTER:
-                ulSignature = META_SIG_MASTER;
-                break;
-          #if REDCONF_IMAP_EXTERNAL == 1
-            case BFLAG_META_IMAP:
-                ulSignature = META_SIG_IMAP;
-                break;
-          #endif
-            case BFLAG_META_INODE:
-                ulSignature = META_SIG_INODE;
-                break;
-          #if DINDIR_POINTERS > 0U
-            case BFLAG_META_DINDIR:
-                ulSignature = META_SIG_DINDIR;
-                break;
-          #endif
-          #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
-            case BFLAG_META_INDIR:
-                ulSignature = META_SIG_INDIR;
-                break;
-          #endif
-            default:
-                ulSignature = 0U;
-                break;
-        }
-
-        if(ulSignature == 0U)
-        {
-            REDERROR();
-            ret = -RED_EINVAL;
-        }
-        else
-        {
-            uint64_t ullSeqNum = gaRedVolume[bVolNum].ullSequence;
-
-            ret = RedVolSeqNumIncrement(bVolNum);
-            if(ret == 0)
-            {
-                uint32_t ulCrc;
-
-                RedMemCpy(&pbBuffer[NODEHEADER_OFFSET_SIG], &ulSignature, sizeof(ulSignature));
-                RedMemCpy(&pbBuffer[NODEHEADER_OFFSET_SEQ], &ullSeqNum, sizeof(ullSeqNum));
-
-              #ifdef REDCONF_ENDIAN_SWAP
-                BufferEndianSwap(pbBuffer, uFlags);
-              #endif
-
-                ulCrc = RedCrcNode(pbBuffer);
-              #ifdef REDCONF_ENDIAN_SWAP
-                ulCrc = RedRev32(ulCrc);
-              #endif
-                RedMemCpy(&pbBuffer[NODEHEADER_OFFSET_CRC], &ulCrc, sizeof(ulCrc));
-            }
-        }
     }
 
     return ret;
 }
 #endif /* REDCONF_READ_ONLY == 0 */
-
-
-#ifdef REDCONF_ENDIAN_SWAP
-/** @brief Swap the byte order of a metadata buffer
-
-    Does nothing if the buffer is not a metadata node.  Also does nothing for
-    meta roots, which don't go through the buffers anyways.
-
-    @param pBuffer  Pointer to the metadata buffer to swap
-    @param uFlags   The associated buffer flags.  Used to determine the type of
-                    metadata node.
-*/
-static void BufferEndianSwap(
-    void       *pBuffer,
-    uint16_t    uFlags)
-{
-    if((pBuffer == NULL) || ((uFlags & BFLAG_MASK) != uFlags))
-    {
-        REDERROR();
-    }
-    else if((uFlags & BFLAG_META_MASK) != 0)
-    {
-        BufferEndianSwapHeader(pBuffer);
-
-        switch(uFlags & BFLAG_META_MASK)
-        {
-            case BFLAG_META_MASTER:
-                BufferEndianSwapMaster(pBuffer);
-                break;
-            case BFLAG_META_INODE:
-                BufferEndianSwapInode(pBuffer);
-                break;
-          #if DINDIR_POINTERS > 0U
-            case BFLAG_META_DINDIR:
-                BufferEndianSwapIndir(pBuffer);
-                break;
-          #endif
-          #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
-            case BFLAG_META_INDIR:
-                BufferEndianSwapIndir(pBuffer);
-                break;
-          #endif
-            default:
-                /*  The metadata node doesn't require endian swaps outside the
-                    header.
-                */
-                break;
-        }
-    }
-    else
-    {
-        /*  File data buffers do not need to be swapped.
-        */
-    }
-}
-
-
-/** @brief Swap the byte order of a metadata node header
-
-    @param pHeader  Pointer to the metadata node header to swap
-*/
-static void BufferEndianSwapHeader(
-    NODEHEADER *pHeader)
-{
-    if(pHeader == NULL)
-    {
-        REDERROR();
-    }
-    else
-    {
-        pHeader->ulSignature = RedRev32(pHeader->ulSignature);
-        pHeader->ulCRC = RedRev32(pHeader->ulCRC);
-        pHeader->ullSequence = RedRev64(pHeader->ullSequence);
-    }
-}
-
-
-/** @brief Swap the byte order of a master block
-
-    @param pMaster  Pointer to the master block to swap
-*/
-static void BufferEndianSwapMaster(
-    MASTERBLOCK *pMaster)
-{
-    if(pMaster == NULL)
-    {
-        REDERROR();
-    }
-    else
-    {
-        pMaster->ulVersion = RedRev32(pMaster->ulVersion);
-        pMaster->ulFormatTime = RedRev32(pMaster->ulFormatTime);
-        pMaster->ulInodeCount = RedRev32(pMaster->ulInodeCount);
-        pMaster->ulBlockCount = RedRev32(pMaster->ulBlockCount);
-        pMaster->uMaxNameLen = RedRev16(pMaster->uMaxNameLen);
-        pMaster->uDirectPointers = RedRev16(pMaster->uDirectPointers);
-        pMaster->uIndirectPointers = RedRev16(pMaster->uIndirectPointers);
-    }
-}
-
-
-/** @brief Swap the byte order of an inode
-
-    @param pInode   Pointer to the inode to swap
-*/
-static void BufferEndianSwapInode(
-    INODE  *pInode)
-{
-    if(pInode == NULL)
-    {
-        REDERROR();
-    }
-    else
-    {
-        uint32_t ulIdx;
-
-        pInode->ullSize = RedRev64(pInode->ullSize);
-
-      #if REDCONF_INODE_BLOCKS == 1
-        pInode->ulBlocks = RedRev32(pInode->ulBlocks);
-      #endif
-
-      #if REDCONF_INODE_TIMESTAMPS == 1
-        pInode->ulATime = RedRev32(pInode->ulATime);
-        pInode->ulMTime = RedRev32(pInode->ulMTime);
-        pInode->ulCTime = RedRev32(pInode->ulCTime);
-      #endif
-
-        pInode->uMode = RedRev16(pInode->uMode);
-
-      #if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_LINK == 1)
-        pInode->uNLink = RedRev16(pInode->uNLink);
-      #endif
-
-      #if REDCONF_API_POSIX == 1
-        pInode->ulPInode = RedRev32(pInode->ulPInode);
-      #endif
-
-        for(ulIdx = 0; ulIdx < INODE_ENTRIES; ulIdx++)
-        {
-            pInode->aulEntries[ulIdx] = RedRev32(pInode->aulEntries[ulIdx]);
-        }
-    }
-}
-
-
-#if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
-/** @brief Swap the byte order of an indirect or double indirect node
-
-    @param pIndir   Pointer to the node to swap
-*/
-static void BufferEndianSwapIndir(
-    INDIR  *pIndir)
-{
-    if(pIndir == NULL)
-    {
-        REDERROR();
-    }
-    else
-    {
-        uint32_t ulIdx;
-
-        pIndir->ulInode = RedRev32(pIndir->ulInode);
-
-        for(ulIdx = 0; ulIdx < INDIR_ENTRIES; ulIdx++)
-        {
-            pIndir->aulEntries[ulIdx] = RedRev32(pIndir->aulEntries[ulIdx]);
-        }
-    }
-}
-
-#endif /* REDCONF_DIRECT_POINTERS < INODE_ENTRIES */
-#endif /* #ifdef REDCONF_ENDIAN_SWAP */
 
 
 /** @brief Mark a buffer as least recently used.
@@ -1205,3 +889,4 @@ static bool BufferFind(
     return ret;
 }
 
+#endif /* BUFFER_MODULE == BM_SIMPLE */

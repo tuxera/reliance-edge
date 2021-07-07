@@ -257,7 +257,7 @@ REDSTATUS RedVolMountMaster(void)
             mistake: either the driver settings are wrong, or the disk needs
             to be reformatted.
         */
-        if(    (pMB->ulVersion != RED_DISK_LAYOUT_VERSION)
+        if(    !RED_DISK_LAYOUT_IS_SUPPORTED(pMB->ulVersion)
             || (pMB->ulInodeCount != gpRedVolConf->ulInodeCount)
             || (pMB->ulBlockCount != gpRedVolume->ulBlockCount)
             || (pMB->uMaxNameLen != REDCONF_NAME_MAX)
@@ -290,6 +290,11 @@ REDSTATUS RedVolMountMaster(void)
                 not want to re-buffer the master block.
             */
             gpRedVolume->ullSequence = pMB->hdr.ullSequence;
+
+            /*  Save the on-disk layout version so we know how to interpret
+                the metadata.
+            */
+            gpRedCoreVol->ulVersion = pMB->ulVersion;
         }
 
         RedBufferPut(pMB);

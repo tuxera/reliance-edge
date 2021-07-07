@@ -782,6 +782,55 @@ static REDSTATUS FileDiskOpen(
         pDisk->fIsBDev = S_ISBLK(stat.st_mode);
     }
 
+    /*  If the file disk is a regular file, make sure that it's big enough that
+        block 0 can be read successfully.  In most cases blocks will be written
+        before they are read, but many tests will try to mount the volume before
+        formatting in order to preserve format options.  If the file size is too
+        small, reading the master block will assert.  If instead there is zeroed
+        data in the master block, mount will cleanly return an error.
+    */
+    if((ret == 0) && !pDisk->fIsBDev)
+    {
+        /*  Get the current file size.  The earlier stat() might have failed (if
+            the file did not exist), so fstat() to make sure we have the size.
+        */
+        if(fstat64(pDisk->fd, &stat) == -1)
+        {
+            perror("fstat64");
+            ret = -RED_EIO;
+        }
+        else
+        {
+            BDEVINFO bi;
+
+            /*  Get the sector size.
+            */
+            ret = FileDiskGetGeometry(bVolNum, &bi);
+            if(ret == 0)
+            {
+                off_t block1offset = (off_t)(gaRedVolConf[bVolNum].ullSectorOffset * bi.ulSectorSize) + REDCONF_BLOCK_SIZE;
+
+                /*  If the file size is too small...
+                */
+                if(stat.st_size < block1offset)
+                {
+                    /*  Extend the file.
+                    */
+                    if(ftruncate(pDisk->fd, block1offset) == -1)
+                    {
+                        perror("ftruncate");
+                        ret = -RED_EIO;
+                    }
+                }
+            }
+        }
+
+        if(ret != 0)
+        {
+            (void)FileDiskClose(bVolNum);
+        }
+    }
+
     return ret;
 }
 

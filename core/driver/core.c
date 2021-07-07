@@ -52,12 +52,12 @@ static REDSTATUS CoreFileTruncate(uint32_t ulInode, uint64_t ullSize);
 
 
 VOLUME gaRedVolume[REDCONF_VOLUME_COUNT];
-static COREVOLUME gaCoreVol[REDCONF_VOLUME_COUNT];
+COREVOLUME gaRedCoreVol[REDCONF_VOLUME_COUNT];
 
 const VOLCONF  * CONST_IF_ONE_VOLUME gpRedVolConf = &gaRedVolConf[0U];
 VOLUME         * CONST_IF_ONE_VOLUME gpRedVolume = &gaRedVolume[0U];
-COREVOLUME     * CONST_IF_ONE_VOLUME gpRedCoreVol = &gaCoreVol[0U];
-METAROOT       *gpRedMR = &gaCoreVol[0U].aMR[0U];
+COREVOLUME     * CONST_IF_ONE_VOLUME gpRedCoreVol = &gaRedCoreVol[0U];
+METAROOT       *gpRedMR = &gaRedCoreVol[0U].aMR[0U];
 
 CONST_IF_ONE_VOLUME uint8_t gbRedVolNum;
 
@@ -96,7 +96,7 @@ REDSTATUS RedCoreInit(void)
   #endif
 
     RedMemSet(gaRedVolume, 0U, sizeof(gaRedVolume));
-    RedMemSet(gaCoreVol, 0U, sizeof(gaCoreVol));
+    RedMemSet(gaRedCoreVol, 0U, sizeof(gaRedCoreVol));
 
     RedBufferInit();
 
@@ -248,7 +248,7 @@ REDSTATUS RedCoreVolSetCurrent(
         gbRedVolNum = bVolNum;
         gpRedVolConf = &gaRedVolConf[bVolNum];
         gpRedVolume = &gaRedVolume[bVolNum];
-        gpRedCoreVol = &gaCoreVol[bVolNum];
+        gpRedCoreVol = &gaRedCoreVol[bVolNum];
         gpRedMR = &gpRedCoreVol->aMR[gpRedCoreVol->bCurMR];
       #endif
 
@@ -267,15 +267,19 @@ REDSTATUS RedCoreVolSetCurrent(
 
     An error is returned if the volume is mounted.
 
+    @param pOptions Format options.  May be `NULL`, in which case the default
+                    values are used for the options.
+
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
     @retval -RED_EBUSY  Volume is mounted.
     @retval -RED_EIO    A disk I/O error occurred.
 */
-REDSTATUS RedCoreVolFormat(void)
+REDSTATUS RedCoreVolFormat(
+    const REDFMTOPT *pOptions)
 {
-    return RedVolFormat();
+    return RedVolFormat(pOptions);
 }
 #endif /* FORMAT_SUPPORTED */
 
@@ -470,6 +474,7 @@ REDSTATUS RedCoreVolStat(
         pStatFS->f_namemax = REDCONF_NAME_MAX;
         pStatFS->f_maxfsize = INODE_SIZE_MAX;
         pStatFS->f_dev = gbRedVolNum;
+        pStatFS->f_diskver = gpRedCoreVol->ulVersion;
 
         ret = 0;
     }

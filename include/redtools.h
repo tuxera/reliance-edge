@@ -37,6 +37,8 @@
 
 #if REDCONF_IMAGE_BUILDER == 1
 
+#include "redformat.h"
+
 #define MACRO_NAME_MAX_LEN 32
 
 typedef struct
@@ -51,6 +53,7 @@ typedef struct
     const char *pszDefineFile;
     bool        fNowarn;
   #endif
+    REDFMTOPT   fmtopt;
 } IMGBLDPARAM;
 
 

@@ -51,6 +51,7 @@ extern "C" {
 #include "redapimacs.h"
 #include "rederrno.h"
 #include "redstat.h"
+#include "redformat.h"
 
 /** Open for reading only. */
 #define RED_O_RDONLY    0x00000001U
@@ -141,6 +142,7 @@ int32_t red_umount(const char *pszVolume);
 int32_t red_umount2(const char *pszVolume, uint32_t ulFlags);
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_FORMAT == 1)
 int32_t red_format(const char *pszVolume);
+int32_t red_format2(const char *pszVolume, const REDFMTOPT *pOptions);
 #endif
 #if REDCONF_READ_ONLY == 0
 int32_t red_transact(const char *pszVolume);

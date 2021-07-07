@@ -35,31 +35,62 @@
 
 /** @brief Format a file system volume.
 
+    @param pOptions Format options.  May be `NULL`, in which case the default
+                    values are used for the options.
+
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
     @retval -RED_EBUSY  Volume is mounted.
     @retval -RED_EIO    A disk I/O error occurred.
 */
-REDSTATUS RedVolFormat(void)
+REDSTATUS RedVolFormat(
+    const REDFMTOPT *pOptions)
 {
+    static const REDFMTOPT ZeroOpts = {0U};
+
     REDSTATUS   ret;
     REDSTATUS   ret2;
+    REDFMTOPT   opts = (pOptions == NULL) ? ZeroOpts : *pOptions;
     bool        fBDevOpen = false;
     bool        fGeoInited = false;
 
-    if(gpRedVolume->fMounted)
+    if(opts.ulVersion == 0U)
     {
-        ret = -RED_EBUSY;
+        opts.ulVersion = RED_DISK_LAYOUT_VERSION;
+    }
+
+  #if (REDCONF_API_POSIX == 1) && (REDCONF_NAME_MAX > (REDCONF_BLOCK_SIZE - 4U /* Inode */ - NODEHEADER_SIZE))
+    if(opts.ulVersion >= RED_DISK_LAYOUT_DIRCRC)
+    {
+        /*  REDCONF_NAME_MAX is too long for the on-disk layout with directory
+            data CRCs.
+        */
+        ret = -RED_EINVAL;
     }
     else
     {
-        ret = RedBDevOpen(gbRedVolNum, BDEV_O_RDWR);
-        fBDevOpen = (ret == 0);
+        ret = 0;
+    }
+
+    if(ret == 0)
+  #endif
+    {
+        if(gpRedVolume->fMounted)
+        {
+            ret = -RED_EBUSY;
+        }
+        else
+        {
+            ret = RedBDevOpen(gbRedVolNum, BDEV_O_RDWR);
+            fBDevOpen = (ret == 0);
+        }
     }
 
     if(ret == 0)
     {
+        gpRedCoreVol->ulVersion = opts.ulVersion;
+
         /*  fReadOnly might still be true from the last time the volume was
             mounted (or from the checker).  Clear it now to avoid assertions in
             lower-level code.
@@ -196,7 +227,7 @@ REDSTATUS RedVolFormat(void)
         ret = RedBufferGet(BLOCK_NUM_MASTER, (uint16_t)((uint32_t)BFLAG_META_MASTER | BFLAG_NEW | BFLAG_DIRTY), (void **)&pMB);
         if(ret == 0)
         {
-            pMB->ulVersion = RED_DISK_LAYOUT_VERSION;
+            pMB->ulVersion = opts.ulVersion;
             RedStrNCpy(pMB->acBuildNum, RED_BUILD_NUMBER, sizeof(pMB->acBuildNum));
             pMB->ulFormatTime = RedOsClockGetTime();
             pMB->ulInodeCount = gpRedVolConf->ulInodeCount;

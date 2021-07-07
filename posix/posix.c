@@ -667,7 +667,49 @@ int32_t red_umount2(
 int32_t red_format(
     const char *pszVolume)
 {
-    REDSTATUS   ret;
+    return red_format2(pszVolume, NULL);
+}
+
+
+/** @brief Format a file system volume with options.
+
+    This function is the same as red_format(), except that it accepts an options
+    parameter which can change the on-disk layout version and which, in the
+    future, may allow other aspects of the metadata to be specified at run-time.
+
+    Since new members may be added to ::REDFMTOPT, applications should
+    zero-initialize the structure to ensure forward compatibility.  For example:
+
+    @code{.c}
+    REDFMTOPT fmtopt = {0U};
+
+    fmtopt.ulVersion = RED_DISK_LAYOUT_ORIGINAL;
+    ret = red_format2("VOL0:", &fmtopt);
+    @endcode
+
+    @param pszVolume    A path prefix identifying the volume to format.
+    @param pOptions     Format options.  May be `NULL`, in which case the default
+                        values are used for the options, equivalent to
+                        red_format().  If non-`NULL`, the caller should
+                        zero-initialize the structure to ensure forward
+                        compatibility in the event that additional members are
+                        added to the ::REDFMTOPT structure.
+
+    @return On success, zero is returned.  On error, -1 is returned and
+            #red_errno is set appropriately.
+
+    <b>Errno values</b>
+    - #RED_EBUSY: Volume is mounted.
+    - #RED_EINVAL: @p pszVolume is `NULL`; or the driver is uninitialized.
+    - #RED_EIO: I/O error formatting the volume.
+    - #RED_ENOENT: @p pszVolume is not a valid volume path prefix.
+    - #RED_EUSERS: Cannot become a file system user: too many users.
+*/
+int32_t red_format2(
+    const char         *pszVolume,
+    const REDFMTOPT    *pOptions)
+{
+    REDSTATUS           ret;
 
     ret = PosixEnter();
     if(ret == 0)
@@ -676,7 +718,7 @@ int32_t red_format(
 
         if(ret == 0)
         {
-            ret = RedCoreVolFormat();
+            ret = RedCoreVolFormat(pOptions);
         }
 
         PosixLeave();
@@ -684,7 +726,7 @@ int32_t red_format(
 
     return PosixReturn(ret);
 }
-#endif
+#endif /* (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_FORMAT == 1) */
 
 
 #if REDCONF_READ_ONLY == 0
@@ -3392,7 +3434,7 @@ static bool DirStreamIsValid(
 {
     bool            fRet;
 
-    if(!PTR_IS_ARRAY_ELEMENT(pDirStream, gaHandle))
+    if(!PTR_IS_ARRAY_ELEMENT(pDirStream, gaHandle, ARRAY_SIZE(gaHandle), sizeof(gaHandle[0U])))
     {
         /*  pDirStream is not a pointer to one of our handles.
         */

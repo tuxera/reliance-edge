@@ -77,10 +77,10 @@ int main(
             }
         }
 
-        iErr = red_format(pszVolume);
+        iErr = RedTestFmtOptionsPreserve(pszVolume);
         if(iErr == -1)
         {
-            fprintf(stderr, "Unexpected error %d from red_format()\n", (int)red_errno);
+            fprintf(stderr, "Unexpected error %d from RedTestFmtOptionsPreserve()\n", (int)red_errno);
             exit(red_errno);
         }
 

@@ -9,8 +9,30 @@ recent releases and a list of known issues.
 
 #### Common Code Changes
 
+- Introduce a new on-disk layout where directory data blocks have a signature,
+  CRC (checksum), and sequence number, like all other metadata blocks.
+    - Support for the original on-disk layout is retained.  Old disks do _not_
+      need to be reformatted.
+    - Formatter options have been introduced to allow formatting with the
+      original on-disk layout if desired.
+    - The FSE API continues to use the original on-disk layout because it does
+      not have directory data blocks.
 - Add new "rollback" APIs: red\_rollback() and RedFseRollback().  Thanks to
   Jean-Christophe Dubois for suggesting and implementing these APIs.
+- Updated the block buffer cache to support configurable buffer alignment to
+  allow the buffers to be used in DMA transfers.  This adds a new macro to
+  redconf.h: `REDCONF_BUFFER_ALIGNMENT`.
+- Implement an alternative block buffer cache (commercial kit only) to improve
+  file system performance.  Features of the new cache:
+    - No longer limited to a maximum of 255 block buffers.  The new cache can
+      support many thousands of buffers, which can improve performance on
+      systems which have sufficient RAM for many block buffers.
+    - Support for RAM-constrained systems is retained.  The new cache and the
+      old cache use about the same amount of RAM given the same buffer count.
+    - Optional write-gather buffer which can improve write throughput
+      serveralfold in some use cases.  This adds a new macro to redconf.h:
+      `REDCONF_BUFFER_WRITE_GATHER_SIZE_KB`.  For the open source release, this
+      new macro must have a value of `0U`.
 - Optimized block-aligned writes to make one pass over the metadata rather than
   two passes, which slightly improves performance of such writes.
 - Critical error messages now print the file name and line number where the
@@ -23,7 +45,7 @@ recent releases and a list of known issues.
   divisor of the block size.  In other words, when the following was true:
   `REDCONF_BLOCK_SIZE % (REDCONF_NAME_MAX + 4) != 0`
 
-### INTEGRITY Port Changes
+#### INTEGRITY Port Changes
 
 Fixed several bugs which affected the client-server configuration (libredfs.a).
 The unified configuration (libredfs\_unified.a) was unaffected by these issues.

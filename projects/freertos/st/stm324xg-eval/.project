@@ -154,6 +154,11 @@
 			<locationURI>REDFS_SRC_PATH/core/driver/buffer.c</locationURI>
 		</link>
 		<link>
+			<name>RelianceEdge/buffercmn.c</name>
+			<type>1</type>
+			<locationURI>REDFS_SRC_PATH/core/driver/buffercmn.c</locationURI>
+		</link>
+		<link>
 			<name>RelianceEdge/core.c</name>
 			<type>1</type>
 			<locationURI>REDFS_SRC_PATH/core/driver/core.c</locationURI>

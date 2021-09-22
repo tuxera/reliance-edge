@@ -41,10 +41,10 @@ VolumeSettings::Volume::Volume(QString name,
                                WarningBtn *wbtnDiscardSupport,
                                WarningBtn *wbtnBlockIoRetries)
     : stName("", name, validateVolName, wbtnPathPrefix),
-      stSectorCount("", 1024, validateVolSectorCount, wbtnVolSize),
+      stSectorSize("", 512, validateVolSectorSize, wbtnSectorSize),
       stSectorOff("", 0, validateVolSectorOff, wbtnVolOff),
       stInodeCount("", 100, validateVolInodeCount, wbtnInodeCount),
-      stSectorSize("", 512, validateVolSectorSize, wbtnSectorSize),
+      stSectorCount("", 1024, validateVolSectorCount, wbtnVolSize),
       stAtomicWrite("", gpszUnsupported, validateSupportedUnsupported, wbtnAtomicWrite),
       stDiscardSupport("", gpszUnsupported, validateDiscardSupport, wbtnDiscardSupport),
       stBlockIoRetries("", 0, validateVolIoRetries, wbtnBlockIoRetries)

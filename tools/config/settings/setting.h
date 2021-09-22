@@ -87,12 +87,12 @@ public:
     /// \param updateUi If set to true or unspecified, any ui elements will be
     ///                 updated after the value is set
     ///
-    void SetValue(T arg, bool updateUi = true);
+    virtual void SetValue(T arg, bool updateUi = true);
 
     ///
     /// \brief  Returns the current value held by this Setting
     ///
-    T GetValue(void)
+    virtual T GetValue(void)
     {
         return value;
     }

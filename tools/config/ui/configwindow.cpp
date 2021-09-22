@@ -82,7 +82,9 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     allSettings.sbsIndirectPtrs = new SbSetting(macroNameIndirectPtrs, 32, validateIndirectPointers, ui->sbIndirectPointers, ui->wbtnIndirectPointers);
 
     // "Memory" tab
-    allSettings.sbsAllocatedBuffers = new SbSetting(macroNameAllocatedBuffers, 8, validateAllocatedBuffers, ui->sbAllocatedBuffers, ui->wbtnAllocatedBuffers);
+    allSettings.sbsAllocatedBuffers = new SbSetting(macroNameAllocatedBuffers, 12, validateAllocatedBuffers, ui->sbAllocatedBuffers, ui->wbtnAllocatedBuffers);
+    allSettings.cmisBufferAlignment = new CmbIntSetting(macroNameBufferAlignment, 8, validateBufferAlignment, ui->cmbBufferAlignment, ui->wbtnBufferAlignment);
+    allSettings.sbsBufferWriteGatherKb = new CheckedSbSetting(macroNameBufferGatherSize, 1, validateBufferWriteGather, ui->sbBufferWriteGatherKB, ui->cbBufferWriteGather, false, true, ui->wbtnBufferWriteGather);
     allSettings.lesMemcpy = new LeSetting(macroNameMemcpy, cstdMemcpy, emptyStringValidator, ui->leMemcpy);
     allSettings.lesMemmov = new LeSetting(macroNameMemmov, cstdMemmov, emptyStringValidator, ui->leMemmov);
     allSettings.lesMemset = new LeSetting(macroNameMemset, cstdMemset, emptyStringValidator, ui->leMemset);
@@ -129,6 +131,11 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     allSettings.sbsDirectPtrs->notifyList.append(allSettings.sbsAllocatedBuffers);
     allSettings.cbsPosixRename->notifyList.append(allSettings.sbsAllocatedBuffers);
     allSettings.cbsPosixAtomicRename->notifyList.append(allSettings.sbsAllocatedBuffers);
+
+    allSettings.cmisBlockSize->notifyList.append(allSettings.cmisBufferAlignment);
+
+    allSettings.cmisBlockSize->notifyList.append(allSettings.sbsBufferWriteGatherKb);
+    allSettings.sbsAllocatedBuffers->notifyList.append(allSettings.sbsBufferWriteGatherKb);
 
     allSettings.cbsAutomaticDiscards->notifyList.append(allSettings.cbsPosixFstrim);
     allSettings.cbsPosixFstrim->notifyList.append(allSettings.cbsPosixFstrim);

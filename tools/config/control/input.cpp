@@ -63,6 +63,19 @@ void Input::TryLoad()
     {
         return; //results() already emitted by getFile
     }
+
+    bool isCompatible = AllSettings::isCompatibleVersion(headerText);
+    if(!isCompatible)
+    {
+        QMessageBox *messageBox = new QMessageBox(parentWindow);
+
+        messageBox->setText("Incompatible settings version");
+        messageBox->setIcon(QMessageBox::Critical);
+        messageBox->setStandardButtons(QMessageBox::Ok);
+        messageBox->exec();
+        return;
+    }
+
     if(!getFile(codefilePath, codefileText))
     {
         return;

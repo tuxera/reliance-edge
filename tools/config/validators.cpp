@@ -787,10 +787,25 @@ Validity validateIndirectPointers(unsigned long value, QString &msg)
 ///
 Validity validateAllocatedBuffers(unsigned long value, QString &msg)
 {
-    if(value > 255)
+    unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
+    unsigned long long maximumBufferCount;
+
+    maximumBufferCount = 0x100000000ULL / blockSize;
+    if(value > maximumBufferCount)
     {
-        msg = "Buffer count must be less than 256.";
+        msg = QString("Too many allocated buffers. Current maximum based on block size: ")
+                + QString::number(maximumBufferCount)
+                + QString(".");
         return Invalid;
+    }
+    else if(value > 255)
+    {
+        msg = "Buffer counts greater than 255 are only supported by the commercial version of Reliance Edge.";
+
+        // If the buffer count is >255, we don't need to worry about being
+        // below the minimum buffer count, so we can skip the remainder of this
+        // function.
+        return Warning;
     }
 
     // Min buffer algorithm derived from preprocessor logic in redbufferpriv.h
@@ -861,6 +876,89 @@ Validity validateAllocatedBuffers(unsigned long value, QString &msg)
     }
 
     return Valid;
+}
+
+///
+/// \brief  Validator for allSettings::cmbBufferAlignment
+///
+///         Requires that ::allSettings and ::volumeSettings be initialized.
+///
+Validity validateBufferAlignment(unsigned long value, QString &msg)
+{
+    unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
+
+    if(value > blockSize)
+    {
+		msg = QString("Alignment should not exceed block size. Current maximum based on block size: ")
+				+ QString::number(blockSize)
+				+ QString(".");
+        return Invalid;
+    }
+
+    if(value < 8)
+    {
+        msg = QString("Alignment is below the minimum of 8.");
+        return Invalid;
+    }
+
+	if(value & (value - 1))
+	{
+        msg = QString("Alignment must be a power of 2.");
+        return Invalid;
+	}
+
+	return Valid;
+}
+
+///
+/// \brief  Validator for allSettings::sbBufferWriteGatherKB
+///
+///         Requires that ::allSettings and ::volumeSettings be initialized.
+///
+Validity validateBufferWriteGather(unsigned long value, QString &msg)
+{
+	unsigned long maximum4GB = 4194304UL;
+    unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
+	unsigned long bufferCount = allSettings.sbsAllocatedBuffers->GetValue();
+	unsigned long long maximumBufferLimit = ((unsigned long long )blockSize * bufferCount) / 1024;
+
+    if(value > maximum4GB)
+    {
+		msg = QString("Write-gather size exceeds the 4GB maximum of ")
+				+ QString::number(maximum4GB)
+				+ QString(".");
+        return Invalid;
+    }
+
+    if(value > maximumBufferLimit)
+    {
+		msg = QString("Write-gather size exceeds the total buffers maximum of ")
+				+ QString::number(maximumBufferLimit)
+				+ QString(".");
+        return Invalid;
+    }
+
+	if(value)
+	{
+		unsigned long long bigValue = (unsigned long long )value * 1024;
+		unsigned long minimumBlockSizeLimit = blockSize * 2;
+
+	    if(bigValue < minimumBlockSizeLimit)
+	    {
+			msg = QString("Write-gather size doesn't meet the block size minimum of ")
+					+ QString::number(minimumBlockSizeLimit)
+					+ QString(".");
+	        return Invalid;
+	    }
+
+	    if(bigValue % blockSize != 0)
+	    {
+			msg = QString("Write-gather isn't a multiple of block size.");
+	        return Invalid;
+	    }
+	}
+
+	return Valid;
 }
 
 ///

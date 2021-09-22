@@ -212,6 +212,8 @@ QString AllSettings::FormatHeaderOutput()
     addIntSetting(toReturn, allSettings.sbsIndirectPtrs);
 
     addIntSetting(toReturn, allSettings.sbsAllocatedBuffers);
+    addIntSetting(toReturn, allSettings.cmisBufferAlignment);
+    addIntSetting(toReturn, allSettings.sbsBufferWriteGatherKb);
 
     toReturn += outputIfNotBlank(macroNameMemcpy, allSettings.lesMemcpy->GetValue());
     toReturn += outputIfNotBlank(macroNameMemmov, allSettings.lesMemmov->GetValue());
@@ -330,18 +332,9 @@ QString outputIfNotBlank(const QString &macroName, const QString &value,
 // helpful error message.
 static qint32 getMinCompatVer()
 {
-    if(allSettings.rbtnsUsePosix->GetValue() && allSettings.cbsTrSync->GetValue())
-    {
-        // sync support added in v2.3; breaks backwards compatibility only if
-        // enabled.
-        return 0x02030000;
-    }
-    else
-    {
-        // Volume sector offset added in v2.2, which adds a member to the
-        // volume configuration, thus breaking backward compatibility.
-        return 0x02020000;
-    }
+    // Reliance Edge v2.6 added new buffer configuration macros that previous
+    // versions of Reliance Edge (and this utility) don't know about.
+    return 0x02060000;
 }
 
 QString AllSettings::FormatCodefileOutput()
@@ -396,6 +389,8 @@ void AllSettings::GetErrors(QStringList &errors, QStringList &warnings)
 
     // "Memory" tab
     AllSettings::CheckError(allSettings.sbsAllocatedBuffers, errors, warnings);
+    AllSettings::CheckError(allSettings.cmisBufferAlignment, errors, warnings);
+    AllSettings::CheckError(allSettings.sbsBufferWriteGatherKb, errors, warnings);
     AllSettings::CheckError(allSettings.lesMemcpy, errors, warnings);
     AllSettings::CheckError(allSettings.lesMemmov, errors, warnings);
     AllSettings::CheckError(allSettings.lesMemset, errors, warnings);
@@ -444,6 +439,23 @@ void AllSettings::CheckError(SettingBase *setting,
             // Default clause included to suppress GCC's Wswitch.
             break;
     }
+}
+
+bool AllSettings::isCompatibleVersion(const QString &text)
+{
+    bool found = false;
+    QString strValue = findValue(text, "RED_CONFIG_UTILITY_VERSION", found);
+    if(found && !strValue.isNull())
+    {
+        QStringList list1 = strValue.split(QLatin1Char('U'));
+        bool status = false;
+        int version = list1[0].toInt(&status, 0);
+        if(version >= getMinCompatVer())
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 void AllSettings::ParseHeaderToSettings(const QString &text,
@@ -537,6 +549,8 @@ void AllSettings::ParseHeaderToSettings(const QString &text,
 
     // "Memory" tab
     parseToSetting(text, allSettings.sbsAllocatedBuffers, notFound, notParsed);
+    parseToSetting(text, allSettings.cmisBufferAlignment, notFound, notParsed);
+    parseToSetting(text, allSettings.sbsBufferWriteGatherKb, notFound, notParsed);
 
     // Don't warn on these if not found; they will not be found
     // if use Reliance memory mngmnt fns was selected.
@@ -753,6 +767,8 @@ void AllSettings::DeleteAll()
 
     // "Memory" tab
     deleteAndNullify(&allSettings.sbsAllocatedBuffers);
+    deleteAndNullify(&allSettings.cmisBufferAlignment);
+    deleteAndNullify(&allSettings.sbsBufferWriteGatherKb);
     deleteAndNullify(&allSettings.lesMemcpy);
     deleteAndNullify(&allSettings.lesMemmov);
     deleteAndNullify(&allSettings.lesMemset);
@@ -826,6 +842,8 @@ const QString macroNameExternalImap = "REDCONF_IMAP_EXTERNAL";
 
 // "Memory" tab
 const QString macroNameAllocatedBuffers = "REDCONF_BUFFER_COUNT";
+const QString macroNameBufferAlignment = "REDCONF_BUFFER_ALIGNMENT";
+const QString macroNameBufferGatherSize = "REDCONF_BUFFER_WRITE_GATHER_SIZE_KB";
 const QString macroNameMemcpy = "RedMemCpyUnchecked";
 const QString macroNameMemmov = "RedMemMoveUnchecked";
 const QString macroNameMemset = "RedMemSetUnchecked";

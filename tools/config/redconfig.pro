@@ -25,6 +25,7 @@ SOURCES += main.cpp\
     ui/warningbtn.cpp \
     settings/boolsetting.cpp \
     settings/cbsetting.cpp \
+    settings/checkedsbsetting.cpp \
     settings/cmbintsetting.cpp \
     settings/cmbstrsetting.cpp \
     settings/intsetting.cpp \
@@ -47,8 +48,9 @@ HEADERS  += \
     ui/warningbtn.h \
     ui/filedialog.h \
     ui/errordialog.h \
-    settings/cbsetting.h \
     settings/boolsetting.h \
+    settings/cbsetting.h \
+    settings/checkedsbsetting.h \
     settings/cmbintsetting.h \
     settings/cmbstrsetting.h \
     settings/intsetting.h \

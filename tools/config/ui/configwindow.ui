@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>411</width>
-    <height>553</height>
+    <width>451</width>
+    <height>868</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -68,8 +68,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>403</width>
-             <height>790</height>
+             <width>443</width>
+             <height>811</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_11">
@@ -1020,8 +1020,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>403</width>
-             <height>489</height>
+             <width>444</width>
+             <height>492</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_14">
@@ -1236,7 +1236,7 @@
                      <item>
                       <widget class="QLabel" name="label_17">
                        <property name="toolTip">
-                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This is the sector size of the storage medium underlying the volume being configured. The sector size is the unit for reads and writes to the storage medium; while the file system allocates in terms of blocks, the block numbers and counts are converted to sector numbers and counts before being passed into the block device service.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; The correct value here is the sector size of the storage medium. For example, if the storage medium underlying the volume has 512 byte sectors, this should be set to 512. The most common value here will be 512.  Supported values are powers-of-two between 128 and 65536, inclusive.&lt;/p&gt;&lt;p&gt;If "Auto" is selected, the redconf.c will have a placeholder value (SECTOR_SIZE_AUTO) as its sector size and RedOsBDevGetGeometry() will be used at run-time to query the sector size.  This will work so long as RedOsBDevGetGeometry() has been implemented, which it is for the pre-ported RTOSes.  However, note that "Auto" is unsupported with RAM disks provided as part of Reliance Edge, so for those the sector size must be explicitly specified.&lt;/p&gt;&lt;p&gt;The "Auto" option is valuable in situations where the sector size is not known in advance.  For example, all eMMC parts default to a 512-byte sector size but some of them can be configured to switch to a 4096-byte sector size.  The "Auto" option would allow the same configuration to work with either sector size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This is the sector size of the storage medium underlying the volume being configured. The sector size is the unit for reads and writes to the storage medium; while the file system allocates in terms of blocks, the block numbers and counts are converted to sector numbers and counts before being passed into the block device service.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; The correct value here is the sector size of the storage medium. For example, if the storage medium underlying the volume has 512 byte sectors, this should be set to 512. The most common value here will be 512.  Supported values are powers-of-two between 128 and 65536, inclusive.&lt;/p&gt;&lt;p&gt;If &quot;Auto&quot; is selected, the redconf.c will have a placeholder value (SECTOR_SIZE_AUTO) as its sector size and RedOsBDevGetGeometry() will be used at run-time to query the sector size.  This will work so long as RedOsBDevGetGeometry() has been implemented, which it is for the pre-ported RTOSes.  However, note that &quot;Auto&quot; is unsupported with RAM disks provided as part of Reliance Edge, so for those the sector size must be explicitly specified.&lt;/p&gt;&lt;p&gt;The &quot;Auto&quot; option is valuable in situations where the sector size is not known in advance.  For example, all eMMC parts default to a 512-byte sector size but some of them can be configured to switch to a 4096-byte sector size.  The &quot;Auto&quot; option would allow the same configuration to work with either sector size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                        </property>
                        <property name="text">
                         <string> Sector size:</string>
@@ -1364,7 +1364,7 @@
                        <item>
                         <widget class="QLabel" name="label_9">
                          <property name="toolTip">
-                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This is the size of the volume, in units of sectors.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; Selecting "Auto" is often the correct choice, since it provides more flexibility and avoids the hassle of manually determining the sector count of the storage device.  When "Auto" is selected, the redconf.c will have a placeholder value (SECTOR_COUNT_AUTO) as its sector count and RedOsBDevGetGeometry() will be used at run-time to query the sector count.  This will work so long as RedOsBDevGetGeometry() has been implemented, which it is for the pre-ported RTOSes.  The one downside to using "Auto" is that it may slightly increase the code size, relative to what it would have been if the sector count was explicitly configured.  Also note that "Auto" is unsupported for RAM disks provided as part of Reliance Edge, so for those the sector count must be explicitly specified.  For a file disks provided as part of Reliance Edge, "Auto" is only supported if the file disk already exists, since the file size will be used to determine the sector count.&lt;/p&gt;&lt;p&gt;Otherwise, to set this sector count explicitly, you need to know the exact size of your storage media. For example, if your medium is an SD card which is about 2 GB and you assume the sector count is 4194304, this will result in errors if the SD card is actually 1.86 GB with 3900702 sectors. This information may be available in the datasheet for your storage medium; with SD and eMMC, the sector count can be derived from values in the CSD (Card-Specific Data) register.&lt;/p&gt;&lt;p&gt;If you are using partitioning on your storage media, then the sector count should be the size of the partition which will underlie the volume, rather than the size of the entire storage device.&lt;/p&gt;&lt;p&gt;For more information, see the &amp;quot;Product Configuration&amp;quot; chapter of the Reliance Edge Developer's Guide.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This is the size of the volume, in units of sectors.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; Selecting &quot;Auto&quot; is often the correct choice, since it provides more flexibility and avoids the hassle of manually determining the sector count of the storage device.  When &quot;Auto&quot; is selected, the redconf.c will have a placeholder value (SECTOR_COUNT_AUTO) as its sector count and RedOsBDevGetGeometry() will be used at run-time to query the sector count.  This will work so long as RedOsBDevGetGeometry() has been implemented, which it is for the pre-ported RTOSes.  The one downside to using &quot;Auto&quot; is that it may slightly increase the code size, relative to what it would have been if the sector count was explicitly configured.  Also note that &quot;Auto&quot; is unsupported for RAM disks provided as part of Reliance Edge, so for those the sector count must be explicitly specified.  For a file disks provided as part of Reliance Edge, &quot;Auto&quot; is only supported if the file disk already exists, since the file size will be used to determine the sector count.&lt;/p&gt;&lt;p&gt;Otherwise, to set this sector count explicitly, you need to know the exact size of your storage media. For example, if your medium is an SD card which is about 2 GB and you assume the sector count is 4194304, this will result in errors if the SD card is actually 1.86 GB with 3900702 sectors. This information may be available in the datasheet for your storage medium; with SD and eMMC, the sector count can be derived from values in the CSD (Card-Specific Data) register.&lt;/p&gt;&lt;p&gt;If you are using partitioning on your storage media, then the sector count should be the size of the partition which will underlie the volume, rather than the size of the entire storage device.&lt;/p&gt;&lt;p&gt;For more information, see the &amp;quot;Product Configuration&amp;quot; chapter of the Reliance Edge Developer's Guide.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                          </property>
                          <property name="text">
                           <string>Volume size:</string>
@@ -2096,8 +2096,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>403</width>
-             <height>503</height>
+             <width>443</width>
+             <height>496</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_19">
@@ -2672,8 +2672,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>403</width>
-             <height>503</height>
+             <width>443</width>
+             <height>496</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_24">
@@ -2699,80 +2699,290 @@
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_25">
                <item>
-                <widget class="QWidget" name="hwiAllocatedBuffers" native="true">
-                 <property name="minimumSize">
-                  <size>
-                   <width>0</width>
-                   <height>10</height>
-                  </size>
-                 </property>
-                 <layout class="QHBoxLayout" name="horizontalLayout_15">
-                  <property name="leftMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="topMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="rightMargin">
-                   <number>0</number>
-                  </property>
-                  <property name="bottomMargin">
-                   <number>0</number>
-                  </property>
-                  <item>
-                   <widget class="QLabel" name="label_24">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines the number of block buffers in the block buffer cache.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; Reliance Edge needs a certain minimum number of block buffers in the cache in order to operate. This minimum can be anywhere from 2 to 12, depending on other settings; an error icon will appear if the minimum is not met. Using a buffer count above the minimum will improve performance (often substantially) at the cost of using more RAM. Thus, if the performance of Reliance Edge is not satisfactory, increasing the buffer count is a good experiment.&lt;/p&gt;&lt;p&gt;The improvement in performance produced by increasing the buffer count is subject to diminishing returns; if there are already several dozen buffers, adding more will have little effect. The maximum buffer count is 255, but it should be noted that the buffer cache is optimized for a relatively small number of buffers, and that using hundreds of buffers (if such a large amount of RAM is available) may actually decrease performance.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
+                <layout class="QHBoxLayout" name="hlayBufferCount">
+                 <item>
+                  <widget class="QLabel" name="label_24">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines the number of block buffers in the block buffer cache.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; Reliance Edge needs a certain minimum number of block buffers in the cache in order to operate. This minimum can be anywhere from 2 to 12, depending on other settings; an error icon will appear if the value is below the minimum. Using a buffer count above the minimum will improve performance (often substantially) at the cost of using more RAM. Thus, if the performance of Reliance Edge is not satisfactory, increasing the buffer count is a good experiment.&lt;/p&gt;&lt;p&gt;The memory allocated for buffers must be less than 4 GB and is determined by &lt;span style=&quot; font-weight:600;&quot;&gt;Block Size&lt;/span&gt; times &lt;span style=&quot; font-weight:600;&quot;&gt;Buffer Count&lt;/span&gt;. An error icon will appear if the value is above the maximum.&lt;/p&gt;&lt;p&gt;For more information, see the &amp;quot;Product Configuration&amp;quot; chapter of the Reliance Edge Developer's Guide.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="text">
+                    <string>Count:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QSpinBox" name="sbAllocatedBuffers">
+                   <property name="maximum">
+                    <number>33554432</number>
+                   </property>
+                   <property name="value">
+                    <number>12</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="horizontalSpacer_22">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>40</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="WarningBtn" name="wbtnAllocatedBuffers" native="true">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Fixed" vsizetype="Ignored">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>18</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>18</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="hlayBufferAlignment">
+                 <item>
+                  <widget class="QLabel" name="label_17b">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; The memory alignment of the block buffers. The addresses of all block buffers (and the write-gather buffer, if enabled) will be aligned to this value. &lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; A minimum alignment of 8 is required in order for it to be safe on all processor architectures. The value must also be a power-of-two value and less than or equal to &lt;span style=&quot; font-weight:600;&quot;&gt;Block Size&lt;/span&gt;.&lt;/p&gt;&lt;p&gt;Alignment values above the minimum are beneficial on systems that use direct memory access (DMA) to transfer data to and from the storage device. DMA typically requires an aligned buffer, but the amount of alignment needed depends on the system: anywhere from 4 to 512 bytes is typical. If buffers are sufficiently aligned for the DMA controller, this foregoes the need for a bounce buffer for the I/O requests that use these aligned buffers.&lt;/p&gt;&lt;p&gt;Note that not all storage device I/O pass through the buffers, so the OS block device service (osbdev.c) still needs to be able to support unaligned I/O buffers. In other words, use of this setting will not eliminate the need for a bounce buffer, but it can reduce how often the bounce buffer would need to be used.&lt;/p&gt;&lt;p&gt;The RAM cost in bytes of this setting is approximately equal to the alignment value.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="text">
+                    <string>Alignment:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QComboBox" name="cmbBufferAlignment">
+                   <property name="currentIndex">
+                    <number>0</number>
+                   </property>
+                   <item>
                     <property name="text">
-                     <string>Allocated buffers:</string>
+                     <string>8</string>
                     </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QSpinBox" name="sbAllocatedBuffers">
-                    <property name="maximum">
-                     <number>255</number>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>16</string>
                     </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <spacer name="horizontalSpacer_22">
-                    <property name="orientation">
-                     <enum>Qt::Horizontal</enum>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>32</string>
                     </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>40</width>
-                      <height>20</height>
-                     </size>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>64</string>
                     </property>
-                   </spacer>
-                  </item>
-                  <item>
-                   <widget class="WarningBtn" name="wbtnAllocatedBuffers" native="true">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Fixed" vsizetype="Ignored">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>128</string>
                     </property>
-                    <property name="minimumSize">
-                     <size>
-                      <width>18</width>
-                      <height>0</height>
-                     </size>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>256</string>
                     </property>
-                    <property name="maximumSize">
-                     <size>
-                      <width>18</width>
-                      <height>16777215</height>
-                     </size>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>512</string>
                     </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>1,024</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>2,048</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>4,096</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>8,192</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>16,384</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>32,768</string>
+                    </property>
+                   </item>
+                   <item>
+                    <property name="text">
+                     <string>65,536</string>
+                    </property>
+                   </item>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="label_18b">
+                   <property name="text">
+                    <string>bytes</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="horizontalSpacer_5d">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>40</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="WarningBtn" name="wbtnBufferAlignment" native="true">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Fixed" vsizetype="Ignored">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>18</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>18</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="hlayBufferWriteGather">
+                 <item>
+                  <widget class="QLabel" name="label_9c">
+                   <property name="toolTip">
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; The size of the write-gather buffer in kilobytes.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; This value, in combination with the &lt;span style=&quot; font-weight:600;&quot;&gt;Block Size&lt;/span&gt; and &lt;span style=&quot; font-weight:600;&quot;&gt;Buffer Count&lt;/span&gt;, are used to tune file system performance. The write-gather buffer is used to write out adjacent dirty block buffers in a single request. On many storage devices, write throughput is faster with larger requests (up to a point). The minimum size is twice the &lt;span style=&quot; font-weight:600;&quot;&gt;Block Size&lt;/span&gt;. The maximum must be less than the total space allocated for buffers (ie. &lt;span style=&quot; font-weight:600;&quot;&gt;Block Size&lt;/span&gt; times &lt;span style=&quot; font-weight:600;&quot;&gt;Buffer Count&lt;/span&gt;).&lt;/p&gt;&lt;p&gt;Disabling the write-gather buffer may be desirable to minimize RAM requirements, reduce worst-case latency, or because larger writes are not faster on the storage device.&lt;/p&gt;&lt;p&gt;For more information, see the &amp;quot;Product Configuration&amp;quot; chapter of the Reliance Edge Developer's Guide. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                   </property>
+                   <property name="text">
+                    <string>Write-gather:</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="cbBufferWriteGather">
+                   <property name="text">
+                    <string>Enable</string>
+                   </property>
+                   <property name="checked">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QSpinBox" name="sbBufferWriteGatherKB">
+                   <property name="enabled">
+                    <bool>false</bool>
+                   </property>
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                     <horstretch>1</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>100</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="minimum">
+                    <number>1</number>
+                   </property>
+                   <property name="maximum">
+                    <number>4194304</number>
+                   </property>
+                   <property name="value">
+                    <number>1</number>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="label_10c">
+                   <property name="text">
+                    <string>Kbytes</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="horizontalSpacer_5c">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>40</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                 <item>
+                  <widget class="WarningBtn" name="wbtnBufferWriteGather" native="true">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Fixed" vsizetype="Ignored">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>18</width>
+                     <height>0</height>
+                    </size>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>18</width>
+                     <height>16777215</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
                </item>
               </layout>
              </widget>
@@ -3048,8 +3258,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>403</width>
-             <height>503</height>
+             <width>443</width>
+             <height>496</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -3324,8 +3534,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>403</width>
-             <height>503</height>
+             <width>422</width>
+             <height>505</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -3524,8 +3734,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>411</width>
-     <height>21</height>
+     <width>451</width>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

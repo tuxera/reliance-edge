@@ -32,6 +32,7 @@
 #include "settings/rbtnsetting.h"
 #include "settings/sbsetting.h"
 #include "settings/lesetting.h"
+#include "settings/checkedsbsetting.h"
 
 ///
 /// \brief  Structure containing public settings pointers for global access.
@@ -59,6 +60,13 @@ struct AllSettings
     /// \brief  Wrapper function for VolumeSettings::FormatCodefileOutput
     ///
     static QString FormatCodefileOutput();
+
+    ///
+    /// \brief  Checks the header file text for RED_CONFIG_UTILITY_VERSION
+    ///         and determines if the header is from a compatible version.
+    ///         Returns true if compatible and false otherwise.
+    ///
+    static bool isCompatibleVersion(const QString &text);
 
     ///
     /// \brief  Looks for settings in the given string \p text. The macro names
@@ -130,6 +138,8 @@ struct AllSettings
 
     // "Memory" tab
     SbSetting *sbsAllocatedBuffers;
+    CmbIntSetting *cmisBufferAlignment;
+    CheckedSbSetting *sbsBufferWriteGatherKb;
     LeSetting *lesMemcpy;
     LeSetting *lesMemmov;
     LeSetting *lesMemset;
@@ -202,6 +212,8 @@ extern const QString macroNameExternalImap;
 
 // "Memory" tab
 extern const QString macroNameAllocatedBuffers;
+extern const QString macroNameBufferAlignment;
+extern const QString macroNameBufferGatherSize;
 extern const QString macroNameMemcpy;
 extern const QString macroNameMemmov;
 extern const QString macroNameMemset;

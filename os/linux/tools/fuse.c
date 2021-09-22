@@ -937,6 +937,7 @@ static void *fuse_red_init(
     */
     if((red_mount(gpszVolume) != 0) && (red_errno != RED_EBUSY))
     {
+        REDFS_UNLOCK();
         fprintf(stderr, "Unexpected error %d from red_mount()\n", (int)red_errno);
         exit(rederrno_to_errno(red_errno));
     }
@@ -956,8 +957,9 @@ static void fuse_red_destroy(
 
     if(red_umount(gpszVolume) != 0)
     {
+        REDFS_UNLOCK();
         fprintf(stderr, "red_umount() failed, errno %d\n", red_errno);
-        exit(1);
+        exit(rederrno_to_errno(red_errno));
     }
 
     /*  Note: don't uninit just in case fuse_red_init() is called again.

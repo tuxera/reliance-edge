@@ -37,6 +37,47 @@
 #include <redtoolcmn.h>
 
 
+#define ISDIGIT(c)  (((c) >= '0') && ((c) <= '9'))
+
+
+/** @brief Convert a string into a volume number.
+
+    Converts all decimal digit numbers up to the end of the string or to the
+    first non-numerical character.
+
+    @note This function does *not* ignore leading white space.
+
+    @param pszNum   Pointer to a constant array of characters.
+
+    @return Return the volume number or `UINT32_MAX` on error.
+*/
+static uint32_t RedAsVolumeNumber(
+    const char *pszNum)
+{
+    uint32_t    ulValue = 0U;
+    uint32_t    ulIdx = 0U;
+
+    while(ISDIGIT(pszNum[ulIdx]))
+    {
+        ulValue *= 10U;
+        ulValue += pszNum[ulIdx] - '0';
+        ulIdx++;
+        if(ulValue >= REDCONF_VOLUME_COUNT)
+        {
+            ulValue = UINT32_MAX;
+            break;
+        }
+    }
+
+    if((ulIdx == 0U) || (pszNum[ulIdx] != '\0'))
+    {
+        ulValue = UINT32_MAX;
+    }
+
+    return ulValue;
+}
+
+
 /** @brief Convert a string into a volume number.
 
     In a POSIX-like configuration, @p pszVolume can either be a volume number or
@@ -53,8 +94,7 @@
 uint8_t RedFindVolumeNumber(
     const char     *pszVolume)
 {
-    unsigned long   ulNumber;
-    const char     *pszEndPtr;
+    uint32_t        ulNumber;
     uint8_t         bVolNum = REDCONF_VOLUME_COUNT;
   #if REDCONF_API_POSIX == 1
     uint8_t         bIndex;
@@ -62,9 +102,8 @@ uint8_t RedFindVolumeNumber(
 
     /*  Determine if pszVolume can be interpreted as a volume number.
     */
-    errno = 0;
-    ulNumber = strtoul(pszVolume, (char **)&pszEndPtr, 10);
-    if((errno == 0) && (ulNumber != ULONG_MAX) && (pszEndPtr[0U] == '\0') && (ulNumber < REDCONF_VOLUME_COUNT))
+    ulNumber = RedAsVolumeNumber(pszVolume);
+    if(ulNumber != UINT32_MAX)
     {
         bVolNum = (uint8_t)ulNumber;
     }

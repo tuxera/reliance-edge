@@ -5,7 +5,7 @@ recent releases and a list of known issues.
 
 ## Release History and Changes
 
-### Reliance Edge vNext, TBD 2021
+### Reliance Edge v2.6, October 2021
 
 #### Common Code Changes
 
@@ -60,6 +60,13 @@ The bugs were:
 - When the Reliance Edge checker (fsck\_redfs) was invoked, the client library
   was sending the wrong opcode to the server, causing the volume to be
   reformatted rather than checked.
+
+### SafeRTOS Port Changes
+
+Added support for SafeRTOS in the commercial kit.  SafeRTOS is a safety-critical
+real-time operating system from WITTENSTEIN high integrity systems.  See the
+"SafeRTOS Integration" chapter of the _Developer's Guide_ for further details on
+SafeRTOS support.
 
 ### Reliance Edge v2.5.1, May 2020
 

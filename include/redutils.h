@@ -66,6 +66,20 @@ uint16_t RedRev16(uint16_t uToRev);
 
 void RedSignOn(void);
 
+#ifdef REDCONF_HEAP_ALLOCATOR
+void RedHeapInit(void *pMemBase, uint32_t ulMemSize);
+void *RedHeapAlloc(uint32_t nSize);
+void RedHeapFree(void *pMem);
+void *RedHeapRealloc(void *pMem, uint32_t ulSize);
+void *RedHeapCalloc(uint32_t ulElements, uint32_t ulElementSize);
+int32_t RedHeapCheck(uint8_t bVerbosity);
+void RedHeapStats(uint32_t *pulAllocBytes, uint32_t *pulMaxAllocBytes, uint32_t *pulAllocHdr, uint32_t *pulTotalHdr);
+
+#define malloc      RedHeapAlloc
+#define free        RedHeapFree
+#define realloc     RedHeapRealloc
+#define calloc      RedHeapCalloc
+#endif /* #ifdef REDCONF_HEAP_ALLOCATOR */
 
 #endif
 

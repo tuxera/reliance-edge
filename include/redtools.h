@@ -29,7 +29,7 @@
 #ifdef _WIN32
   #include <Windows.h>
   #define HOST_PATH_MAX MAX_PATH
-#else
+#elif defined(__linux__) || defined(unix) || defined(__unix__) || defined(__unix)
   #include <linux/limits.h>
   #define HOST_PATH_MAX PATH_MAX
 #endif

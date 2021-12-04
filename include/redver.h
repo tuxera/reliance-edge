@@ -17,10 +17,11 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 /*  Businesses and individuals that for commercial or other reasons cannot
-    comply with the terms of the GPLv2 license must obtain a commercial license
-    before incorporating Reliance Edge into proprietary software for
-    distribution in any form.  Visit http://www.datalight.com/reliance-edge for
-    more information.
+    comply with the terms of the GPLv2 license must obtain a commercial
+    license before incorporating Reliance Edge into proprietary software
+    for distribution in any form.
+
+    Visit https://www.tuxera.com/products/reliance-edge/ for more information.
 */
 /** @file
     @brief Macros for version numbers, build number, and product information.
@@ -40,7 +41,7 @@
 
     <!-- This macro is updated automatically: do not edit! -->
 */
-#define RED_BUILD_NUMBER "902"
+#define RED_BUILD_NUMBER "904"
 
 #define RED_KIT_GPL         0U  /* Open source GPL kit. */
 #define RED_KIT_COMMERCIAL  1U  /* Commercially-licensed kit. */

@@ -17,10 +17,11 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 /*  Businesses and individuals that for commercial or other reasons cannot
-    comply with the terms of the GPLv2 license must obtain a commercial license
-    before incorporating Reliance Edge into proprietary software for
-    distribution in any form.  Visit http://www.datalight.com/reliance-edge for
-    more information.
+    comply with the terms of the GPLv2 license must obtain a commercial
+    license before incorporating Reliance Edge into proprietary software
+    for distribution in any form.
+
+    Visit https://www.tuxera.com/products/reliance-edge/ for more information.
 */
 #include <QTextStream>
 

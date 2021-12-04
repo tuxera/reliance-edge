@@ -73,7 +73,7 @@ creating a project directory (start by copying projects/newproj) and creating
 the two configuration files (redconf.h/redconf.c) using the Reliance Edge
 Configuration Utility (which has source code in the repository and prebuilt
 binaries available
-[here](https://www.datalight.com/resources/extras/reliance-edge-configuration-tool-version-2.5.1).
+[here](https://www.datalight.com/resources/extras/reliance-edge-configuration-tool-version-2.5.1)).
 
 These topics are covered in much greater detail in the _Developer's Guide_,
 linked above.

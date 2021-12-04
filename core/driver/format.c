@@ -49,7 +49,7 @@ REDSTATUS RedVolFormat(
 {
     static const REDFMTOPT ZeroOpts = {0U};
 
-    REDSTATUS   ret;
+    REDSTATUS   ret = 0;
     REDSTATUS   ret2;
     REDFMTOPT   opts = (pOptions == NULL) ? ZeroOpts : *pOptions;
     bool        fBDevOpen = false;
@@ -57,24 +57,25 @@ REDSTATUS RedVolFormat(
 
     if(opts.ulVersion == 0U)
     {
+        /*  Version 0 means to use the default.
+        */
         opts.ulVersion = RED_DISK_LAYOUT_VERSION;
     }
-
-  #if (REDCONF_API_POSIX == 1) && (REDCONF_NAME_MAX > (REDCONF_BLOCK_SIZE - 4U /* Inode */ - NODEHEADER_SIZE))
-    if(opts.ulVersion >= RED_DISK_LAYOUT_DIRCRC)
+    else if(!RED_DISK_LAYOUT_IS_SUPPORTED(opts.ulVersion))
     {
-        /*  REDCONF_NAME_MAX is too long for the on-disk layout with directory
-            data CRCs.
+        /*  Return an error if the version number is invalid or if it is not
+            supported by the compile-time configuration of the formatter and
+            driver.
         */
         ret = -RED_EINVAL;
     }
     else
     {
-        ret = 0;
+        /*  Use the specified on-disk layout.
+        */
     }
 
     if(ret == 0)
-  #endif
     {
         if(gpRedVolume->fMounted)
         {
@@ -179,7 +180,7 @@ REDSTATUS RedVolFormat(
         CINODE rootdir;
 
         rootdir.ulInode = INODE_ROOTDIR;
-        ret = RedInodeCreate(&rootdir, INODE_INVALID, RED_S_IFDIR);
+        ret = RedInodeCreate(&rootdir, NULL, RED_S_IFDIR | (RED_S_IRWXUGO & RED_S_IFVALID));
 
         if(ret == 0)
         {
@@ -201,7 +202,7 @@ REDSTATUS RedVolFormat(
             CINODE ino;
 
             ino.ulInode = INODE_FIRST_FREE + ulInodeIdx;
-            ret = RedInodeCreate(&ino, INODE_INVALID, RED_S_IFREG);
+            ret = RedInodeCreate(&ino, NULL, RED_S_IFREG);
 
             if(ret == 0)
             {
@@ -249,6 +250,27 @@ REDSTATUS RedVolFormat(
           #if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_LINK == 1)
             pMB->bFlags |= MBFLAG_INODE_NLINK;
           #endif
+          #if (REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1)
+            pMB->bFlags |= MBFLAG_INODE_UIDGID;
+          #endif
+          #if (REDCONF_API_POSIX == 1) && (REDCONF_DELETE_OPEN == 1)
+            pMB->bFlags |= MBFLAG_DELETE_OPEN;
+          #endif
+
+          #if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_SYMLINK == 1)
+            pMB->uFeaturesReadOnly |= MBFEATURE_SYMLINK;
+          #endif
+
+            if(pMB->ulVersion >= RED_DISK_LAYOUT_POSIXIER)
+            {
+                pMB->bSectorSizeP2 = 1U;
+                while((1U << pMB->bSectorSizeP2) < gaRedBdevInfo[gbRedVolNum].ulSectorSize)
+                {
+                    pMB->bSectorSizeP2++;
+                }
+
+                REDASSERT((1U << pMB->bSectorSizeP2) == gaRedBdevInfo[gbRedVolNum].ulSectorSize);
+            }
 
             ret = RedBufferFlushRange(BLOCK_NUM_MASTER, 1U);
 

@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 
 #include <redposix.h>
 #include <redtools.h>
@@ -44,7 +45,7 @@ int IbApiInit(void)
     if(red_init() != 0)
     {
         printf("\n");
-        fprintf(stderr, "Error number %d initializing file system.\n", red_errno);
+        fprintf(stderr, "Error number %d initializing file system.\n", (int)red_errno);
         ret = -1;
     }
     else
@@ -63,81 +64,113 @@ int IbApiUninit(void)
     if(red_uninit() != 0)
     {
         ret = -1;
-        fprintf(stderr, "Error number %d uninitializing file system.\n", red_errno);
+        fprintf(stderr, "Error number %d uninitializing file system.\n", (int)red_errno);
     }
 
     return ret;
 }
 
 
-/** @brief Writes file data to a file. This method may be called multiple times
-           to write consecutive chunks of file data.
+/** @brief Copies from the file at the given path to the volume.
 
-    @param volNum           Unused parameter; maintained for compatibility with
-                            FSE IbWriteFile.
-    @param psFileMapping    The file being copied. File data will be written to
-                            ::asOutFilePath.
-    @param ullOffset        The position in the file to which to write data.
-    @param pData            Data to write to the file.
-    @param ulDataLen        The number of bytes in @p pData to write
+    @param bVolNum  The FSE volume to which to copy the file.  Unused in the
+                    POSIX configuration; only here for FSE compatibility.
+    @param pFile    Mapping for the file to be copied.
 
     @return An integer indicating the operation result.
 
     @retval 0   Operation was successful.
     @retval -1  An error occurred.
 */
-int IbWriteFile(
-    int                 volNum,
-    const FILEMAPPING  *psFileMapping,
-    uint64_t            ullOffset,
-    void               *pData,
-    uint32_t            ulDataLen)
+int IbCopyFile(
+    uint8_t             bVolNum,
+    const FILEMAPPING  *pFileMapping)
 {
     int                 ret = 0;
-    int32_t             fd;
+    int32_t             iFildes = -1;
+    FILE               *pFile;
 
-    (void) volNum;
+    (void)bVolNum;
 
-    /*  Only print out a message for the first write to a file.
+    printf("Copying file %s to %s\n", pFileMapping->szInFilePath, pFileMapping->szOutFilePath);
+
+    /*  Open the file which is being copied.
     */
-    if(ullOffset == 0U)
+    pFile = fopen(pFileMapping->szInFilePath, "rb");
+    if(pFile == NULL)
     {
-        printf("Copying file %s to %s\n", psFileMapping->asInFilePath, psFileMapping->asOutFilePath);
-    }
-
-    fd = red_open(psFileMapping->asOutFilePath, RED_O_WRONLY|RED_O_CREAT|RED_O_APPEND);
-    if(fd == -1)
-    {
-        ret = -1;
-    }
-    else
-    {
-        int32_t pret;
-
-        REDASSERT(ullOffset <= INT64_MAX);
-        if(red_lseek(fd, (int64_t) ullOffset, RED_SEEK_SET) == -1)
+        if(errno == ENOENT)
         {
-            ret = -1;
+            fprintf(stderr, "Input file not found: %s\n", pFileMapping->szInFilePath);
         }
         else
         {
-            pret = red_write(fd, pData, ulDataLen);
+            fprintf(stderr, "Error opening input file: %s\n", pFileMapping->szInFilePath);
+        }
+
+        ret = -1;
+    }
+
+    if(ret == 0)
+    {
+        iFildes = red_open(pFileMapping->szOutFilePath, RED_O_WRONLY|RED_O_CREAT|RED_O_EXCL|RED_O_APPEND);
+        if(iFildes < 0)
+        {
+            ret = -1;
+        }
+    }
+
+    /*  Copy data from input to target file
+    */
+    while(ret == 0)
+    {
+        size_t  rresult;
+        int32_t pret;
+
+        rresult = fread(gpCopyBuffer, 1U, gulCopyBufferSize, pFile);
+        if(rresult > 0)
+        {
+            pret = red_write(iFildes, gpCopyBuffer, (uint32_t)rresult);
             if(pret < 0)
             {
                 ret = -1;
             }
-            else if((uint32_t)pret < ulDataLen)
+            else if((size_t)pret < rresult)
             {
                 ret = -1;
                 red_errno = RED_ENOSPC;
             }
         }
 
-        pret = red_close(fd);
-        if(pret == -1)
+        if((ret == 0) && (rresult < gulCopyBufferSize))
         {
-            ret = -1;
+            if(ferror(pFile))
+            {
+                ret = -1;
+                fprintf(stderr, "Error reading input file %s\n", pFileMapping->szInFilePath);
+            }
+            else
+            {
+                REDASSERT(feof(pFile));
+            }
+
+            break;
         }
+    }
+
+    if((iFildes > 0) && (red_close(iFildes) < 0))
+    {
+        ret = -1;
+    }
+
+    if(pFile != NULL)
+    {
+        (void)fclose(pFile);
+    }
+
+    if(ret == 0)
+    {
+        ret = IbCopyAttr(pFileMapping->szInFilePath, pFileMapping->szOutFilePath);
     }
 
     if(ret == -1)
@@ -145,23 +178,24 @@ int IbWriteFile(
         switch(red_errno)
         {
             case RED_ENOSPC:
-                fprintf(stderr, "Error: insufficient space to copy file %s.\n", psFileMapping->asInFilePath);
+                fprintf(stderr, "Error: insufficient space to copy file %s.\n", pFileMapping->szInFilePath);
                 break;
             case RED_EIO:
-                fprintf(stderr, "Disk IO error copying file %s.\n", psFileMapping->asInFilePath);
+                fprintf(stderr, "Disk I/O error copying file %s.\n", pFileMapping->szInFilePath);
                 break;
             case RED_ENFILE:
                 fprintf(stderr, "Error: maximum number of files exceeded.\n");
                 break;
             case RED_ENAMETOOLONG:
-                fprintf(stderr, "Error: maximum file name length exceeded. Max length: %d.\n", REDCONF_NAME_MAX);
+                fprintf(stderr, "Error: configured maximum file name length (%u) exceeded by file %s.\n", REDCONF_NAME_MAX, pFileMapping->szOutFilePath);
                 break;
             case RED_EFBIG:
-                fprintf(stderr, "Error: maximum file size exceeded.");
+                fprintf(stderr, "Error: maximum file size exceeded.\n");
                 break;
             default:
                 /*  Other error types not expected.
                 */
+                fprintf(stderr, "Unexpected error %d in IbCopyFile()\n", (int)red_errno);
                 REDERROR();
                 break;
         }
@@ -176,7 +210,7 @@ int IbPosixCopyDir(
     const char *pszInDir)
 {
     int32_t     ret = 0;
-    bool        mountfail = false;
+    bool        fMountFail = false;
 
     if(red_mount(pszVolName) != 0)
     {
@@ -186,19 +220,19 @@ int IbPosixCopyDir(
         }
         else
         {
-            fprintf(stderr, "Error number %d mounting volume.\n", red_errno);
+            fprintf(stderr, "Error number %d mounting volume.\n", (int)red_errno);
         }
 
-        mountfail = true;
+        fMountFail = true;
         ret = -1;
     }
 
     if(ret == 0)
     {
-        char    asInputDir[HOST_PATH_MAX];
-        size_t  inDirLen = strlen(pszInDir);
+        char    szInputDir[HOST_PATH_MAX];
+        size_t  nInDirLen = strlen(pszInDir);
 
-        if(inDirLen >= HOST_PATH_MAX)
+        if(nInDirLen >= sizeof(szInputDir))
         {
             /*  Not expected; the length of pszInDir should have already been checked.
             */
@@ -208,21 +242,17 @@ int IbPosixCopyDir(
         }
         else
         {
-            strcpy(asInputDir, pszInDir);
+            strcpy(szInputDir, pszInDir);
 
             /*  Get rid of any ending path separators.
             */
-            while(     asInputDir[inDirLen - 1] == '/'
-          #ifdef _WIN32
-                    || asInputDir[inDirLen - 1] == '\\'
-          #endif
-                 )
+            while(IB_ISPATHSEP(szInputDir[nInDirLen - 1U]))
             {
-                asInputDir[inDirLen - 1] = '\0';
-                inDirLen--;
+                szInputDir[nInDirLen - 1U] = '\0';
+                nInDirLen--;
             }
 
-            ret = IbPosixCopyDirRecursive(pszVolName, asInputDir);
+            ret = IbPosixCopyDirRecursive(pszVolName, szInputDir);
         }
     }
 
@@ -231,16 +261,16 @@ int IbPosixCopyDir(
         ret = red_transact(pszVolName);
         if(ret != 0)
         {
-            fprintf(stderr, "Unexpected error number %d in red_transact.\n", -ret);
+            fprintf(stderr, "Unexpected error number %d in red_transact.\n", (int)red_errno);
             ret = -1;
         }
     }
 
-    if(!mountfail)
+    if(!fMountFail)
     {
         if(red_umount(pszVolName) == -1)
         {
-            fprintf(stderr, "Error number %d unmounting volume.\n", red_errno);
+            fprintf(stderr, "Error number %d unmounting volume.\n", (int)red_errno);
             ret = -1;
         }
     }
@@ -249,7 +279,7 @@ int IbPosixCopyDir(
 }
 
 
-/** @brief  Create a directory using the Reliance Edge POSIX API.
+/** @brief Create a directory using the Reliance Edge POSIX API.
 */
 int IbPosixCreateDir(
     const char *pszVolName,
@@ -257,20 +287,23 @@ int IbPosixCreateDir(
     const char *pszBasePath)
 {
     int         ret = 0;
-    char        asOutPath[HOST_PATH_MAX];
+    char        szOutPath[HOST_PATH_MAX];
 
-    ret = IbConvertPath(pszVolName, pszFullPath, pszBasePath, asOutPath);
+    ret = IbConvertPath(pszVolName, pszFullPath, pszBasePath, szOutPath);
 
     if(ret == 0)
     {
-        if(red_mkdir(asOutPath) != 0)
+        if(red_mkdir(szOutPath) != 0)
         {
             ret = -1;
+        }
 
+        if(ret == -1)
+        {
             switch(red_errno)
             {
                 case RED_EIO:
-                    fprintf(stderr, "Disk I/O creating directory %s.\n", asOutPath);
+                    fprintf(stderr, "Disk I/O error creating directory %s.\n", szOutPath);
                     break;
                 case RED_ENOSPC:
                     fprintf(stderr, "Insufficient space on target volume.\n");
@@ -279,11 +312,12 @@ int IbPosixCreateDir(
                     fprintf(stderr, "Error: maximum number of files for volume %s exceeded.\n", pszVolName);
                     break;
                 case RED_ENAMETOOLONG:
-                    fprintf(stderr, "Error: configured maximum file name length (%d) exceeded by directory %s.\n", REDCONF_NAME_MAX, pszFullPath);
+                    fprintf(stderr, "Error: configured maximum file name length (%u) exceeded by directory %s.\n", REDCONF_NAME_MAX, pszFullPath);
                     break;
                 default:
                     /*  Other errors not expected.
                     */
+                    fprintf(stderr, "Unexpected error %d in IbPosixCreateDir()\n", (int)red_errno);
                     REDERROR();
                     break;
             }
@@ -294,15 +328,17 @@ int IbPosixCreateDir(
 }
 
 
-/** @brief Takes a host system file path and converts it to a compatible path
-           for the Reliance Edge POSIX API
+/** @brief Convert a host path to a Reliance Edge path.
 
-    @param pszVolName   The Reliance Edge volume name
-    @param pszFullPath  The full host file path
+    Takes a host system file path and converts it to a compatible path for the
+    Reliance Edge POSIX API.
+
+    @param pszVolName   The Reliance Edge volume name.
+    @param pszFullPath  The full host file path.
     @param pszBasePath  A base path which will be removed from the back of
-                        @p pszFullPath
-    @param szOutPath    A char array pointer allocated at least HOST_PATH_MAX
-                        chars at which to store the converted path
+                        @p pszFullPath.
+    @param pszOutPath   A char array pointer allocated at least HOST_PATH_MAX
+                        chars at which to store the converted path.
 
     @return An integer indicating the operation result.
 
@@ -313,59 +349,46 @@ int IbConvertPath(
     const char *pszVolName,
     const char *pszFullPath,
     const char *pszBasePath,
-    char       *szOutPath)
+    char       *pszOutPath)
 {
     int         ret = 0;
     const char *pszInPath = pszFullPath;
-    size_t      volNameLen = strlen(pszVolName);
-    size_t      index = 0;
+    size_t      nVolNameLen = strlen(pszVolName);
+    size_t      nIndex = 0;
 
-    while((pszInPath[0] == pszBasePath[index]) && (pszInPath[0] != '\0'))
+    while((pszInPath[0U] == pszBasePath[nIndex]) && (pszInPath[0U] != '\0'))
     {
         pszInPath++;
-        index++;
+        nIndex++;
     }
 
     /*  After skipping the base path, the next char should be a path separator.
         Skip this too.
     */
-    if(    (pszInPath[0] == '/')
-      #ifdef _WIN32
-        || (pszInPath[0] == '\\')
-      #endif
-      )
+    if(IB_ISPATHSEP(pszInPath[0U]))
     {
         pszInPath++;
     }
 
-    if((strlen(pszInPath) + 1 + strlen(pszVolName)) >= (HOST_PATH_MAX - 1))
+    if((strlen(pszInPath) + 1U + strlen(pszVolName)) >= (HOST_PATH_MAX - 1U))
     {
         fprintf(stderr, "Error: path name too long: %s\n", pszFullPath);
         ret = -1;
     }
     else
     {
-        /*  Roundabout way of avoiding build warnings when REDCONF_ASSERTS
-            is disabled.
-        */
-      #if REDCONF_ASSERTS == 1
-        int len =
-      #endif
-        sprintf(szOutPath, "%s%c%s", pszVolName, REDCONF_PATH_SEPARATOR, pszInPath);
+        int len = sprintf(pszOutPath, "%s%c%s", pszVolName, REDCONF_PATH_SEPARATOR, pszInPath);
 
-        REDASSERT(len >= (int) volNameLen);
+        REDASSERT(len >= (int)nVolNameLen);
+        (void)len; /* Avoid build warnings when asserts are disabled. */
 
-        for(index = volNameLen + 1; szOutPath[index] != '\0'; index++)
+        for(nIndex = nVolNameLen + 1U; pszOutPath[nIndex] != '\0'; nIndex++)
         {
-            if(    (szOutPath[index] == '/')
-              #ifdef _WIN32
-                || (szOutPath[index] == '\\')
-              #endif
-              )
+            if(IB_ISPATHSEP(pszOutPath[nIndex]))
             {
-                szOutPath[index] = REDCONF_PATH_SEPARATOR;
+                pszOutPath[nIndex] = REDCONF_PATH_SEPARATOR;
             }
-            else if (szOutPath[index] == REDCONF_PATH_SEPARATOR)
+            else if(pszOutPath[nIndex] == REDCONF_PATH_SEPARATOR)
             {
                 fprintf(stderr, "Error: unexpected target path separator character in path %s\n", pszInPath);
                 ret = -1;
@@ -377,5 +400,58 @@ int IbConvertPath(
     return ret;
 }
 
-#endif
 
+#if HAVE_SETTABLE_ATTR
+/** @brief Copies attributes from host file system to Reliance Edge.
+
+    @param pszHostPath  Path to host file or directory whose attributes are to
+                        be copied.
+    @param pszRedPath   Path to Reliance Edge file or directory whose attributes
+                        should be updated to match @p pszHostPath.
+
+    @return An integer indicating the operation result.
+
+    @retval 0   Operation was successful.
+    @retval -1  An error occurred.
+*/
+int IbCopyAttr(
+    const char *pszHostPath,
+    const char *pszRedPath)
+{
+    int         ret;
+    IBSTAT      sb;
+
+    ret = IbStat(pszHostPath, &sb);
+    if(ret == 0)
+    {
+      #if REDCONF_POSIX_OWNER_PERM == 1
+        if(red_chmod(pszRedPath, sb.uMode & RED_S_IALLUGO) == -1)
+        {
+            fprintf(stderr, "Unexpected error %d from red_chmod()\n", (int)red_errno);
+            ret = -1;
+        }
+        else if(red_chown(pszRedPath, sb.ulUid, sb.ulGid) == -1)
+        {
+            fprintf(stderr, "Unexpected error %d from red_chown()\n", (int)red_errno);
+            ret = -1;
+        }
+        else
+      #endif
+        {
+          #if REDCONF_INODE_TIMESTAMPS == 1
+            uint32_t aulTimes[] = {sb.ulATime, sb.ulMTime};
+
+            if(red_utimes(pszRedPath, aulTimes) == -1)
+            {
+                fprintf(stderr, "Unexpected error %d from red_utimes()\n", (int)red_errno);
+                ret = -1;
+            }
+          #endif
+        }
+    }
+
+    return ret;
+}
+#endif /* HAVE_SETTABLE_ATTR */
+
+#endif /* (REDCONF_IMAGE_BUILDER == 1) && (REDCONF_API_POSIX == 1) */

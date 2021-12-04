@@ -29,12 +29,15 @@ REDDRIVOBJ=								\
 	$(P_BASEDIR)/os/$(P_OS)/services/osoutput.$(B_OBJEXT)		\
 	$(P_BASEDIR)/os/$(P_OS)/services/ostask.$(B_OBJEXT)		\
 	$(P_BASEDIR)/os/$(P_OS)/services/ostimestamp.$(B_OBJEXT)	\
+	$(P_BASEDIR)/os/$(P_OS)/services/osuidgid.$(B_OBJEXT)		\
 	$(P_BASEDIR)/posix/path.$(B_OBJEXT)				\
 	$(P_BASEDIR)/posix/posix.$(B_OBJEXT)				\
 	$(P_BASEDIR)/util/bitmap.$(B_OBJEXT)				\
 	$(P_BASEDIR)/util/crc.$(B_OBJEXT)				\
+	$(P_BASEDIR)/util/ftype.$(B_OBJEXT)				\
 	$(P_BASEDIR)/util/memory.$(B_OBJEXT)				\
 	$(P_BASEDIR)/util/namelen.$(B_OBJEXT)				\
+	$(P_BASEDIR)/util/perm.$(B_OBJEXT)				\
 	$(P_BASEDIR)/util/sign.$(B_OBJEXT)				\
 	$(P_BASEDIR)/util/string.$(B_OBJEXT)				\
 	$(P_PROJDIR)/redconf.$(B_OBJEXT)
@@ -90,10 +93,12 @@ REDHDR=							\
 	$(P_BASEDIR)/include/redtests.h			\
 	$(P_BASEDIR)/include/redtestutils.h		\
 	$(P_BASEDIR)/include/redtoolcmn.h		\
+	$(P_BASEDIR)/include/redtransact.h		\
 	$(P_BASEDIR)/include/redutils.h			\
 	$(P_BASEDIR)/include/redver.h			\
 	$(P_BASEDIR)/include/redvolume.h		\
 	$(P_BASEDIR)/os/$(P_OS)/include/redostypes.h	\
+	$(P_BASEDIR)/os/$(P_OS)/include/redosconf.h	\
 	$(P_PROJDIR)/redconf.h				\
 	$(P_PROJDIR)/redtypes.h				\
 	$(REDPROJHDR)
@@ -127,6 +132,7 @@ $(P_BASEDIR)/os/$(P_OS)/services/osmutex.$(B_OBJEXT):		$(P_BASEDIR)/os/$(P_OS)/s
 $(P_BASEDIR)/os/$(P_OS)/services/osoutput.$(B_OBJEXT):		$(P_BASEDIR)/os/$(P_OS)/services/osoutput.c $(REDHDR)
 $(P_BASEDIR)/os/$(P_OS)/services/ostask.$(B_OBJEXT):		$(P_BASEDIR)/os/$(P_OS)/services/ostask.c $(REDHDR)
 $(P_BASEDIR)/os/$(P_OS)/services/ostimestamp.$(B_OBJEXT):	$(P_BASEDIR)/os/$(P_OS)/services/ostimestamp.c $(REDHDR)
+$(P_BASEDIR)/os/$(P_OS)/services/osuidgid.$(B_OBJEXT):		$(P_BASEDIR)/os/$(P_OS)/services/osuidgid.c $(REDHDR)
 $(P_BASEDIR)/posix/path.$(B_OBJEXT):				$(P_BASEDIR)/posix/path.c $(REDHDR) $(P_BASEDIR)/include/redpath.h
 $(P_BASEDIR)/posix/posix.$(B_OBJEXT):				$(P_BASEDIR)/posix/posix.c $(REDHDR) $(P_BASEDIR)/include/redpath.h
 $(P_BASEDIR)/tests/posix/fsstress.$(B_OBJEXT):			$(P_BASEDIR)/tests/posix/fsstress.c $(REDHDR) $(P_BASEDIR)/tests/posix/redposixcompat.h
@@ -139,9 +145,11 @@ $(P_BASEDIR)/tools/getopt.$(B_OBJEXT):				$(P_BASEDIR)/tools/getopt.c $(REDHDR)
 $(P_BASEDIR)/tools/toolcmn.$(B_OBJEXT):				$(P_BASEDIR)/tools/toolcmn.c $(REDHDR)
 $(P_BASEDIR)/util/bitmap.$(B_OBJEXT):				$(P_BASEDIR)/util/bitmap.c $(REDHDR)
 $(P_BASEDIR)/util/crc.$(B_OBJEXT):				$(P_BASEDIR)/util/crc.c $(REDHDR)
+$(P_BASEDIR)/util/endian.$(B_OBJEXT):				$(P_BASEDIR)/util/endian.c $(REDHDR)
+$(P_BASEDIR)/util/ftype.$(B_OBJEXT):				$(P_BASEDIR)/util/ftype.c $(REDHDR)
 $(P_BASEDIR)/util/memory.$(B_OBJEXT):				$(P_BASEDIR)/util/memory.c $(REDHDR)
 $(P_BASEDIR)/util/namelen.$(B_OBJEXT):				$(P_BASEDIR)/util/namelen.c $(REDHDR)
+$(P_BASEDIR)/util/perm.$(B_OBJEXT):				$(P_BASEDIR)/util/perm.c $(REDHDR)
 $(P_BASEDIR)/util/sign.$(B_OBJEXT):				$(P_BASEDIR)/util/sign.c $(REDHDR)
 $(P_BASEDIR)/util/string.$(B_OBJEXT):				$(P_BASEDIR)/util/string.c $(REDHDR)
 $(P_PROJDIR)/redconf.$(B_OBJEXT):				$(P_PROJDIR)/redconf.c $(REDHDR)
-

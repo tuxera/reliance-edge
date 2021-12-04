@@ -32,22 +32,30 @@
 
 
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1)
-static REDSTATUS CoreCreate(uint32_t ulPInode, const char *pszName, bool fDir, uint32_t *pulInode);
+static REDSTATUS CoreCreate(uint32_t ulPInode, const char *pszName, uint16_t uMode, uint32_t *pulInode);
 #endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_LINK == 1)
 static REDSTATUS CoreLink(uint32_t ulPInode, const char *pszName, uint32_t ulInode);
 #endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && ((REDCONF_API_POSIX_UNLINK == 1) || (REDCONF_API_POSIX_RMDIR == 1))
-static REDSTATUS CoreUnlink(uint32_t ulPInode, const char *pszName);
+static REDSTATUS CoreUnlink(uint32_t ulPInode, const char *pszName, bool fOrphan);
 #endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_RENAME == 1)
-static REDSTATUS CoreRename(uint32_t ulSrcPInode, const char *pszSrcName, uint32_t ulDstPInode, const char *pszDstName);
+static REDSTATUS CoreRename(uint32_t ulSrcPInode, const char *pszSrcName, uint32_t ulDstPInode, const char *pszDstName, bool fOrphan);
 #endif
 #if REDCONF_READ_ONLY == 0
 static REDSTATUS CoreFileWrite(uint32_t ulInode, uint64_t ullStart, uint32_t *pulLen, const void *pBuffer);
 #endif
 #if TRUNCATE_SUPPORTED
 static REDSTATUS CoreFileTruncate(uint32_t ulInode, uint64_t ullSize);
+#endif
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1)
+static REDSTATUS CoreFileReserve(uint32_t ulInode, uint64_t ullOffset, uint64_t ullLen);
+#endif
+
+#if REDCONF_READ_ONLY == 0
+static REDSTATUS CoreFull(void);
+static REDSTATUS CoreAutoTransact(uint32_t ulTransFlag);
 #endif
 
 
@@ -94,6 +102,18 @@ REDSTATUS RedCoreInit(void)
     */
     RedSignOn();
   #endif
+
+    /*  Ensure the hard-coded node header sizes are correct, and that the
+        compiler is packing structures as expected.
+    */
+    REDSTATICASSERT(sizeof(MASTERBLOCK) <= REDCONF_BLOCK_SIZE);
+    REDSTATICASSERT(sizeof(METAROOT) == REDCONF_BLOCK_SIZE);
+  #if REDCONF_IMAP_EXTERNAL == 1
+    REDSTATICASSERT(sizeof(IMAPNODE) == REDCONF_BLOCK_SIZE);
+  #endif
+    REDSTATICASSERT(sizeof(INODE) == REDCONF_BLOCK_SIZE);
+    REDSTATICASSERT(sizeof(INDIR) == REDCONF_BLOCK_SIZE);
+    REDSTATICASSERT(sizeof(DINDIR) == REDCONF_BLOCK_SIZE);
 
     RedMemSet(gaRedVolume, 0U, sizeof(gaRedVolume));
     RedMemSet(gaRedCoreVol, 0U, sizeof(gaRedCoreVol));
@@ -453,11 +473,7 @@ REDSTATUS RedCoreVolStat(
         pStatFS->f_bsize = REDCONF_BLOCK_SIZE;
         pStatFS->f_frsize = REDCONF_BLOCK_SIZE;
         pStatFS->f_blocks = gpRedVolume->ulBlockCount;
-      #if RESERVED_BLOCKS > 0U
-        pStatFS->f_bfree = (gpRedMR->ulFreeBlocks > RESERVED_BLOCKS) ? (gpRedMR->ulFreeBlocks - RESERVED_BLOCKS) : 0U;
-      #else
-        pStatFS->f_bfree = gpRedMR->ulFreeBlocks;
-      #endif
+        pStatFS->f_bfree = RedVolFreeBlockCount();
         pStatFS->f_bavail = pStatFS->f_bfree;
         pStatFS->f_files = gpRedVolConf->ulInodeCount;
         pStatFS->f_ffree = gpRedMR->ulFreeInodes;
@@ -482,6 +498,53 @@ REDSTATUS RedCoreVolStat(
     return ret;
 }
 #endif /* REDCONF_API_POSIX == 1 */
+
+
+#if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
+/** @brief Free inodes which were orphaned prior to the most recent mount of the
+           volume (defunct orphans).
+
+    If there are fewer defunct orphans than were requested, all defunct orphans
+    will be freed.
+
+    @param ulCount  The maximum number of defunct orphans to free.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval -RED_EINVAL Volume is not mounted; or @p ulCount is zero.
+    @retval -RED_EIO    A disk I/O error occurred.
+    @retval -RED_ENOENT There are no remaining defunct orphans.
+    @retval -RED_EROFS  The file system volume is read-only.
+*/
+REDSTATUS RedCoreVolFreeOrphans(
+    uint32_t    ulCount)
+{
+    REDSTATUS   ret;
+
+    if(!gpRedVolume->fMounted || (ulCount == 0U))
+    {
+        ret = -RED_EINVAL;
+    }
+    else if(gpRedVolume->fReadOnly)
+    {
+        ret = -RED_EROFS;
+    }
+    else if(gpRedMR->ulDefunctOrphanHead == INODE_INVALID)
+    {
+        ret = -RED_ENOENT;
+    }
+    else
+    {
+        ret = RedVolFreeOrphans(ulCount);
+        if((ret == 0) && (gpRedMR->ulDefunctOrphanHead == INODE_INVALID))
+        {
+            ret = -RED_ENOENT;
+        }
+    }
+
+    return ret;
+}
+#endif /* DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1) */
 
 
 #if (REDCONF_READ_ONLY == 0) && ((REDCONF_API_POSIX == 1) || (REDCONF_API_FSE_TRANSMASKSET == 1))
@@ -593,18 +656,26 @@ REDSTATUS RedCoreTransMaskGet(
 
     @param ulPInode The inode number of the parent directory.
     @param pszName  A null-terminated name for the new inode.
-    @param fDir     Whether to create a directory (true) or file (false).
+    @param uMode    Mode bits for the new inode.
     @param pulInode On successful return, populated with the inode number of the
                     new file or directory.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0                   Operation was successful.
+    @retval -RED_EACCES         Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                                enabled and the POSIX permissions prohibit the
+                                current from performing the operation.
     @retval -RED_EINVAL         The volume is not mounted; or @p pszName is not
-                                a valid name; or @p pulInode is `NULL`.
+                                a valid name; or @p pulInode is `NULL`; or
+                                @p uMode includes bits other than
+                                #RED_S_IFVALID; or @p uMode includes both
+                                #RED_S_IFREG and #RED_S_IFDIR.
     @retval -RED_EIO            A disk I/O error occurred.
     @retval -RED_EROFS          The file system volume is read-only.
-    @retval -RED_ENOTDIR        @p ulPInode is not a directory.
+    @retval -RED_ENOLINK        #REDCONF_API_POSIX_SYMLINK is enabled and
+                                @p ulPInode is a symbolic link.
+    @retval -RED_ENOTDIR        @p ulPInode is a regular file.
     @retval -RED_EBADF          @p ulPInode is not a valid inode.
     @retval -RED_ENOSPC         There is not enough space on the volume to
                                 create the new directory entry; or the directory
@@ -616,7 +687,7 @@ REDSTATUS RedCoreTransMaskGet(
 REDSTATUS RedCoreCreate(
     uint32_t    ulPInode,
     const char *pszName,
-    bool        fDir,
+    uint16_t    uMode,
     uint32_t   *pulInode)
 {
     REDSTATUS   ret;
@@ -631,35 +702,21 @@ REDSTATUS RedCoreCreate(
     }
     else
     {
-        ret = CoreCreate(ulPInode, pszName, fDir, pulInode);
+        ret = CoreCreate(ulPInode, pszName, uMode, pulInode);
 
-        if(    (ret == -RED_ENOSPC)
-            && ((gpRedVolume->ulTransMask & RED_TRANSACT_VOLFULL) != 0U)
-            && (gpRedCoreVol->ulAlmostFreeBlocks > 0U))
+        if(ret == -RED_ENOSPC)
         {
-            ret = RedVolTransact();
+            ret = CoreFull();
 
             if(ret == 0)
             {
-                ret = CoreCreate(ulPInode, pszName, fDir, pulInode);
+                ret = CoreCreate(ulPInode, pszName, uMode, pulInode);
             }
         }
 
         if(ret == 0)
         {
-            if(fDir && ((gpRedVolume->ulTransMask & RED_TRANSACT_MKDIR) != 0U))
-            {
-                ret = RedVolTransact();
-            }
-            else if(!fDir && ((gpRedVolume->ulTransMask & RED_TRANSACT_CREAT) != 0U))
-            {
-                ret = RedVolTransact();
-            }
-            else
-            {
-                /*  No automatic transaction for this operation.
-                */
-            }
+            ret = CoreAutoTransact(RED_S_ISDIR(uMode) ? RED_TRANSACT_MKDIR : RED_TRANSACT_CREAT);
         }
     }
 
@@ -671,16 +728,25 @@ REDSTATUS RedCoreCreate(
 
     @param ulPInode The inode number of the parent directory.
     @param pszName  A null-terminated name for the new inode.
-    @param fDir     Whether to create a directory (true) or file (false).
+    @param uMode    Mode bits for the new inode.
     @param pulInode On successful return, populated with the inode number of the
                     new file or directory.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0                   Operation was successful.
+    @retval -RED_EACCES         Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                                enabled and the POSIX permissions prohibit the
+                                current from performing the operation.
+    @retval -RED_EINVAL         @p pszName is not a valid name; or @p pulInode
+                                is `NULL`; or @p uMode includes bits other than
+                                #RED_S_IFVALID; or @p uMode includes both
+                                #RED_S_IFREG and #RED_S_IFDIR.
     @retval -RED_EIO            A disk I/O error occurred.
     @retval -RED_EROFS          The file system volume is read-only.
-    @retval -RED_ENOTDIR        @p ulPInode is not a directory.
+    @retval -RED_ENOLINK        #REDCONF_API_POSIX_SYMLINK is enabled and
+                                @p ulPInode is a symbolic link.
+    @retval -RED_ENOTDIR        @p ulPInode is a regular file.
     @retval -RED_EBADF          @p ulPInode is not a valid inode.
     @retval -RED_ENOSPC         There is not enough space on the volume to
                                 create the new directory entry; or the directory
@@ -692,7 +758,7 @@ REDSTATUS RedCoreCreate(
 static REDSTATUS CoreCreate(
     uint32_t    ulPInode,
     const char *pszName,
-    bool        fDir,
+    uint16_t    uMode,
     uint32_t   *pulInode)
 {
     REDSTATUS   ret;
@@ -704,6 +770,10 @@ static REDSTATUS CoreCreate(
     else if(gpRedVolume->fReadOnly)
     {
         ret = -RED_EROFS;
+    }
+    else if((uMode & RED_S_IFVALID) != uMode)
+    {
+        ret = -RED_EINVAL;
     }
     else
     {
@@ -717,7 +787,7 @@ static REDSTATUS CoreCreate(
             CINODE ino;
 
             ino.ulInode = INODE_INVALID;
-            ret = RedInodeCreate(&ino, ulPInode, fDir ? RED_S_IFDIR : RED_S_IFREG);
+            ret = RedInodeCreate(&ino, &pino, uMode);
 
             if(ret == 0)
             {
@@ -771,6 +841,9 @@ static REDSTATUS CoreCreate(
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0                   Operation was successful.
+    @retval -RED_EACCES         Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                                enabled and the POSIX permissions prohibit the
+                                current from performing the operation.
     @retval -RED_EBADF          @p ulPInode is not a valid inode; or @p ulInode
                                 is not a valid inode.
     @retval -RED_EEXIST         @p pszName resolves to an existing file.
@@ -783,7 +856,9 @@ static REDSTATUS CoreCreate(
                                 exceeds the maximum name length.
     @retval -RED_ENOSPC         There is insufficient free space to expand the
                                 directory that would contain the link.
-    @retval -RED_ENOTDIR        @p ulPInode is not a directory.
+    @retval -RED_ENOLINK        #REDCONF_API_POSIX_SYMLINK is enabled and
+                                @p ulPInode is a symbolic link.
+    @retval -RED_ENOTDIR        @p ulPInode is a regular file.
     @retval -RED_EPERM          @p ulInode is a directory.
     @retval -RED_EROFS          The requested link requires writing in a
                                 directory on a read-only file system.
@@ -807,11 +882,9 @@ REDSTATUS RedCoreLink(
     {
         ret = CoreLink(ulPInode, pszName, ulInode);
 
-        if(    (ret == -RED_ENOSPC)
-            && ((gpRedVolume->ulTransMask & RED_TRANSACT_VOLFULL) != 0U)
-            && (gpRedCoreVol->ulAlmostFreeBlocks > 0U))
+        if(ret == -RED_ENOSPC)
         {
-            ret = RedVolTransact();
+            ret = CoreFull();
 
             if(ret == 0)
             {
@@ -819,9 +892,9 @@ REDSTATUS RedCoreLink(
             }
         }
 
-        if((ret == 0) && ((gpRedVolume->ulTransMask & RED_TRANSACT_LINK) != 0U))
+        if(ret == 0)
         {
-            ret = RedVolTransact();
+            ret = CoreAutoTransact(RED_TRANSACT_LINK);
         }
     }
 
@@ -838,6 +911,9 @@ REDSTATUS RedCoreLink(
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0                   Operation was successful.
+    @retval -RED_EACCES         Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                                enabled and the POSIX permissions prohibit the
+                                current from performing the operation.
     @retval -RED_EBADF          @p ulPInode is not a valid inode; or @p ulInode
                                 is not a valid inode.
     @retval -RED_EEXIST         @p pszName resolves to an existing file.
@@ -848,7 +924,9 @@ REDSTATUS RedCoreLink(
                                 exceeds the maximum name length.
     @retval -RED_ENOSPC         There is insufficient free space to expand the
                                 directory that would contain the link.
-    @retval -RED_ENOTDIR        @p ulPInode is not a directory.
+    @retval -RED_ENOLINK        #REDCONF_API_POSIX_SYMLINK is enabled and
+                                @p ulPInode is a symbolic link.
+    @retval -RED_ENOTDIR        @p ulPInode is a regular file.
     @retval -RED_EPERM          @p ulInode is a directory.
     @retval -RED_EROFS          The requested link requires writing in a
                                 directory on a read-only file system.
@@ -876,7 +954,7 @@ static REDSTATUS CoreLink(
             CINODE ino;
 
             ino.ulInode = ulInode;
-            ret = RedInodeMount(&ino, FTYPE_FILE, false);
+            ret = RedInodeMount(&ino, FTYPE_NOTDIR, false);
 
             /*  POSIX specifies EPERM as the errno thrown when link() is given a
                 directory.  Switch the errno returned if EISDIR was the return
@@ -929,8 +1007,8 @@ static REDSTATUS CoreLink(
 /** @brief Delete a file or directory.
 
     The given name is deleted and the link count of the corresponding inode is
-    decremented.  If the link count falls to zero (no remaining hard links),
-    the inode will be deleted.
+    decremented.  If the link count falls to zero (no remaining hard links), the
+    inode will be deleted.
 
     If the path names a directory which is not empty, the unlink will fail.
 
@@ -939,18 +1017,22 @@ static REDSTATUS CoreLink(
     part of the committed state, the inode slot will not be available until
     after a transaction point.
 
-    This function can fail when the disk is full.  To fix this, transact and
-    try again: Reliance Edge guarantees that it is possible to delete at least
-    one file or directory after a transaction point.  If disk full automatic
+    This function can fail when the disk is full.  To fix this, transact and try
+    again: Reliance Edge guarantees that it is possible to delete at least one
+    file or directory after a transaction point.  If disk full automatic
     transactions are enabled, this will happen automatically.
 
     @param ulPInode The inode number of the parent directory.
-    @param pszName  The null-terminated name of the file or directory to
-                    delete.
+    @param pszName  The null-terminated name of the file or directory to delete.
+    @param fOrphan  Whether the inode should continue to exist as an orphan
+                    until RedCoreFreeOrphan() is called.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0                   Operation was successful.
+    @retval -RED_EACCES         Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                                enabled and the POSIX permissions prohibit the
+                                current from performing the operation.
     @retval -RED_EBADF          @p ulPInode is not a valid inode.
     @retval -RED_EINVAL         The volume is not mounted; or @p pszName is
                                 `NULL`.
@@ -958,7 +1040,9 @@ static REDSTATUS CoreLink(
     @retval -RED_ENAMETOOLONG   @p pszName is too long.
     @retval -RED_ENOENT         @p pszName does not name an existing file or
                                 directory.
-    @retval -RED_ENOTDIR        @p ulPInode is not a directory.
+    @retval -RED_ENOLINK        #REDCONF_API_POSIX_SYMLINK is enabled and
+                                @p ulPInode is a symbolic link.
+    @retval -RED_ENOTDIR        @p ulPInode is a regular file.
     @retval -RED_ENOSPC         The file system does not have enough space to
                                 modify the parent directory to perform the
                                 deletion.
@@ -969,7 +1053,8 @@ static REDSTATUS CoreLink(
 */
 REDSTATUS RedCoreUnlink(
     uint32_t    ulPInode,
-    const char *pszName)
+    const char *pszName,
+    bool        fOrphan)
 {
     REDSTATUS   ret;
 
@@ -983,23 +1068,21 @@ REDSTATUS RedCoreUnlink(
     }
     else
     {
-        ret = CoreUnlink(ulPInode, pszName);
+        ret = CoreUnlink(ulPInode, pszName, fOrphan);
 
-        if(    (ret == -RED_ENOSPC)
-            && ((gpRedVolume->ulTransMask & RED_TRANSACT_VOLFULL) != 0U)
-            && (gpRedCoreVol->ulAlmostFreeBlocks > 0U))
+        if(ret == -RED_ENOSPC)
         {
-            ret = RedVolTransact();
+            ret = CoreFull();
 
             if(ret == 0)
             {
-                ret = CoreUnlink(ulPInode, pszName);
+                ret = CoreUnlink(ulPInode, pszName, fOrphan);
             }
         }
 
-        if((ret == 0) && ((gpRedVolume->ulTransMask & RED_TRANSACT_UNLINK) != 0U))
+        if(ret == 0)
         {
-            ret = RedVolTransact();
+            ret = CoreAutoTransact(RED_TRANSACT_UNLINK);
         }
     }
 
@@ -1010,18 +1093,24 @@ REDSTATUS RedCoreUnlink(
 /** @brief Delete a file or directory.
 
     @param ulPInode The inode number of the parent directory.
-    @param pszName  The null-terminated name of the file or directory to
-                    delete.
+    @param pszName  The null-terminated name of the file or directory to delete.
+    @param fOrphan  Whether the inode should continue to exist as an orphan
+                    until RedCoreFreeOrphan() is called.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0                   Operation was successful.
+    @retval -RED_EACCES         Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                                enabled and the POSIX permissions prohibit the
+                                current from performing the operation.
     @retval -RED_EBADF          @p ulPInode is not a valid inode.
     @retval -RED_EIO            A disk I/O error occurred.
     @retval -RED_ENAMETOOLONG   @p pszName is too long.
     @retval -RED_ENOENT         @p pszName does not name an existing file or
                                 directory.
-    @retval -RED_ENOTDIR        @p ulPInode is not a directory.
+    @retval -RED_ENOLINK        #REDCONF_API_POSIX_SYMLINK is enabled and
+                                @p ulPInode is a symbolic link.
+    @retval -RED_ENOTDIR        @p ulPInode is a regular file.
     @retval -RED_ENOSPC         The file system does not have enough space to
                                 modify the parent directory to perform the
                                 deletion.
@@ -1032,7 +1121,8 @@ REDSTATUS RedCoreUnlink(
 */
 static REDSTATUS CoreUnlink(
     uint32_t    ulPInode,
-    const char *pszName)
+    const char *pszName,
+    bool        fOrphan)
 {
     REDSTATUS   ret;
 
@@ -1040,6 +1130,12 @@ static REDSTATUS CoreUnlink(
     {
         ret = -RED_EROFS;
     }
+  #if REDCONF_DELETE_OPEN == 0
+    else if(fOrphan)
+    {
+        ret = -RED_EINVAL;
+    }
+  #endif
     else
     {
         CINODE pino;
@@ -1064,7 +1160,7 @@ static REDSTATUS CoreUnlink(
                 CINODE ino;
 
                 ino.ulInode = ulInode;
-                ret = RedInodeMount(&ino, FTYPE_EITHER, false);
+                ret = RedInodeMount(&ino, FTYPE_ANY, false);
 
                 if(ret == 0)
                 {
@@ -1078,7 +1174,7 @@ static REDSTATUS CoreUnlink(
                         gpRedCoreVol->fUseReservedBlocks = true;
                       #endif
 
-                        ret = RedDirEntryDelete(&pino, ulDeleteIdx);
+                        ret = RedDirEntryDelete(&pino, &ino, ulDeleteIdx);
 
                       #if RESERVED_BLOCKS > 0U
                         gpRedCoreVol->fUseReservedBlocks = false;
@@ -1095,7 +1191,7 @@ static REDSTATUS CoreUnlink(
                             */
                             RedInodePutCoord(&pino);
 
-                            ret = RedInodeLinkDec(&ino);
+                            ret = RedInodeLinkDec(&ino, fOrphan);
                             CRITICAL_ASSERT(ret == 0);
                         }
                     }
@@ -1113,6 +1209,114 @@ static REDSTATUS CoreUnlink(
 #endif /* (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && ((REDCONF_API_POSIX_UNLINK == 1) || (REDCONF_API_POSIX_RMDIR == 1)) */
 
 
+#if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
+/** @brief Free an orphan.
+
+    @param ulInode  The inode number.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EBADF  @p ulInode is not an orphan.
+    @retval -RED_EINVAL The volume is not mounted.
+    @retval -RED_EIO    A disk I/O error occurred.
+    @retval -RED_EROFS  The file system volume is read-only.
+*/
+REDSTATUS RedCoreFreeOrphan(
+    uint32_t    ulInode)
+{
+    REDSTATUS   ret;
+
+    if(!gpRedVolume->fMounted)
+    {
+        ret = -RED_EINVAL;
+    }
+    else if(gpRedVolume->fReadOnly)
+    {
+        ret = -RED_EROFS;
+    }
+    else
+    {
+        CINODE  ino;
+        CINODE  prevIno;
+
+        prevIno.ulInode = INODE_INVALID;
+
+        ino.ulInode = gpRedMR->ulOrphanHead;
+        ret = RedInodeMount(&ino, FTYPE_ANY, false);
+
+        /*  Search the list of orphans to find the requested orphan and the one
+            that points to it (if it's not the head).
+        */
+        while((ret == 0) && (ino.ulInode != ulInode))
+        {
+            if(prevIno.ulInode != INODE_INVALID)
+            {
+                RedInodePut(&prevIno, 0U);
+            }
+
+            prevIno = ino;
+            ino.ulInode = prevIno.pInodeBuf->ulNextOrphan;
+
+            ret = RedInodeMount(&ino, FTYPE_ANY, false);
+        }
+
+        if(ret == 0)
+        {
+            uint32_t ulNextInode = ino.pInodeBuf->ulNextOrphan;
+
+            REDASSERT(    (gpRedMR->ulOrphanHead == INODE_INVALID)
+                       == (gpRedMR->ulOrphanTail == INODE_INVALID));
+
+            ret = RedInodeFreeOrphan(&ino);
+
+            if(ret == 0)
+            {
+                if(gpRedMR->ulOrphanHead == ulInode)
+                {
+                    /*  The requested inode _is_ the list head.
+                    */
+                    REDASSERT(prevIno.ulInode == INODE_INVALID);
+
+                    gpRedMR->ulOrphanHead = ulNextInode;
+                }
+                else
+                {
+                    /*  The requested inode _is not_ the list head.
+                    */
+                    ret = RedInodeBranch(&prevIno);
+
+                    CRITICAL_ASSERT(ret == 0);
+
+                    if(ret == 0)
+                    {
+                        prevIno.pInodeBuf->ulNextOrphan = ulNextInode;
+                    }
+
+                    RedInodePut(&prevIno, 0U);
+                }
+            }
+
+            if((ret == 0) && (ulInode == gpRedMR->ulOrphanTail))
+            {
+                /*  The requested inode was the list tail.  Thus, the new tail
+                    is the inode immediately prior in list.  This also handles
+                    the case where there is only one inode in the list, as in
+                    that case prevIno.ulInode will be INODE_INVALID.
+                */
+                gpRedMR->ulOrphanTail = prevIno.ulInode;
+            }
+
+            REDASSERT(    (gpRedMR->ulOrphanHead == INODE_INVALID)
+                       == (gpRedMR->ulOrphanTail == INODE_INVALID));
+        }
+    }
+
+    return ret;
+}
+#endif /* DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1) */
+
+
 #if REDCONF_API_POSIX == 1
 /** @brief Look up the inode number of a file or directory.
 
@@ -1125,11 +1329,17 @@ static REDSTATUS CoreUnlink(
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0               Operation was successful.
+    @retval -RED_EACCES     Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                            enabled and the POSIX permissions prohibit the
+                            current from performing the operation.
     @retval -RED_EBADF      @p ulPInode is not a valid inode.
     @retval -RED_EINVAL     The volume is not mounted; @p pszName is `NULL`; or
                             @p pulInode is `NULL`.
     @retval -RED_EIO        A disk I/O error occurred.
-    @retval -RED_ENOENT     @p pszName does not name an existing file or directory.
+    @retval -RED_ENOENT     @p pszName does not name an existing file or
+                            directory.
+    @retval -RED_ENOLINK    #REDCONF_API_POSIX_SYMLINK is enabled and @p ulInode
+                            is a symbolic link.
     @retval -RED_ENOTDIR    @p ulPInode is not a directory.
 */
 REDSTATUS RedCoreLookup(
@@ -1174,15 +1384,14 @@ REDSTATUS RedCoreLookup(
     atomic operation, the destination name is unlinked and the source name is
     renamed to the destination name.  Both names must be of the same type (both
     files or both directories).  As with RedCoreUnlink(), if the destination
-    name is a directory, it must be empty.  The major exception to this
-    behavior is that if both names are links to the same inode, then the rename
-    does nothing and both names continue to exist.
+    name is a directory, it must be empty.  The major exception to this behavior
+    is that if both names are links to the same inode, then the rename does
+    nothing and both names continue to exist.
 
-    If the rename deletes the old destination, it may free data in the
-    committed state, which will not return to free space until after a
-    transaction point.  Similarly, if the deleted inode was part of the
-    committed state, the inode slot will not be available until after a
-    transaction point.
+    If the rename deletes the old destination, it may free data in the committed
+    state, which will not return to free space until after a transaction point.
+    Similarly, if the deleted inode was part of the committed state, the inode
+    slot will not be available until after a transaction point.
 
     @param ulSrcPInode  The inode number of the parent directory of the file or
                         directory to rename.
@@ -1190,13 +1399,19 @@ REDSTATUS RedCoreLookup(
     @param ulDstPInode  The new parent directory inode number of the file or
                         directory after the rename.
     @param pszDstName   The new name of the file or directory after the rename.
+    @param fOrphan      If the destination inode exists, whether the inode
+                        should continue to exist as an orphan until
+                        RedCoreFreeOrphan() is called.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0                   Operation was successful.
+    @retval -RED_EACCES         Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                                enabled and the POSIX permissions prohibit the
+                                current from performing the operation.
     @retval -RED_EBADF          @p ulSrcPInode is not a valid inode number; or
                                 @p ulDstPInode is not a valid inode number.
-    @retval -RED_EEXIST         #REDCONF_RENAME_POSIX is false and the
+    @retval -RED_EEXIST         #REDCONF_RENAME_ATOMIC is false and the
                                 destination name exists.
     @retval -RED_EINVAL         The volume is not mounted; @p pszSrcName is
                                 `NULL`; or @p pszDstName is `NULL`; or the
@@ -1209,10 +1424,13 @@ REDSTATUS RedCoreLookup(
     @retval -RED_ENOENT         The source name is not an existing entry; or
                                 either @p pszSrcName or @p pszDstName point to
                                 an empty string.
-    @retval -RED_ENOTDIR        @p ulSrcPInode is not a directory; or
-                                @p ulDstPInode is not a directory; or the source
+    @retval -RED_ENOTDIR        @p ulSrcPInode is a regular file; or
+                                @p ulDstPInode is a regular file; or the source
                                 name is a directory and the destination name is
                                 a file.
+    @retval -RED_ENOLINK        #REDCONF_API_POSIX_SYMLINK is enabled and either
+                                @p ulSrcPInode or @p ulDstPInode are symbolic
+                                links.
     @retval -RED_ENOTEMPTY      The destination name is a directory which is not
                                 empty.
     @retval -RED_ENOSPC         The file system does not have enough space to
@@ -1224,7 +1442,8 @@ REDSTATUS RedCoreRename(
     uint32_t    ulSrcPInode,
     const char *pszSrcName,
     uint32_t    ulDstPInode,
-    const char *pszDstName)
+    const char *pszDstName,
+    bool        fOrphan)
 {
     REDSTATUS   ret;
 
@@ -1238,23 +1457,21 @@ REDSTATUS RedCoreRename(
     }
     else
     {
-        ret = CoreRename(ulSrcPInode, pszSrcName, ulDstPInode, pszDstName);
+        ret = CoreRename(ulSrcPInode, pszSrcName, ulDstPInode, pszDstName, fOrphan);
 
-        if(    (ret == -RED_ENOSPC)
-            && ((gpRedVolume->ulTransMask & RED_TRANSACT_VOLFULL) != 0U)
-            && (gpRedCoreVol->ulAlmostFreeBlocks > 0U))
+        if(ret == -RED_ENOSPC)
         {
-            ret = RedVolTransact();
+            ret = CoreFull();
 
             if(ret == 0)
             {
-                ret = CoreRename(ulSrcPInode, pszSrcName, ulDstPInode, pszDstName);
+                ret = CoreRename(ulSrcPInode, pszSrcName, ulDstPInode, pszDstName, fOrphan);
             }
         }
 
-        if((ret == 0) && ((gpRedVolume->ulTransMask & RED_TRANSACT_RENAME) != 0U))
+        if(ret == 0)
         {
-            ret = RedVolTransact();
+            ret = CoreAutoTransact(RED_TRANSACT_RENAME);
         }
     }
 
@@ -1270,13 +1487,19 @@ REDSTATUS RedCoreRename(
     @param ulDstPInode  The new parent directory inode number of the file or
                         directory after the rename.
     @param pszDstName   The new name of the file or directory after the rename.
+    @param fOrphan      If the destination inode exists, whether the inode
+                        should continue to exist as an orphan until
+                        RedCoreFreeOrphan() is called.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0                   Operation was successful.
+    @retval -RED_EACCES         Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                                enabled and the POSIX permissions prohibit the
+                                current from performing the operation.
     @retval -RED_EBADF          @p ulSrcPInode is not a valid inode number; or
                                 @p ulDstPInode is not a valid inode number.
-    @retval -RED_EEXIST         #REDCONF_RENAME_POSIX is false and the
+    @retval -RED_EEXIST         #REDCONF_RENAME_ATOMIC is false and the
                                 destination name exists.
     @retval -RED_EINVAL         The rename is cyclic.
     @retval -RED_EIO            A disk I/O error occurred.
@@ -1287,10 +1510,13 @@ REDSTATUS RedCoreRename(
     @retval -RED_ENOENT         The source name is not an existing entry; or
                                 either @p pszSrcName or @p pszDstName point to
                                 an empty string.
-    @retval -RED_ENOTDIR        @p ulSrcPInode is not a directory; or
-                                @p ulDstPInode is not a directory; or the source
+    @retval -RED_ENOTDIR        @p ulSrcPInode is a regular file; or
+                                @p ulDstPInode is a regular file; or the source
                                 name is a directory and the destination name is
                                 a file.
+    @retval -RED_ENOLINK        #REDCONF_API_POSIX_SYMLINK is enabled and either
+                                @p ulSrcPInode or @p ulDstPInode are symbolic
+                                links.
     @retval -RED_ENOTEMPTY      The destination name is a directory which is not
                                 empty.
     @retval -RED_ENOSPC         The file system does not have enough space to
@@ -1302,7 +1528,8 @@ static REDSTATUS CoreRename(
     uint32_t    ulSrcPInode,
     const char *pszSrcName,
     uint32_t    ulDstPInode,
-    const char *pszDstName)
+    const char *pszDstName,
+    bool        fOrphan)
 {
     REDSTATUS   ret;
 
@@ -1310,6 +1537,12 @@ static REDSTATUS CoreRename(
     {
         ret = -RED_EROFS;
     }
+  #if REDCONF_DELETE_OPEN == 0
+    else if(fOrphan)
+    {
+        ret = -RED_EINVAL;
+    }
+  #endif
     else
     {
         bool    fUpdateTimestamps = false;
@@ -1356,7 +1589,7 @@ static REDSTATUS CoreRename(
                     RedInodePutCoord(&SrcPInode);
                     RedInodePutCoord(pDstPInode);
 
-                    ret = RedInodeLinkDec(&DstInode);
+                    ret = RedInodeLinkDec(&DstInode, fOrphan);
                     CRITICAL_ASSERT(ret == 0);
                 }
 
@@ -1420,7 +1653,7 @@ REDSTATUS RedCoreStat(
         CINODE ino;
 
         ino.ulInode = ulInode;
-        ret = RedInodeMount(&ino, FTYPE_EITHER, false);
+        ret = RedInodeMount(&ino, FTYPE_ANY, false);
         if(ret == 0)
         {
             RedMemSet(pStat, 0U, sizeof(*pStat));
@@ -1432,6 +1665,10 @@ REDSTATUS RedCoreStat(
             pStat->st_nlink = ino.pInodeBuf->uNLink;
           #else
             pStat->st_nlink = 1U;
+          #endif
+          #if REDCONF_POSIX_OWNER_PERM == 1
+            pStat->st_uid = ino.pInodeBuf->ulUID;
+            pStat->st_gid = ino.pInodeBuf->ulGID;
           #endif
             pStat->st_size = ino.pInodeBuf->ullSize;
           #if REDCONF_INODE_TIMESTAMPS == 1
@@ -1450,6 +1687,337 @@ REDSTATUS RedCoreStat(
     return ret;
 }
 #endif /* REDCONF_API_POSIX == 1 */
+
+
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1)
+/** @brief Change the mode of a file or directory.
+
+    @param ulInode  The inode number.
+    @param uMode    The new mode bits for the file or directory.  The supported
+                    mode bits are defined in #RED_S_IRWXUGO.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EBADF  @p ulInode is not a valid inode.
+    @retval -RED_EINVAL The volume is not mounted; or @p uMode contains bits
+                        other than #RED_S_IRWXUGO.
+    @retval -RED_EIO    A disk I/O error occurred.
+    @retval -RED_EPERM  Permission denied: the current user is unprivileged and
+                        is not the owner of @p ulInode.
+    @retval -RED_EROFS  The requested unlink requires writing in a directory on
+                        a read-only file system.
+*/
+REDSTATUS RedCoreChmod(
+    uint32_t    ulInode,
+    uint16_t    uMode)
+{
+    REDSTATUS   ret;
+
+    if(!gpRedVolume->fMounted || ((uMode & ~RED_S_IALLUGO) != 0U))
+    {
+        ret = -RED_EINVAL;
+    }
+    else if(gpRedVolume->fReadOnly)
+    {
+        ret = -RED_EROFS;
+    }
+    else
+    {
+        CINODE ino;
+
+        ino.ulInode = ulInode;
+        ret = RedInodeMount(&ino, FTYPE_ANY, false);
+
+        if(ret == 0)
+        {
+            /*  POSIX says EPERM if: "The effective user ID does not match the
+                owner of the file and the process does not have appropriate
+                privileges."
+            */
+            if(!RedOsIsPrivileged() && (RedOsUserId() != ino.pInodeBuf->ulUID))
+            {
+                ret = -RED_EPERM;
+            }
+
+            if(ret == 0)
+            {
+                ret = RedInodeBranch(&ino);
+            }
+
+            if(ret == 0)
+            {
+                ino.pInodeBuf->uMode &= ~RED_S_IALLUGO;
+                ino.pInodeBuf->uMode |= uMode;
+
+                /*  POSIX says:
+
+                        If the calling process does not have appropriate
+                        privileges, and if the group ID of the file does not
+                        match the effective group ID or one of the supplementary
+                        group IDs and if the file is a regular file, bit S_ISGID
+                        (set-group-ID on execution) in the file's mode shall be
+                        cleared upon successful return from chmod().
+                */
+               if(RED_S_ISREG(ino.pInodeBuf->uMode) && !RedOsIsPrivileged() && !RedOsIsGroupMember(ino.pInodeBuf->ulGID))
+               {
+                   ino.pInodeBuf->uMode &= ~RED_S_ISGID;
+               }
+            }
+
+            RedInodePut(&ino, (ret == 0) ? IPUT_UPDATE_CTIME : 0U);
+        }
+    }
+
+    return ret;
+}
+
+
+/** @brief Change the user and group ownership of a file or directory.
+
+    @param ulInode  The inode number.
+    @param ulUID    The new user ID for the file or directory.  A value of
+                    #RED_UID_KEEPSAME indicates that the user ID will not be
+                    changed.
+    @param ulGID    The new group ID for the file or directory.  A value of
+                    #RED_GID_KEEPSAME indicates that the group ID will not be
+                    changed.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EBADF  @p ulInode is not a valid inode.
+    @retval -RED_EINVAL The volume is not mounted.
+    @retval -RED_EIO    A disk I/O error occurred.
+    @retval -RED_EPERM  Permission denied: attempt to change the ownership of
+                        the inode by an unprivileged user.
+    @retval -RED_EROFS  The requested unlink requires writing in a directory on
+                        a read-only file system.
+*/
+REDSTATUS RedCoreChown(
+    uint32_t    ulInode,
+    uint32_t    ulUID,
+    uint32_t    ulGID)
+{
+    REDSTATUS   ret;
+
+    if(!gpRedVolume->fMounted)
+    {
+        ret = -RED_EINVAL;
+    }
+    else if(gpRedVolume->fReadOnly)
+    {
+        ret = -RED_EROFS;
+    }
+    else
+    {
+        CINODE ino;
+
+        ino.ulInode = ulInode;
+
+        ret = RedInodeMount(&ino, FTYPE_ANY, false);
+
+        if(ret == 0)
+        {
+            uint8_t bTimeFields = 0U;
+
+            /*  POSIX says: "Only processes with an effective user ID equal to
+                the user ID of the file or with appropriate privileges may
+                change the ownership of a file."
+
+                "If _POSIX_CHOWN_RESTRICTED is in effect" then POSIX imposes
+                additional restrictions.  Those aren't implemented here.
+            */
+            if(    !RedOsIsPrivileged()
+                && (RedOsUserId() != ino.pInodeBuf->ulUID)
+                && ((ulUID != RED_UID_KEEPSAME) && (ulUID != ino.pInodeBuf->ulUID)))
+            {
+                ret = -RED_EPERM;
+            }
+
+            if(ret == 0)
+            {
+                /*  POSIX requires chown() to update the ctime unless both the
+                    UID and GID are -1 (KEEPSAME in our implementation).  Thus,
+                    fUpdate[UG]id must be true except for KEEPSAME, even if the
+                    UID/GID in the inode already equals the ulUID or ulGID, so
+                    that the ctime timestamp is updated.
+                */
+                bool fUpdateUid = (ulUID != RED_UID_KEEPSAME);
+                bool fUpdateGid = (ulGID != RED_GID_KEEPSAME);
+                bool fClearIsId = false;
+
+                /*  POSIX says:
+
+                        If the specified file is a regular file, one or
+                        more of the S_IXUSR, S_IXGRP, or S_IXOTH bits of the
+                        file mode are set, and the process does not have
+                        appropriate privileges, [then] the set-user-ID (S_ISUID)
+                        and set-group-ID (S_ISGID) bits of the file mode shall
+                        be cleared upon successful return from chown().
+
+                    If the process _does_ have "appropriate privileges", then
+                    it's implementation-defined whether the bits are cleared.
+                    We clear them in either case, because that's what Linux
+                    does.
+
+                    POSIX also allows (but does not require) clearing the bits
+                    for non-regular files (e.g., directories), but that seems
+                    undesirable given the purpose of the setgid bit for a
+                    directory, and so that's not done here.
+                */
+                if(    RED_S_ISREG(ino.pInodeBuf->uMode)
+                    && ((ino.pInodeBuf->uMode & (RED_S_IXUSR|RED_S_IXGRP|RED_S_IXOTH)) != 0U))
+                {
+                    fClearIsId = true;
+                }
+
+                /*  If we are making any changes to the inode, then branch it.
+                */
+                if(fUpdateUid || fUpdateGid || fClearIsId)
+                {
+                    ret = RedInodeBranch(&ino);
+                }
+
+                if(ret == 0)
+                {
+                    if(fUpdateUid)
+                    {
+                        ino.pInodeBuf->ulUID = ulUID;
+                        bTimeFields = IPUT_UPDATE_CTIME;
+                    }
+
+                    if(fUpdateGid)
+                    {
+                        ino.pInodeBuf->ulGID = ulGID;
+                        bTimeFields = IPUT_UPDATE_CTIME;
+                    }
+
+                    if(fClearIsId)
+                    {
+                        ino.pInodeBuf->uMode &= ~(RED_S_ISUID|RED_S_ISGID);
+                    }
+                }
+            }
+
+            RedInodePut(&ino, bTimeFields);
+        }
+    }
+
+    return ret;
+}
+#endif /* (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1) */
+
+
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_INODE_TIMESTAMPS == 1)
+/** @brief Change the access and modification times of the file or directory.
+
+    @param ulInode  The inode number.
+    @param pulTimes Pointer to an array of two timestamps, expressed as the
+                    number of seconds since 01-01-1970, where @p pulTimes[0]
+                    specifies the new access time and @p pulTimes[1] specifies
+                    the new modification time.  If @p pulTimes is NULL, the
+                    access and modification times of the file or directory are
+                    set to the current time.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EACCES Permission denied: #REDCONF_POSIX_OWNER_PERM is enabled,
+                        @p pulTimes is NULL, and all of the following conditions
+                        are true: the current user is unprivileged, the current
+                        user is not the owner of the inode, and write permission
+                        is denied for the inode.
+    @retval -RED_EBADF  @p ulInode is not a valid inode.
+    @retval -RED_EINVAL The volume is not mounted.
+    @retval -RED_EIO    A disk I/O error occurred.
+    @retval -RED_EPERM  Permission denied: #REDCONF_POSIX_OWNER_PERM is enabled,
+                        @p pulTimes is _not_ NULL, and the current user is
+                        neither privileged nor the owner of the inode.
+    @retval -RED_EROFS  The requested unlink requires writing in a directory on
+                        a read-only file system.
+*/
+REDSTATUS RedCoreUTimes(
+    uint32_t        ulInode,
+    const uint32_t *pulTimes)
+{
+    REDSTATUS       ret;
+
+    if(!gpRedVolume->fMounted)
+    {
+        ret = -RED_EINVAL;
+    }
+    else if(gpRedVolume->fReadOnly)
+    {
+        ret = -RED_EROFS;
+    }
+    else
+    {
+        CINODE ino;
+
+        ino.ulInode = ulInode;
+
+        ret = RedInodeMount(&ino, FTYPE_ANY, false);
+
+        if(ret == 0)
+        {
+          #if REDCONF_POSIX_OWNER_PERM == 1
+            if(!RedOsIsPrivileged())
+            {
+                bool fOwner = (RedOsUserId() == ino.pInodeBuf->ulUID);
+
+                if((pulTimes != NULL) && !fOwner)
+                {
+                    /*  POSIX says EPERM if: "The times argument is not a null
+                        pointer [... and] the calling process' effective user ID
+                        does not match the owner of the file, and the calling
+                        process does not have appropriate privileges."
+                    */
+                    ret = -RED_EPERM;
+                }
+                else if((pulTimes == NULL) && !fOwner)
+                {
+                    /*  POSIX says EACCES if lacking "appropriate privileges"
+                        and if "The times argument is a null pointer [...] and
+                        the effective user ID of the process does not match the
+                        owner of the file and write access is denied."
+                    */
+                    ret = RedPermCheck(RED_W_OK, ino.pInodeBuf->uMode, ino.pInodeBuf->ulUID, ino.pInodeBuf->ulGID);
+                }
+                else
+                {
+                    /*  Operation is permitted.
+                    */
+                }
+            }
+
+            if(ret == 0)
+          #endif /* REDCONF_POSIX_OWNER_PERM == 1 */
+            {
+                ret = RedInodeBranch(&ino);
+            }
+
+            if(ret == 0)
+            {
+                if(pulTimes == NULL)
+                {
+                    ino.pInodeBuf->ulATime = RedOsClockGetTime();
+                    ino.pInodeBuf->ulMTime = ino.pInodeBuf->ulATime;
+                }
+                else
+                {
+                    ino.pInodeBuf->ulATime = pulTimes[0U];
+                    ino.pInodeBuf->ulMTime = pulTimes[1U];
+                }
+            }
+
+            RedInodePut(&ino, (ret == 0) ? IPUT_UPDATE_CTIME : 0U);
+        }
+    }
+
+    return ret;
+}
+#endif /* (REDCONF_READ_ONLY == 0) && (REDCONF_INODE_TIMESTAMPS == 1) */
 
 
 #if REDCONF_API_FSE == 1
@@ -1544,7 +2112,7 @@ REDSTATUS RedCoreFileRead(
         CINODE  ino;
 
         ino.ulInode = ulInode;
-        ret = RedInodeMount(&ino, FTYPE_FILE, fUpdateAtime);
+        ret = RedInodeMount(&ino, FTYPE_NOTDIR, fUpdateAtime);
         if(ret == 0)
         {
             ret = RedInodeDataRead(&ino, ullStart, pulLen, pBuffer);
@@ -1562,6 +2130,7 @@ REDSTATUS RedCoreFileRead(
 
 
 #if REDCONF_READ_ONLY == 0
+
 /** @brief Write to a file.
 
     If the write extends beyond the end-of-file, the file size will be
@@ -1618,11 +2187,9 @@ REDSTATUS RedCoreFileWrite(
     {
         ret = CoreFileWrite(ulInode, ullStart, pulLen, pBuffer);
 
-        if(    (ret == -RED_ENOSPC)
-            && ((gpRedVolume->ulTransMask & RED_TRANSACT_VOLFULL) != 0U)
-            && (gpRedCoreVol->ulAlmostFreeBlocks > 0U))
+        if(ret == -RED_ENOSPC)
         {
-            ret = RedVolTransact();
+            ret = CoreFull();
 
             if(ret == 0)
             {
@@ -1630,9 +2197,9 @@ REDSTATUS RedCoreFileWrite(
             }
         }
 
-        if((ret == 0) && ((gpRedVolume->ulTransMask & RED_TRANSACT_WRITE) != 0U))
+        if(ret == 0)
         {
-            ret = RedVolTransact();
+            ret = CoreAutoTransact(RED_TRANSACT_WRITE);
         }
     }
 
@@ -1679,7 +2246,7 @@ static REDSTATUS CoreFileWrite(
         CINODE ino;
 
         ino.ulInode = ulInode;
-        ret = RedInodeMount(&ino, FTYPE_FILE, true);
+        ret = RedInodeMount(&ino, FTYPE_NOTDIR, true);
         if(ret == 0)
         {
             ret = RedInodeDataWrite(&ino, ullStart, pulLen, pBuffer);
@@ -1690,6 +2257,56 @@ static REDSTATUS CoreFileWrite(
 
     return ret;
 }
+
+
+#if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1)
+/** @brief Write to a file, where disk space is reserved.
+
+    Similar to RedCoreFileWrite(), except that the area of the file which is
+    being written must have been reserved via a previous call to
+    RedCoreFileReserve().
+
+    @param ulInode  The file number of the file to write.
+    @param ullStart The file offset to write at.
+    @param pulLen   On entry, the number of bytes to write; on successful exit,
+                    the number of bytes actually written.
+    @param pBuffer  The buffer containing the data to be written.  Must big
+                    enough for the write request.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EBADF  @p ulInode is not a valid file number.
+    @retval -RED_EFBIG  No data can be written to the given file offset since
+                        the resulting file size would exceed the maximum file
+                        size.
+    @retval -RED_EINVAL The volume is not mounted; or @p pBuffer is `NULL`.
+    @retval -RED_EIO    A disk I/O error occurred.
+    @retval -RED_EISDIR The inode is a directory inode.
+    @retval -RED_EROFS  The file system volume is read-only.
+*/
+REDSTATUS RedCoreFileWriteReserved(
+    uint32_t    ulInode,
+    uint64_t    ullStart,
+    uint32_t   *pulLen,
+    const void *pBuffer)
+{
+    REDSTATUS   ret;
+
+    gpRedCoreVol->fUseReservedInodeBlocks = true;
+
+    ret = RedCoreFileWrite(ulInode, ullStart, pulLen, pBuffer);
+
+    /*  If this function is used correctly, disk full errors should not occur.
+    */
+    REDASSERT(ret != -RED_ENOSPC);
+
+    gpRedCoreVol->fUseReservedInodeBlocks = false;
+
+    return ret;
+}
+#endif /* (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1) */
+
 #endif /* REDCONF_READ_ONLY == 0 */
 
 
@@ -1734,11 +2351,9 @@ REDSTATUS RedCoreFileTruncate(
     {
         ret = CoreFileTruncate(ulInode, ullSize);
 
-        if(    (ret == -RED_ENOSPC)
-            && ((gpRedVolume->ulTransMask & RED_TRANSACT_VOLFULL) != 0U)
-            && (gpRedCoreVol->ulAlmostFreeBlocks > 0U))
+        if(ret == -RED_ENOSPC)
         {
-            ret = RedVolTransact();
+            ret = CoreFull();
 
             if(ret == 0)
             {
@@ -1746,9 +2361,9 @@ REDSTATUS RedCoreFileTruncate(
             }
         }
 
-        if((ret == 0) && ((gpRedVolume->ulTransMask & RED_TRANSACT_TRUNCATE) != 0U))
+        if(ret == 0)
         {
-            ret = RedVolTransact();
+            ret = CoreAutoTransact(RED_TRANSACT_TRUNCATE);
         }
     }
 
@@ -1786,7 +2401,7 @@ static REDSTATUS CoreFileTruncate(
         CINODE      ino;
 
         ino.ulInode = ulInode;
-        ret = RedInodeMount(&ino, FTYPE_FILE, true);
+        ret = RedInodeMount(&ino, FTYPE_NOTDIR, true);
         if(ret == 0)
         {
           #if RESERVED_BLOCKS > 0U
@@ -1808,7 +2423,174 @@ static REDSTATUS CoreFileTruncate(
 #endif /* TRUNCATE_SUPPORTED */
 
 
-#if (REDCONF_API_POSIX == 1) && ((REDCONF_API_POSIX_READDIR == 1) || (REDCONF_API_POSIX_CWD == 1))
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1)
+/** @brief Expand a file and reserve space to allow writing the expanded region.
+
+    The file size is updated to @p ullOffset + @p ullLen.
+
+    @note In the current implementation, @p ullOffset _must_ be equal to the
+          original size of the file.
+
+    @param ulInode      The inode of the file for which to reserve space.
+    @param ullOffset    The file offset at which the reserved space starts.
+    @param ullLen       The number of bytes beyond @p ullOffset to reserve.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0               Operation was successful.
+    @retval -RED_EFBIG      @p ullOffset + @p ullLen is greater than the maximum
+                            file size.
+    @retval -RED_EINVAL     The volume is not mounted; or @p ullOffset not equal
+                            to the original file size; or @p ullLen is zero.
+    @retval -RED_EIO        A disk I/O error occurred.
+    @retval -RED_EISDIR     @p ulInode is a directory inode.
+    @retval -RED_ENOLINK    #REDCONF_API_POSIX_SYMLINK is enabled and @p ulInode
+                            is a symbolic link.
+    @retval -RED_ENOSPC     Insufficient free space for the reservation.  When
+                            this is returned, the file size is unchanged.
+    @retval -RED_EROFS      The file system volume is read-only.
+*/
+REDSTATUS RedCoreFileReserve(
+    uint32_t    ulInode,
+    uint64_t    ullOffset,
+    uint64_t    ullLen)
+{
+    REDSTATUS   ret;
+
+    if(!gpRedVolume->fMounted)
+    {
+        ret = -RED_EINVAL;
+    }
+    else if(gpRedVolume->fReadOnly)
+    {
+        ret = -RED_EROFS;
+    }
+    else
+    {
+        ret = CoreFileReserve(ulInode, ullOffset, ullLen);
+
+        if(ret == -RED_ENOSPC)
+        {
+            ret = CoreFull();
+
+            if(ret == 0)
+            {
+                ret = CoreFileReserve(ulInode, ullOffset, ullLen);
+            }
+        }
+    }
+
+    return ret;
+}
+
+
+/** @brief Expand a file and reserve space to allow writing the expanded region.
+
+    The file size is updated to @p ullOffset + @p ullLen.
+
+    @note In the current implementation, @p ullOffset _must_ be equal to the
+          original size of the file.
+
+    @param ulInode      The inode of the file for which to reserve space.
+    @param ullOffset    The file offset at which the reserved space starts.
+    @param ullLen       The number of bytes beyond @p ullOffset to reserve.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0               Operation was successful.
+    @retval -RED_EFBIG      @p ullOffset + @p ullLen is greater than the maximum
+                            file size.
+    @retval -RED_EINVAL     @p ullOffset not equal to the original file size; or
+                            @p ullLen is zero.
+    @retval -RED_EIO        A disk I/O error occurred.
+    @retval -RED_EISDIR     @p ulInode is a directory inode.
+    @retval -RED_ENOLINK    #REDCONF_API_POSIX_SYMLINK is enabled and @p ulInode
+                            is a symbolic link.
+    @retval -RED_ENOSPC     Insufficient free space for the reservation.  When
+                            this is returned, the file size is unchanged.
+*/
+static REDSTATUS CoreFileReserve(
+    uint32_t    ulInode,
+    uint64_t    ullOffset,
+    uint64_t    ullLen)
+{
+    REDSTATUS   ret;
+
+    if(gpRedVolume->fReadOnly)
+    {
+        ret = -RED_EROFS;
+    }
+    else
+    {
+        CINODE ino;
+
+        ino.ulInode = ulInode;
+        ret = RedInodeMount(&ino, FTYPE_FILE, true);
+        if(ret == 0)
+        {
+            ret = RedInodeDataReserve(&ino, ullOffset, ullLen);
+
+            RedInodePut(&ino, (ret == 0) ? (uint8_t)(IPUT_UPDATE_MTIME | IPUT_UPDATE_CTIME) : 0U);
+        }
+    }
+
+    return ret;
+}
+
+
+/** @brief Unreserve space previously reserved by RedCoreFileReserve().
+
+    All space from @p ullOffset to the EOF is unreserved.
+
+    @param ulInode      The inode of the file for which to unreserve space.
+    @param ullOffset    The file offset at which to start unreserving.  The file
+                        must _not_ have been written beyond this offset!
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0               Operation was successful.
+    @retval -RED_EINVAL     The volume is not mounted; or @p ullOffset is beyond
+                            the EOF.
+    @retval -RED_EIO        A disk I/O error occurred.
+    @retval -RED_EISDIR     @p ulInode is a directory inode.
+    @retval -RED_ENOLINK    #REDCONF_API_POSIX_SYMLINK is enabled and @p ulInode
+                            is a symbolic link.
+    @retval -RED_EROFS      The file system volume is read-only.
+*/
+REDSTATUS RedCoreFileUnreserve(
+    uint32_t    ulInode,
+    uint64_t    ullOffset)
+{
+    REDSTATUS   ret;
+
+    if(!gpRedVolume->fMounted)
+    {
+        ret = -RED_EINVAL;
+    }
+    else if(gpRedVolume->fReadOnly)
+    {
+        ret = -RED_EROFS;
+    }
+    else
+    {
+        CINODE ino;
+
+        ino.ulInode = ulInode;
+        ret = RedInodeMount(&ino, FTYPE_FILE, false);
+        if(ret == 0)
+        {
+            ret = RedInodeDataUnreserve(&ino, ullOffset);
+
+            RedInodePut(&ino, 0U);
+        }
+    }
+
+    return ret;
+}
+#endif /* (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1) */
+
+
+#if REDCONF_API_POSIX == 1
 /** @brief Read from a directory.
 
     If files are added to the directory after it is opened, the new files may
@@ -1833,7 +2615,9 @@ static REDSTATUS CoreFileTruncate(
     @retval -RED_EINVAL     The volume is not mounted.
     @retval -RED_EIO        A disk I/O error occurred.
     @retval -RED_ENOENT     There are no more entries in the directory.
-    @retval -RED_ENOTDIR    @p ulInode refers to a file.
+    @retval -RED_ENOLINK    #REDCONF_API_POSIX_SYMLINK is enabled and @p ulInode
+                            is a symbolic link.
+    @retval -RED_ENOTDIR    @p ulInode is a regular file.
 */
 REDSTATUS RedCoreDirRead(
     uint32_t    ulInode,
@@ -1873,10 +2657,8 @@ REDSTATUS RedCoreDirRead(
 
     return ret;
 }
-#endif /* (REDCONF_API_POSIX == 1) && ((REDCONF_API_POSIX_READDIR == 1) || (REDCONF_API_POSIX_CWD == 1)) */
 
 
-#if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_CWD == 1)
 /** @brief Retrieve the parent directory inode of a directory inode.
 
     @param ulInode      The directory inode whose parent directory inode is to
@@ -1889,7 +2671,11 @@ REDSTATUS RedCoreDirRead(
     @retval -RED_EBADF      @p ulInode is not a valid inode number.
     @retval -RED_EINVAL     The volume is not mounted; or @p pulPInode is NULL.
     @retval -RED_EIO        A disk I/O error occurred.
-    @retval -RED_ENOTDIR    @p ulInode refers to a file.
+    @retval -RED_ENOENT     #REDCONF_DELETE_OPEN is true and @p ulInode refers
+                            to a directory that has been removed.
+    @retval -RED_ENOLINK    #REDCONF_API_POSIX_SYMLINK is enabled and @p ulInode
+                            is a symbolic link.
+    @retval -RED_ENOTDIR    @p ulInode is a regular file.
 */
 REDSTATUS RedCoreDirParent(
     uint32_t    ulInode,
@@ -1914,8 +2700,17 @@ REDSTATUS RedCoreDirParent(
         ret = RedInodeMount(&ino, FTYPE_DIR, false);
         if(ret == 0)
         {
-            *pulPInode = ino.pInodeBuf->ulPInode;
-            REDASSERT(INODE_IS_VALID(*pulPInode));
+          #if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
+            if(ino.pInodeBuf->ulPInode == INODE_INVALID)
+            {
+                ret = -RED_ENOENT;
+            }
+            else
+          #endif
+            {
+                *pulPInode = ino.pInodeBuf->ulPInode;
+                REDASSERT(INODE_IS_VALID(*pulPInode));
+            }
 
             RedInodePut(&ino, 0U);
         }
@@ -1923,5 +2718,77 @@ REDSTATUS RedCoreDirParent(
 
     return ret;
 }
-#endif /* (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_CWD == 1) */
+#endif /* REDCONF_API_POSIX == 1 */
 
+
+#if REDCONF_READ_ONLY == 0
+/** @brief Recover free space if possible.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EIO    A disk I/O error occurred.
+    @retval -RED_ENOSPC No free space could be recovered.
+*/
+static REDSTATUS CoreFull(void)
+{
+    REDSTATUS ret = 0;
+
+    if((gpRedVolume->ulTransMask & RED_TRANSACT_VOLFULL) != 0U)
+    {
+        uint32_t ulFreeBlocks = gpRedMR->ulFreeBlocks;
+
+      #if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
+        if(gpRedMR->ulDefunctOrphanHead != INODE_INVALID)
+        {
+            ret = RedVolFreeOrphans(UINT32_MAX);
+        }
+
+        if(ret == 0)
+      #endif
+        {
+            if(gpRedCoreVol->ulAlmostFreeBlocks > 0U)
+            {
+                ret = RedVolTransact();
+            }
+        }
+
+        /*  A transaction or finishing deletions may have succeeded without
+            freeing any blocks.
+        */
+        if((ret == 0) && (gpRedMR->ulFreeBlocks <= ulFreeBlocks))
+        {
+            ret = -RED_ENOSPC;
+        }
+    }
+    else
+    {
+        ret = -RED_ENOSPC;
+    }
+
+    return ret;
+}
+
+
+/** @brief Perform an automatic transaction, if appropriate.
+
+    @param  ulTransFlag The RED_TRANSACT_* flag of the completed operation.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EIO    A disk I/O error occurred.
+*/
+static REDSTATUS CoreAutoTransact(
+    uint32_t    ulTransFlag)
+{
+    REDSTATUS   ret = 0;
+
+    if((gpRedVolume->ulTransMask & ulTransFlag) != 0U)
+    {
+        ret = RedVolTransact();
+    }
+
+    return ret;
+}
+#endif /* REDCONF_READ_ONLY == 0 */

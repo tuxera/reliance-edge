@@ -63,12 +63,46 @@
 #include <redvolume.h>
 
 
+#if REDCONF_POSIX_OWNER_PERM == 1
+
+/*  The os/linux/services/osuidgid.c implementation of these functions isn't
+    suitable for FUSE.  That file is stripped from the FUSE build and instead
+    we reimplement the functions here.
+*/
+uint32_t RedOsUserId(void) { return fuse_get_context()->uid; }
+uint32_t RedOsGroupId(void) { return fuse_get_context()->gid; }
+bool RedOsIsGroupMember(uint32_t ulGid) { return RedOsGroupId() == ulGid; }
+bool RedOsIsPrivileged(void)
+{
+    /*  User is always privileged.  This implicitly disables all permissions
+        enforcement in the Reliance Edge POSIX-like API, which is what we want:
+        redfuse is a developer tool, intended to allow the developer to view and
+        modify a file system on removable media from an embedded target.  If
+        we enforced permissions, that would just get in the way.  If permissions
+        enforcement is really desired, then -o default_permissions (a FUSE mount
+        option) can be used to enable enforcement in the kernel.
+    */
+    return true;
+}
+
+  /*  Reliance Edge uses the same permission bit values as Linux.  The code
+      assumes that no translation needs to occur: make sure that this is the
+      case.
+  */
+  #if (RED_S_IFREG != S_IFREG) || (RED_S_IFDIR != S_IFDIR) || (RED_S_ISUID != S_ISUID) || (RED_S_ISGID != S_ISGID) || \
+      (RED_S_ISVTX != S_ISVTX) || (RED_S_IRWXU != S_IRWXU) || (RED_S_IRWXG != S_IRWXG) || (RED_S_IRWXO != S_IRWXO)
+    #error "error: Reliance Edge permission bits don't match host OS permission bits!"
+  #endif
+
+#endif /* REDCONF_POSIX_OWNER_PERM == 1 */
+
+
 typedef struct
 {
     const char *pszVolSpec;
     const char *pszBDevSpec;
-    const bool  fFormat;
-    int         showHelp;
+    int         fFormat;    /* Logically a boolean but type must be int */
+    int         fShowHelp;  /* Same as above */
 } REDOPTIONS;
 
 
@@ -81,8 +115,11 @@ static int fuse_red_rmdir(const char *pszPath);
 static int fuse_red_rename(const char *pszOldPath, const char *pszNewPath);
 static int fuse_red_link(const char *pszOldPath, const char *pszNewPath);
 static int fuse_red_chmod(const char *pszPath, mode_t mode);
+static int fuse_red_chown(const char *pszPath, uid_t uid, gid_t gid);
 static int fuse_red_truncate(const char *pszPath, off_t size);
 static int fuse_red_open(const char *pszPath, struct fuse_file_info *pFileInfo);
+static int fuse_red_symlink(const char *pszPath, const char *pszSymlink);
+static int fuse_red_readlink(const char *pszPath, char *pszBuffer, size_t nBufferSize);
 static int fuse_red_read(const char *pszPath, char *pcBuf, size_t size, off_t offset, struct fuse_file_info *pFileInfo);
 static int fuse_red_write(const char *pszPath, const char *pcBuf, size_t size, off_t offset, struct fuse_file_info *pFileInfo);
 static int fuse_red_statfs(const char *pszPath, struct statvfs *stbuf);
@@ -95,11 +132,17 @@ static void fuse_red_destroy(void *context);
 static int fuse_red_ftruncate(const char *pszPath, off_t size, struct fuse_file_info *pFileInfo);
 static int fuse_red_fgetattr(const char *pszPath, struct stat *stbuf, struct fuse_file_info *pFileInfo);
 static int fgetattr_sub(struct stat *stbuf,  struct fuse_file_info *pFileInfo);
-static int fuse_reltr_utimens(const char *pszPath, const struct timespec tv[2]);
+static int fuse_red_utimens(const char *pszPath, const struct timespec tv[2]);
+static void redstat_to_stat(const REDSTAT *pRedSB, struct stat *pSB);
 static mode_t redmode_to_mode(uint16_t uRedMode);
 static int rederrno_to_errno(int32_t rederrno);
 static uint32_t flags_to_redflags(int flags);
-static int32_t red_local_open(const char *pszPath, int flags);
+static int32_t red_local_open(const char *pszPath, int flags, mode_t mode);
+static int red_make_full_path(const char *pszPath, char *pszBuffer, size_t nBufferSize);
+#if REDCONF_PATH_SEPARATOR != '/'
+static char *string_copy_replace(const char *pszStr, char cFind, char cReplace);
+static void string_replace(char *pszStr, size_t nMax, char cFind, char cReplace);
+#endif
 
 
 static struct fuse_operations red_oper =
@@ -113,8 +156,11 @@ static struct fuse_operations red_oper =
     .rename = fuse_red_rename,
     .link = fuse_red_link,
     .chmod = fuse_red_chmod,
+    .chown = fuse_red_chown,
     .truncate = fuse_red_truncate,
     .open = fuse_red_open,
+    .symlink = fuse_red_symlink,
+    .readlink = fuse_red_readlink,
     .read = fuse_red_read,
     .write = fuse_red_write,
     .statfs = fuse_red_statfs,
@@ -126,7 +172,7 @@ static struct fuse_operations red_oper =
     .destroy = fuse_red_destroy,
     .ftruncate = fuse_red_ftruncate,
     .fgetattr = fuse_red_fgetattr,
-    .utimens = fuse_reltr_utimens
+    .utimens = fuse_red_utimens
 };
 
 
@@ -141,14 +187,14 @@ static REDOPTIONS gOptions;
 
 #define OPTION(t, p) { t, offsetof(REDOPTIONS, p), 1 }
 
-static const struct fuse_opt gOptionSpec[] =
+static const struct fuse_opt gaOptionSpec[] =
 {
     OPTION("--vol=%s", pszVolSpec),
     OPTION("--dev=%s", pszBDevSpec),
     OPTION("-D %s", pszBDevSpec),
     OPTION("--format", fFormat),
-    OPTION("-h", showHelp),
-    OPTION("--help", showHelp),
+    OPTION("-h", fShowHelp),
+    OPTION("--help", fShowHelp),
     FUSE_OPT_END
 };
 
@@ -204,12 +250,12 @@ int main(
 
     /*  Parse options
     */
-    if(fuse_opt_parse(&args, &gOptions, gOptionSpec, NULL) == -1)
+    if(fuse_opt_parse(&args, &gOptions, gaOptionSpec, NULL) == -1)
     {
         return 1;
     }
 
-    if(gOptions.showHelp)
+    if(gOptions.fShowHelp)
     {
         fShowHelp = true;
         goto ShowHelp;
@@ -238,7 +284,6 @@ int main(
 
     assert(gOptions.pszVolSpec != NULL);
     gbVolume = RedFindVolumeNumber(gOptions.pszVolSpec);
-
     if(gbVolume >= REDCONF_VOLUME_COUNT)
     {
         fprintf(stderr, "Invalid volume specifier \"%s\"\n", gOptions.pszVolSpec);
@@ -256,7 +301,7 @@ int main(
 
     if(gOptions.fFormat)
     {
-      #if (REDCONF_API_POSIX_FORMAT == 1)
+      #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_FORMAT == 1)
         if(red_format(gpszVolume) != 0)
         {
             fprintf(stderr, "Error %d from red_format().\n"
@@ -306,7 +351,7 @@ static int fuse_red_getattr(
 
     REDFS_LOCK();
 
-    iFd = red_local_open(pszPath, O_RDONLY);
+    iFd = red_local_open(pszPath, O_RDONLY, 0);
     if(iFd < 0)
     {
         result = rederrno_to_errno(red_errno);
@@ -319,7 +364,10 @@ static int fuse_red_getattr(
 
         result = fgetattr_sub(stbuf, &fileInfo);
 
-        (void)red_close(iFd);
+        if((red_close(iFd) != 0) && (result == 0))
+        {
+            result = rederrno_to_errno(red_errno);
+        }
     }
 
     REDFS_UNLOCK();
@@ -328,6 +376,15 @@ static int fuse_red_getattr(
 }
 
 
+/*  Note that this function is rarely called: an explicit access(2) call or a
+    chdir(2) will invoke it, but other path-based operations do not.  As a
+    result, implementing this function does _not_ mean that permissions are
+    enforced by this FUSE driver.  To enforce permissions with FUSE, either:
+    a) permission checks must be done internally for each operation, which we do
+    _not_ do; or b) the file system must be mounted with -o default_permissions.
+    In the latter case, the Linux kernel will enforce the permissions without
+    assistance from the FUSE driver (this function will not be called).
+*/
 static int fuse_red_access(
     const char *pszPath,
     int         mask)
@@ -337,10 +394,49 @@ static int fuse_red_access(
 
     result = fuse_red_getattr(pszPath, &st);
 
-    /*  Reliance Edge doesn't support permissions, so access is always OK as
-        long as we can successfully open the file.
+  #if REDCONF_POSIX_OWNER_PERM == 1
+    if(result == 0)
+    {
+        const struct fuse_context  *pCtx = fuse_get_context();
+        bool                        fUib = pCtx->uid == st.st_uid;
+        bool                        fGib = pCtx->gid == st.st_gid;
+        mode_t                      mode = st.st_mode;
+
+        if(    (    ((mask & X_OK) != 0)
+                 && (fUib
+                      ? ((mode & S_IXUSR) == 0U)
+                      : (fGib
+                          ? ((mode & S_IXGRP) == 0U)
+                          : ((mode & S_IXOTH) == 0U))))
+            || (    ((mask & W_OK) != 0)
+                 && (fUib
+                      ? ((mode & S_IWUSR) == 0U)
+                      : (fGib
+                          ? ((mode & S_IWGRP) == 0U)
+                          : ((mode & S_IWOTH) == 0U))))
+            || (    ((mask & R_OK) != 0)
+                 && (fUib
+                      ? ((mode & S_IRUSR) == 0U)
+                      : (fGib
+                          ? ((mode & S_IRGRP) == 0U)
+                          : ((mode & S_IROTH) == 0U)))))
+        {
+            result = -EACCES;
+        }
+
+        /*  "Oh, I'm sorry, Sir, go ahead, I didn't realize you were root."
+        */
+        if((result == -EACCES) && (pCtx->uid == RED_ROOT_USER))
+        {
+            result = 0;
+        }
+    }
+  #else
+    /*  In this configuration, Reliance Edge doesn't support permissions, so
+        access is always OK as long as we can successfully open the file.
     */
     (void)mask;
+  #endif
 
     return result;
 }
@@ -358,10 +454,7 @@ static int fuse_red_create(
 
     REDFS_LOCK();
 
-    (void)mode;
-
-    iFd = red_local_open(pszPath, pFileInfo->flags | O_CREAT);
-
+    iFd = red_local_open(pszPath, pFileInfo->flags | O_CREAT, mode);
     if(iFd < 0)
     {
         result = rederrno_to_errno(red_errno);
@@ -382,19 +475,27 @@ static int fuse_red_mkdir(
     mode_t      mode)
 {
   #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_MKDIR == 1)
-    int         result = 0;
-    char        acRedPath[PATH_MAX];
+    int         result;
+    char        szRedPath[PATH_MAX];
 
     REDFS_LOCK();
 
-    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
+    result = red_make_full_path(pszPath, szRedPath, sizeof(szRedPath));
+    if(result == 0)
     {
-        fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
-        result = -ENAMETOOLONG;
-    }
-    else if(red_mkdir(acRedPath) != 0)
-    {
-        result = rederrno_to_errno(red_errno);
+        int32_t status;
+
+      #if REDCONF_POSIX_OWNER_PERM == 1
+        status = red_mkdir2(szRedPath, (uint16_t)mode & RED_S_IALLUGO);
+      #else
+        (void)mode;
+        status = red_mkdir(szRedPath);
+      #endif
+
+        if(status != 0)
+        {
+            result = rederrno_to_errno(red_errno);
+        }
     }
 
     REDFS_UNLOCK();
@@ -413,19 +514,18 @@ static int fuse_red_unlink(
     const char *pszPath)
 {
   #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_UNLINK == 1)
-    int         result = 0;
-    char        acRedPath[PATH_MAX];
+    int         result;
+    char        szRedPath[PATH_MAX];
 
     REDFS_LOCK();
 
-    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
+    result = red_make_full_path(pszPath, szRedPath, sizeof(szRedPath));
+    if(result == 0)
     {
-        fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
-        result = -ENAMETOOLONG;
-    }
-    else if(red_unlink(acRedPath) != 0)
-    {
-        result = rederrno_to_errno(red_errno);
+        if(red_unlink(szRedPath) != 0)
+        {
+            result = rederrno_to_errno(red_errno);
+        }
     }
 
     REDFS_UNLOCK();
@@ -443,19 +543,18 @@ static int fuse_red_rmdir(
     const char *pszPath)
 {
   #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_RMDIR == 1)
-    int         result = 0;
-    char        acRedPath[PATH_MAX];
+    int         result;
+    char        szRedPath[PATH_MAX];
 
     REDFS_LOCK();
 
-    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
+    result = red_make_full_path(pszPath, szRedPath, sizeof(szRedPath));
+    if(result == 0)
     {
-        fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
-        result = -ENAMETOOLONG;
-    }
-    else if(red_rmdir(acRedPath) != 0)
-    {
-        result = rederrno_to_errno(red_errno);
+        if(red_rmdir(szRedPath) != 0)
+        {
+            result = rederrno_to_errno(red_errno);
+        }
     }
 
     REDFS_UNLOCK();
@@ -474,25 +573,25 @@ static int fuse_red_rename(
     const char *pszNewPath)
 {
   #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_RENAME == 1)
-    int         result = 0;
-    char        acOldRedPath[PATH_MAX];
-    char        acNewRedPath[PATH_MAX];
+    int         result;
+    char        szOldRedPath[PATH_MAX];
+    char        szNewRedPath[PATH_MAX];
 
     REDFS_LOCK();
 
-    if(snprintf(acOldRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath) >= PATH_MAX)
+    result = red_make_full_path(pszOldPath, szOldRedPath, sizeof(szOldRedPath));
+
+    if(result == 0)
     {
-        fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath);
-        result = -ENAMETOOLONG;
+        result = red_make_full_path(pszNewPath, szNewRedPath, sizeof(szNewRedPath));
     }
-    else if(snprintf(acNewRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath) >= PATH_MAX)
+
+    if(result == 0)
     {
-        fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath);
-        result = -ENAMETOOLONG;
-    }
-    else if(red_rename(acOldRedPath, acNewRedPath) != 0)
-    {
-        result = rederrno_to_errno(red_errno);
+        if(red_rename(szOldRedPath, szNewRedPath) != 0)
+        {
+            result = rederrno_to_errno(red_errno);
+        }
     }
 
     REDFS_UNLOCK();
@@ -512,25 +611,25 @@ static int fuse_red_link(
     const char *pszNewPath)
 {
   #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_LINK == 1)
-    int         result = 0;
-    char        acOldRedPath[PATH_MAX];
-    char        acNewRedPath[PATH_MAX];
+    int         result;
+    char        szOldRedPath[PATH_MAX];
+    char        szNewRedPath[PATH_MAX];
 
     REDFS_LOCK();
 
-    if(snprintf(acOldRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath) >= PATH_MAX)
+    result = red_make_full_path(pszOldPath, szOldRedPath, sizeof(szOldRedPath));
+
+    if(result == 0)
     {
-        fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszOldPath);
-        result = -ENAMETOOLONG;
+        result = red_make_full_path(pszNewPath, szNewRedPath, sizeof(szNewRedPath));
     }
-    else if(snprintf(acNewRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath) >= PATH_MAX)
+
+    if(result == 0)
     {
-        fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszNewPath);
-        result = -ENAMETOOLONG;
-    }
-    else if(red_link(acOldRedPath, acNewRedPath) != 0)
-    {
-        result = rederrno_to_errno(red_errno);
+        if(red_link(szOldRedPath, szNewRedPath) != 0)
+        {
+            result = rederrno_to_errno(red_errno);
+        }
     }
 
     REDFS_UNLOCK();
@@ -549,12 +648,65 @@ static int fuse_red_chmod(
     const char *pszPath,
     mode_t      mode)
 {
+  #if (REDCONF_READ_ONLY == 0) && (REDCONF_POSIX_OWNER_PERM == 1)
+    int         result;
+    char        szRedPath[PATH_MAX];
+
+    REDFS_LOCK();
+
+    result = red_make_full_path(pszPath, szRedPath, sizeof(szRedPath));
+    if(result == 0)
+    {
+        if(red_chmod(szRedPath, (uint16_t)mode & RED_S_IALLUGO) != 0)
+        {
+            result = rederrno_to_errno(red_errno);
+        }
+    }
+
+    REDFS_UNLOCK();
+
+    return result;
+  #else
     /*  We don't support this, but FUSE whines if it's not implemented.
     */
     (void)pszPath;
     (void)mode;
 
     return -ENOSYS;
+  #endif
+}
+
+
+static int fuse_red_chown(
+    const char *pszPath,
+    uid_t       uid,
+    gid_t       gid)
+{
+  #if (REDCONF_READ_ONLY == 0) && (REDCONF_POSIX_OWNER_PERM == 1)
+    int         result;
+    char        szRedPath[PATH_MAX];
+
+    REDFS_LOCK();
+
+    result = red_make_full_path(pszPath, szRedPath, sizeof(szRedPath));
+    if(result == 0)
+    {
+        if(red_chown(szRedPath, (uint32_t)uid, (uint32_t)gid) != 0)
+        {
+            result = rederrno_to_errno(red_errno);
+        }
+    }
+
+    REDFS_UNLOCK();
+
+    return result;
+  #else
+    (void)pszPath;
+    (void)uid;
+    (void)gid;
+
+    return -ENOSYS;
+  #endif
 }
 
 
@@ -573,8 +725,7 @@ static int fuse_red_truncate(
 
     REDFS_LOCK();
 
-    iFd = red_local_open(pszPath, O_WRONLY);
-
+    iFd = red_local_open(pszPath, O_WRONLY, 0);
     if(iFd < 0)
     {
         result = rederrno_to_errno(red_errno);
@@ -586,7 +737,10 @@ static int fuse_red_truncate(
             result = rederrno_to_errno(red_errno);
         }
 
-        (void)red_close(iFd);
+        if((red_close(iFd) != 0) && (result == 0))
+        {
+            result = rederrno_to_errno(red_errno);
+        }
     }
 
     REDFS_UNLOCK();
@@ -610,10 +764,16 @@ static int fuse_red_open(
 
     assert(pFileInfo != NULL);
 
+    /*  FUSE documentation says O_CREAT is never passed to this function.  If
+        O_CREAT is passed to open():
+        - If the file does not exist, FUSE calls ->create()
+        - If the file exists, FUSE masks off O_CREAT and calls ->open()
+    */
+    assert((pFileInfo->flags & O_CREAT) == 0);
+
     REDFS_LOCK();
 
-    iFd = red_local_open(pszPath, pFileInfo->flags);
-
+    iFd = red_local_open(pszPath, pFileInfo->flags, 0);
     if(iFd < 0)
     {
         result = rederrno_to_errno(red_errno);
@@ -626,6 +786,95 @@ static int fuse_red_open(
     REDFS_UNLOCK();
 
     return result;
+}
+
+
+static int fuse_red_symlink(
+    const char *pszPath,
+    const char *pszSymlink)
+{
+  #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_SYMLINK == 1)
+    int         result;
+    char        szRedPath[PATH_MAX];
+
+    REDFS_LOCK();
+
+    result = red_make_full_path(pszSymlink, szRedPath, sizeof(szRedPath));
+
+    if(result == 0)
+    {
+      #if REDCONF_PATH_SEPARATOR != '/'
+        char *pszPathRedfs;
+
+        pszPathRedfs = string_copy_replace(pszPath, '/', REDCONF_PATH_SEPARATOR);
+        pszPath = pszPathRedfs;
+        if(pszPathRedfs == NULL)
+        {
+            result = -ENOMEM;
+        }
+        else
+      #endif
+        {
+            if(red_symlink(pszPath, szRedPath) != 0)
+            {
+                result = rederrno_to_errno(red_errno);
+            }
+
+          #if REDCONF_PATH_SEPARATOR != '/'
+            free(pszPathRedfs);
+          #endif
+        }
+    }
+
+    REDFS_UNLOCK();
+
+    return result;
+  #else
+    (void)pszPath;
+    (void)pszSymlink;
+
+    return -ENOSYS;
+  #endif
+}
+
+
+static int fuse_red_readlink(
+    const char *pszPath,
+    char       *pszBuffer,
+    size_t      nBufferSize)
+{
+  #if REDCONF_API_POSIX_SYMLINK == 1
+    int         result;
+    char        szRedPath[PATH_MAX];
+
+    REDFS_LOCK();
+
+    result = red_make_full_path(pszPath, szRedPath, sizeof(szRedPath));
+
+    if(result == 0)
+    {
+        if(red_readlink(szRedPath, pszBuffer, nBufferSize) != 0)
+        {
+            result = rederrno_to_errno(red_errno);
+        }
+      #if REDCONF_PATH_SEPARATOR != '/'
+        else
+        {
+            string_replace(pszBuffer, nBufferSize, REDCONF_PATH_SEPARATOR, '/');
+        }
+      #endif
+    }
+
+    REDFS_UNLOCK();
+
+    return result;
+  #else
+    (void)pszPath;
+    (void)pszBuffer;
+    (void)nBufferSize;
+
+    return -ENOSYS;
+  #endif
 }
 
 
@@ -650,19 +899,10 @@ static int fuse_red_read(
     REDFS_LOCK();
 
     iFd = (int32_t)pFileInfo->fh;
-
-    if(red_lseek(iFd, offset, RED_SEEK_SET) == -1)
+    result = (int)red_pread(iFd, pcBuf, size, (uint64_t)offset);
+    if(result < 0)
     {
         result = rederrno_to_errno(red_errno);
-    }
-    else
-    {
-        result = (int)red_read(iFd, pcBuf, size);
-
-        if(result < 0)
-        {
-            result = rederrno_to_errno(red_errno);
-        }
     }
 
     REDFS_UNLOCK();
@@ -693,19 +933,10 @@ static int fuse_red_write(
     REDFS_LOCK();
 
     iFd = (int32_t)pFileInfo->fh;
-
-    if(red_lseek(iFd, offset, RED_SEEK_SET) == -1)
+    result = (int)red_pwrite(iFd, pcBuf, size, (uint32_t)offset);
+    if(result < 0)
     {
         result = rederrno_to_errno(red_errno);
-    }
-    else
-    {
-        result = (int)red_write(iFd, pcBuf, size);
-
-        if(result < 0)
-        {
-            result = rederrno_to_errno(red_errno);
-        }
     }
 
     REDFS_UNLOCK();
@@ -825,23 +1056,19 @@ static int fuse_red_readdir(
 {
   #if REDCONF_API_POSIX_READDIR == 1
     REDDIR                 *pDir;
-    REDDIRENT              *pDirent;
-    int                     result = 0;
-    char                    acRedPath[PATH_MAX];
+    int                     result;
+    char                    szRedPath[PATH_MAX];
 
     (void)offset;
     (void)pFileInfo;
 
     REDFS_LOCK();
 
-    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
+    result = red_make_full_path(pszPath, szRedPath, sizeof(szRedPath));
+
+    if(result == 0)
     {
-        fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
-        result = -ENAMETOOLONG;
-    }
-    else
-    {
-        pDir = red_opendir(acRedPath);
+        pDir = red_opendir(szRedPath);
         if(pDir == NULL)
         {
             result = rederrno_to_errno(red_errno);
@@ -850,13 +1077,24 @@ static int fuse_red_readdir(
 
     if(result == 0)
     {
-        while((pDirent = red_readdir(pDir)) != NULL)
+        while(true)
         {
+            REDDIRENT  *pDirent;
             struct stat st;
 
-            memset(&st, 0, sizeof(st));
-            st.st_ino = pDirent->d_ino;
-            st.st_mode = redmode_to_mode(pDirent->d_stat.st_mode);
+            red_errno = 0;
+            pDirent = red_readdir(pDir);
+            if(pDirent == NULL)
+            {
+                if(red_errno != 0)
+                {
+                    result = rederrno_to_errno(red_errno);
+                }
+
+                break;
+            }
+
+            redstat_to_stat(&pDirent->d_stat, &st);
 
             /*  Supplying 0 as the "offset" of all dirents lets filler() know
                 that it should read all directory entries at once.
@@ -867,7 +1105,10 @@ static int fuse_red_readdir(
             }
         }
 
-        (void)red_closedir(pDir);
+        if((red_closedir(pDir) != 0) && (result == 0))
+        {
+            result = rederrno_to_errno(red_errno);
+        }
     }
 
     REDFS_UNLOCK();
@@ -903,7 +1144,7 @@ static int fuse_red_fsyncdir(
         internally.  This may need to change if the behavior of red_fsync
         changes in the future.
     */
-    if(gaRedVolume[gbVolume].ulTransMask & RED_TRANSACT_FSYNC)
+    if((gaRedVolume[gbVolume].ulTransMask & RED_TRANSACT_FSYNC) != 0U)
     {
         if(red_transact(gpszVolume) != 0)
         {
@@ -958,7 +1199,7 @@ static void fuse_red_destroy(
     if(red_umount(gpszVolume) != 0)
     {
         REDFS_UNLOCK();
-        fprintf(stderr, "red_umount() failed, errno %d\n", red_errno);
+        fprintf(stderr, "Unexpected error %d from red_umount()\n", (int)red_errno);
         exit(rederrno_to_errno(red_errno));
     }
 
@@ -1031,86 +1272,171 @@ static int fgetattr_sub(
 
     assert(pFileInfo != NULL);
 
-    memset(stbuf, 0, sizeof(*stbuf));
-
     if(red_fstat((int32_t)pFileInfo->fh, &redstbuf) != 0)
     {
         result = rederrno_to_errno(red_errno);
     }
     else
     {
-        /*  Translate the REDSTAT to Unix stat
-        */
-        stbuf->st_dev = redstbuf.st_dev;
-        stbuf->st_ino = redstbuf.st_ino;
-        stbuf->st_mode = redmode_to_mode(redstbuf.st_mode);
-        stbuf->st_nlink = redstbuf.st_nlink;
-        stbuf->st_size = redstbuf.st_size;
-      #if REDCONF_INODE_TIMESTAMPS == 1
-      #ifdef POSIX_2008_STAT
-        stbuf->st_atim.tv_sec = redstbuf.st_atime;
-        stbuf->st_ctim.tv_sec = redstbuf.st_ctime;
-        stbuf->st_mtim.tv_sec = redstbuf.st_mtime;
-      #else
-        stbuf->st_atime = redstbuf.st_atime;
-        stbuf->st_ctime = redstbuf.st_ctime;
-        stbuf->st_mtime = redstbuf.st_mtime;
-      #endif
-      #endif
-      #if REDCONF_INODE_BLOCKS == 1
-        stbuf->st_blocks = redstbuf.st_blocks;
-      #endif
+        redstat_to_stat(&redstbuf, stbuf);
     }
 
     return result;
 }
 
 
-static int fuse_reltr_utimens(
+static int fuse_red_utimens(
     const char             *pszPath,
     const struct timespec   tv[2])
 {
+  #if (REDCONF_READ_ONLY == 0) && (REDCONF_INODE_TIMESTAMPS == 1)
+    int                     result;
+    char                    szRedPath[PATH_MAX];
+
+    REDFS_LOCK();
+
+    result = red_make_full_path(pszPath, szRedPath, sizeof(szRedPath));
+    if(result == 0)
+    {
+        uint32_t    aulTimes[2U];
+        uint32_t   *pulTimes;
+
+        if(tv == NULL)
+        {
+            /*  For both utimens and red_utimes(), a NULL time pointer means to
+                use the current time.
+            */
+            pulTimes = NULL;
+        }
+        else if((sizeof(tv[0U].tv_sec) > 4U) && ((tv[0U].tv_sec > (long)UINT32_MAX) || (tv[1U].tv_sec > (long)UINT32_MAX)))
+        {
+            /*  tv_sec is larger than the maximum value that Reliance Edge can
+                store.
+            */
+            result = -ERANGE;
+        }
+        else
+        {
+            /*  Reliance Edge timestamps have a one-second resolution.  Truncate
+                the provided timestamps.  Do _not_ round to the nearest second,
+                since that could result in timestamps in the future.  Better to
+                round down.
+            */
+            aulTimes[0U] = (uint32_t)tv[0U].tv_sec;
+            aulTimes[1U] = (uint32_t)tv[1U].tv_sec;
+            pulTimes = aulTimes;
+        }
+
+        if(result == 0)
+        {
+            if(red_utimes(szRedPath, pulTimes) != 0)
+            {
+                result = rederrno_to_errno(red_errno);
+            }
+        }
+    }
+
+    REDFS_UNLOCK();
+
+    return result;
+  #else
     /*  We don't support this, but FUSE whines if it's not implemented.
     */
     (void)pszPath;
     (void)tv;
     return -ENOSYS;
+  #endif
 }
 
 
+/** @brief Translate a ::REDSTAT structure into a POSIX stat structure.
+
+    @param pRedSB   The ::REDSTAT structure to translate.
+    @param pbSB     The POSIX stat structure to populate.  Members of this
+                    structure which don't exist in ::REDSTAT will be zeroed.
+*/
+static void redstat_to_stat(
+    const REDSTAT  *pRedSB,
+    struct stat    *pSB)
+{
+    memset(pSB, 0, sizeof(*pSB));
+    pSB->st_dev = pRedSB->st_dev;
+    pSB->st_ino = pRedSB->st_ino;
+    pSB->st_mode = redmode_to_mode(pRedSB->st_mode);
+    pSB->st_nlink = pRedSB->st_nlink;
+  #if REDCONF_POSIX_OWNER_PERM == 1
+    pSB->st_uid = (uid_t)pRedSB->st_uid;
+    pSB->st_gid = (gid_t)pRedSB->st_gid;
+  #endif
+    pSB->st_size = pRedSB->st_size;
+  #if REDCONF_INODE_TIMESTAMPS == 1
+  #ifdef POSIX_2008_STAT
+    pSB->st_atim.tv_sec = pRedSB->st_atime;
+    pSB->st_ctim.tv_sec = pRedSB->st_ctime;
+    pSB->st_mtim.tv_sec = pRedSB->st_mtime;
+  #else
+    pSB->st_atime = pRedSB->st_atime;
+    pSB->st_ctime = pRedSB->st_ctime;
+    pSB->st_mtime = pRedSB->st_mtime;
+  #endif
+  #endif
+  #if REDCONF_INODE_BLOCKS == 1
+    pSB->st_blocks = pRedSB->st_blocks;
+  #endif
+}
+
+
+/** @brief Return the POSIX mode that should be used for a Reliance Edge mode.
+
+    @param uRedMode The Reliance Edge mode.
+
+    @return The POSIX mode that should be used for @p uRedMode.
+*/
 static mode_t redmode_to_mode(
     uint16_t    uRedMode)
 {
     mode_t      linuxMode;
 
-    /*  The Reliance Edge mode bits only store whether the file is a regular
-        file or directory; Reliance Edge does not use permissions.  So we
-        add hard-coded permissions here.
+    /*  No need for translation: Reliance Edge mode bits have the same values as
+        the Linux mode bits.
     */
+    linuxMode = (mode_t)uRedMode;
 
-    if(RED_S_ISDIR(uRedMode))
+    /*  One of the type bits should always be set.
+    */
+    assert(S_ISDIR(linuxMode) || S_ISREG(linuxMode) || S_ISLNK(linuxMode));
+
+  #if REDCONF_POSIX_OWNER_PERM == 0
+    /*  In this configuration, the Reliance Edge mode bits only store whether
+        the file is a regular file or directory; the permission bits are unused.
+        So we add hard-coded permissions here.
+    */
+    assert((uRedMode & RED_IS_IALLUGO) == 0U);
+
+    if(S_ISDIR(linuxMode))
     {
-        linuxMode = S_IFDIR;
         linuxMode |= S_IXUSR | S_IXGRP | S_IXOTH;
-    }
-    else
-    {
-        linuxMode = S_IFREG;
     }
 
     /*  Always allow read access; allow write access if the file system is not
         readonly.
     */
     linuxMode |= S_IRUSR | S_IRGRP | S_IROTH;
-
   #if REDCONF_READ_ONLY == 0
     linuxMode |= S_IWUSR | S_IWGRP | S_IWOTH;
   #endif
+  #endif /* REDCONF_POSIX_OWNER_PERM == 0 */
 
     return linuxMode;
 }
 
 
+/** @brief Translate a Reliance Edge errno into a POSIX errno.
+
+    @param rederrno The Reliance Edge errno to translate.
+
+    @return The POSIX errno equivalent of @p rederrno.
+*/
 static int rederrno_to_errno(
     int32_t rederrno)
 {
@@ -1138,43 +1464,58 @@ static int rederrno_to_errno(
         case RED_ENAMETOOLONG: return -ENAMETOOLONG;
         case RED_ENOSYS:    return -ENOSYS;
         case RED_ENOTEMPTY: return -ENOTEMPTY;
+        case RED_ELOOP:     return -ELOOP;
         case RED_ENODATA:   return -ENODATA;
+        case RED_ENOLINK:   return -ENOLINK;
         case RED_EUSERS:    return -EUSERS;
         default:            return -EINVAL;    /* Not expected, but default to EINVAL */
     }
 }
 
 
+/** @brief Translate POSIX open flags to Reliance Edge open flags.
+
+    POSIX open flags in @p flags which are not supported by Reliance Edge are
+    ignored.
+
+    @param flags    The POSIX open flags to translate.
+
+    @return The Reliance Edge open flags equivalent to @p flags.
+*/
 static uint32_t flags_to_redflags(
     int         flags)
 {
-    uint32_t    ulRedFlags = RED_O_RDONLY;
+    uint32_t    ulRedFlags;
 
-    if(flags & O_WRONLY)
+    if((flags & O_WRONLY) != 0)
     {
         ulRedFlags = RED_O_WRONLY;
     }
-    else if(flags & O_RDWR)
+    else if((flags & O_RDWR) != 0)
     {
         ulRedFlags = RED_O_RDWR;
     }
+    else
+    {
+        ulRedFlags = RED_O_RDONLY;
+    }
 
-    if(flags & O_CREAT)
+    if((flags & O_CREAT) != 0)
     {
         ulRedFlags |= RED_O_CREAT;
     }
 
-    if(flags & O_TRUNC)
+    if((flags & O_TRUNC) != 0)
     {
         ulRedFlags |= RED_O_TRUNC;
     }
 
-    if(flags & O_EXCL)
+    if((flags & O_EXCL) != 0)
     {
         ulRedFlags |= RED_O_EXCL;
     }
 
-    if(flags & O_APPEND)
+    if((flags & O_APPEND) != 0)
     {
         ulRedFlags |= RED_O_APPEND;
     }
@@ -1183,30 +1524,186 @@ static uint32_t flags_to_redflags(
 }
 
 
+/** @brief Wrapper for red_open() or red_open2().
+
+    @param pszPath  The path (provided by FUSE) to open.
+    @param flags    The POSIX open flags.
+    @param mode     The POSIX open mode (used if @p flags includes `O_CREAT` and
+                    the file does not already exist).
+
+    @return On success, zero is returned.  On error, -1 is returned and
+            #red_errno is set appropriately.
+*/
 static int32_t red_local_open(
     const char *pszPath,
-    int         flags)
+    int         flags,
+    mode_t      mode)
 {
-    char        acRedPath[PATH_MAX];
+    char        szRedPath[PATH_MAX];
     int32_t     result;
 
-    if(snprintf(acRedPath, PATH_MAX, "%s%c%s", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath) >= PATH_MAX)
+    result = red_make_full_path(pszPath, szRedPath, sizeof(szRedPath));
+    if(result != 0)
     {
-        fprintf(stderr, "Error: path too long (%s%c%s)\n", gpszVolume, REDCONF_PATH_SEPARATOR, pszPath);
-
-        /*  The desired error is -ENAMETOOLONG, so we set red_errno
-            appropriately.
+        /*  This function mimics the POSIX-like API: returns 0 or -1 and sets
+            red_errno on error.  ENAMETOOLONG and ENOMEM are the only error
+            cases for red_make_full_path().
         */
-        red_errno = RED_ENAMETOOLONG;
+        switch(result)
+        {
+            case -ENAMETOOLONG: red_errno = RED_ENAMETOOLONG; break;
+            case -ENOMEM:       red_errno = RED_ENOMEM; break;
+            default:            red_errno = RED_EINVAL; break;
+        }
+
         result = -1;
     }
     else
     {
-        result = red_open(acRedPath, flags_to_redflags(flags));
+        /*  Open with RED_O_NOFOLLOW to provoke a RED_ELOOP error if the path
+            names a symbolic link.
+        */
+        uint32_t ulOpenFlags = flags_to_redflags(flags) | RED_O_NOFOLLOW;
+
+      #if REDCONF_POSIX_OWNER_PERM == 1
+        result = red_open2(szRedPath, ulOpenFlags, (uint16_t)mode & RED_S_IALLUGO);
+      #else
+        (void)mode;
+        result = red_open(szRedPath, ulOpenFlags);
+      #endif
+
+      #if REDCONF_API_POSIX_SYMLINK == 1
+        /*  If the path names a symbolic link, this function needs to open a
+            file descriptor for the symbolic link itself, not for what it points
+            at.  This is required so that ->getattr() reports to FUSE that the
+            path is a symbolic link.  Thus, if the RED_O_NOFOLLOW flag caused
+            red_open()/red_open2() to fail with RED_ELOOP, then we need to use
+            RED_O_SYMLINK to open the symlink itself.
+
+            This might fail with RED_ELOOP again, if the error was caused by a
+            symbolic link loop rather than RED_O_NOFOLLOW, but that's fine.
+        */
+        if((result == -1) && (red_errno == RED_ELOOP))
+        {
+            ulOpenFlags &= ~RED_O_NOFOLLOW;
+            ulOpenFlags |= RED_O_SYMLINK;
+            result = red_openat(RED_AT_FDNONE, szRedPath, ulOpenFlags, (uint16_t)mode & RED_S_IALLUGO);
+        }
+      #endif
     }
 
     return result;
 }
+
+
+/** @brief Make a full path by adding the Reliance Edge volume name.
+
+    If #REDCONF_PATH_SEPARATOR is not '/', then '/' characters in @p pszPath are
+    replaced with #REDCONF_PATH_SEPARATOR.
+
+    @param pszPath      The path provided by FUSE.
+    @param pszBuffer    The output buffer for the full path.
+    @param nBufferSize  The size of @p pszBuffer in bytes.
+
+    @return Returns 0 on success or a negative errno value on error.
+
+    @retval -ENAMETOOLONG   @p pszBuffer is too small.
+    @retval -ENOMEM         Memory allocation failure.
+*/
+static int red_make_full_path(
+    const char *pszPath,
+    char       *pszBuffer,
+    size_t      nBufferSize)
+{
+    int         result = 0;
+    const char  szPathSep[] = { REDCONF_PATH_SEPARATOR, '\0' };
+    const char *pszPathSep = szPathSep;
+  #if REDCONF_PATH_SEPARATOR != '/'
+    char       *pszPathRedfs = string_copy_replace(pszPath, '/', REDCONF_PATH_SEPARATOR);
+
+    if(pszPathRedfs == NULL)
+    {
+        return -ENOMEM;
+    }
+
+    pszPath = pszPathRedfs;
+  #endif
+
+    /*  Don't add a redundant path separator, for aesthetic reasons.
+    */
+    if(*pszPath == REDCONF_PATH_SEPARATOR)
+    {
+        pszPathSep = "";
+    }
+
+    if(snprintf(pszBuffer, nBufferSize, "%s%s%s", gpszVolume, pszPathSep, pszPath) >= nBufferSize)
+    {
+        fprintf(stderr, "Error: path too long (%s%s%s)\n", gpszVolume, pszPathSep, pszPath);
+        result = -ENAMETOOLONG;
+    }
+
+  #if REDCONF_PATH_SEPARATOR != '/'
+    free(pszPathRedfs);
+  #endif
+
+    return result;
+}
+
+
+#if REDCONF_PATH_SEPARATOR != '/'
+/** @brief Copy a string and replace all occurrences of a character.
+
+    @param pszStr   The string to copy.
+    @param cFind    The character to be replaced by @p cReplace.
+    @param cReplace The replacement character for @p cFind.
+
+    @return Returns an allocated copy of @p pszStr, with all @p cFind characters
+            replaced by @p cReplace characters.  If memory allocation fails,
+            returns `NULL`.
+*/
+static char *string_copy_replace(
+    const char *pszStr,
+    char        cFind,
+    char        cReplace)
+{
+    char       *pszStrNew = strdup(pszStr);
+
+    if(pszStrNew != NULL)
+    {
+        string_replace(pszStrNew, SIZE_MAX, cFind, cReplace);
+    }
+
+    return pszStrNew;
+}
+
+
+/** @brief Replace all occurrences of a character with another in a string.
+
+    @param pszStr   The string in which @p cFind is to be replaced.
+    @param nMax     Maximum number of bytes from @p pszStr to process.  For
+                    strings which are not guaranteed to be NUL-terminated.
+    @param cFind    The character to be replaced by @p cReplace.
+    @param cReplace The replacement character for @p cFind.
+*/
+static void string_replace(
+    char   *pszStr,
+    size_t  nMax,
+    char    cFind,
+    char    cReplace)
+{
+    size_t  nIdx = 0U;
+
+    while((nIdx < nMax) && (pszStr[nIdx] != '\0'))
+    {
+        if(pszStr[nIdx] == cFind)
+        {
+            pszStr[nIdx] = cReplace;
+        }
+
+        nIdx++;
+    }
+}
+#endif /* REDCONF_PATH_SEPARATOR != '/' */
 
 #else /* REDCONF_API_POSIX */
 
@@ -1217,4 +1714,3 @@ int main(void)
 }
 
 #endif /* REDCONF_API_POSIX */
-

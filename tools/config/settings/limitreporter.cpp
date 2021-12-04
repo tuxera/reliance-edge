@@ -37,6 +37,8 @@ LimitReporter::LimitReporter(QLabel *fsizeMaxLabel, QLabel *vsizeMaxLabel)
     allSettings.cbsInodeBlockCount->notifyList.append(this);
     allSettings.cbsInodeTimestamps->notifyList.append(this);
     allSettings.rbtnsUsePosix->notifyList.append(this);
+    allSettings.cbsDeleteOpen->notifyList.append(this);
+    allSettings.cbsPosixOwnerPerm->notifyList.append(this);
     allSettings.cmisBlockSize->notifyList.append(this);
     allSettings.sbsDirectPtrs->notifyList.append(this);
     allSettings.sbsIndirectPtrs->notifyList.append(this);

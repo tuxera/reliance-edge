@@ -69,9 +69,6 @@
 #define false (0)
 #endif
 
-#define SECTOR_SIZE_AUTO    (0U)
-#define SECTOR_COUNT_AUTO   (0U)
-
 #define SECTOR_SIZE_MIN (128U)
 
 #if   REDCONF_BLOCK_SIZE == 128U
@@ -97,6 +94,10 @@
 #else
 #error "REDCONF_BLOCK_SIZE must be a power of two value between 128 and 65536"
 #endif
+
+/** @brief Assert a condition at compile time.
+*/
+#define REDSTATICASSERT(EXP) ((void)sizeof(char[1 - (2 * !(EXP))]))
 
 /** @brief Cast a const-qualified pointer to a pointer which is *not*
            const-qualified.

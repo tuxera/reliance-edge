@@ -655,7 +655,11 @@ static REDSTATUS MDIterInodes(
 
         fEndSwap = (pInode->hdr.ulSignature == SWAP32(META_SIG_INODE));
 
+      #if REDCONF_API_POSIX == 1
         fIsDirectory = RED_S_ISDIR(fEndSwap ? SWAP16(pInode->uMode) : pInode->uMode);
+      #else
+        fIsDirectory = false;
+      #endif
         (void)fIsDirectory; /* Unused in some configurations. */
 
         for(i = 0U; i < INODE_ENTRIES; i++)

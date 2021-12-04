@@ -29,18 +29,28 @@
 #define REDAPIMACS_H
 
 
+#include "redtransact.h"
+
+
 /** Mount the volume as read-only. */
-#define RED_MOUNT_READONLY  0x00000001U
+#define RED_MOUNT_READONLY      0x00000001U
 
 /** Mount the volume with automatic discards enabled. */
-#define RED_MOUNT_DISCARD   0x00000002U
+#define RED_MOUNT_DISCARD       0x00000002U
 
-#if (REDCONF_READ_ONLY == 0) && (RED_KIT != RED_KIT_GPL)
+/** Do not finish deletion of any unlinked inodes before returning from mount. */
+#define RED_MOUNT_SKIP_DELETE   0x00000004U
+
 /** Mask of all supported mount flags. */
-#define RED_MOUNT_MASK      (RED_MOUNT_READONLY | RED_MOUNT_DISCARD)
+#if REDCONF_API_POSIX == 1
+  #define RED_MOUNT_MASK                                                                    \
+  (                                                                                         \
+      RED_MOUNT_READONLY                                                                |   \
+      (((REDCONF_READ_ONLY == 0) && (RED_KIT != RED_KIT_GPL)) ? RED_MOUNT_DISCARD : 0U) |   \
+      ((DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1))   ? RED_MOUNT_SKIP_DELETE : 0U)     \
+  )
 #else
-/** Mask of all supported mount flags. */
-#define RED_MOUNT_MASK      RED_MOUNT_READONLY
+  #define RED_MOUNT_MASK (((REDCONF_READ_ONLY == 0) && (RED_KIT != RED_KIT_GPL)) ? RED_MOUNT_DISCARD : 0U)
 #endif
 
 /** @brief Default mount flags.
@@ -63,49 +73,10 @@
 #define RED_UMOUNT_DEFAULT  0U
 
 
-/** Clear all events: manual transactions only. */
-#define RED_TRANSACT_MANUAL     0x00000000U
-
-/** Transact prior to unmounting in red_umount(), red_umount2(), or RedFseUnmount(). */
-#define RED_TRANSACT_UMOUNT     0x00000001U
-
-/** Transact after a successful red_open() which created a file. */
-#define RED_TRANSACT_CREAT      0x00000002U
-
-/** Transact after a successful red_unlink() or red_rmdir(). */
-#define RED_TRANSACT_UNLINK     0x00000004U
-
-/** Transact after a successful red_mkdir(). */
-#define RED_TRANSACT_MKDIR      0x00000008U
-
-/** Transact after a successful red_rename(). */
-#define RED_TRANSACT_RENAME     0x00000010U
-
-/** Transact after a successful red_link(). */
-#define RED_TRANSACT_LINK       0x00000020U
-
-/** Transact after a successful red_close(). */
-#define RED_TRANSACT_CLOSE      0x00000040U
-
-/** Transact after a successful red_write() or RedFseWrite(). */
-#define RED_TRANSACT_WRITE      0x00000080U
-
-/** Transact after a successful red_fsync(). */
-#define RED_TRANSACT_FSYNC      0x00000100U
-
-/** Transact after a successful red_ftruncate(), RedFseTruncate(), or red_open() with RED_O_TRUNC that actually truncates. */
-#define RED_TRANSACT_TRUNCATE   0x00000200U
-
-/** Transact to free space in disk full situations. */
-#define RED_TRANSACT_VOLFULL    0x00000400U
-
-/** Transact after a successful os sync. */
-#define RED_TRANSACT_SYNC       0x00000800U
-
 #if REDCONF_READ_ONLY == 1
 
 /** @brief Mask of all supported automatic transaction events. */
-#define RED_TRANSACT_MASK       0U
+#define RED_TRANSACT_MASK 0U
 
 #elif REDCONF_API_POSIX == 1
 
@@ -143,6 +114,29 @@
 
 #if (REDCONF_TRANSACT_DEFAULT & RED_TRANSACT_MASK) != REDCONF_TRANSACT_DEFAULT
 #error "Configuration error: invalid value of REDCONF_TRANSACT_DEFAULT"
+#endif
+
+#if (REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1)
+/** @brief UID value indicating that the user ID should not be changed. */
+#define RED_UID_KEEPSAME    0xFFFFFFFFU
+
+/** @brief GID value indicating that the group ID should not be changed. */
+#define RED_GID_KEEPSAME    0xFFFFFFFFU
+
+/** @brief Superuser ID. */
+#define RED_ROOT_USER       0U
+
+/** Test for execute or search permission. */
+#define RED_X_OK    0x01U
+
+/** Test for write permission. */
+#define RED_W_OK    0x02U
+
+/** Test for read permission. */
+#define RED_R_OK    0x04U
+
+/** Supported `RED_*_OK` flags. */
+#define RED_MASK_OK (RED_X_OK | RED_W_OK | RED_R_OK)
 #endif
 
 

@@ -144,6 +144,51 @@
 #endif /* BDEV_EXAMPLE_IMPLEMENTATION == ... */
 
 
+/** @brief Configure a block device.
+
+    In some operating environments, block devices need to be configured with
+    run-time context information that is only available at higher layers.
+    For example, a block device might need to be associated with a block
+    device handle or a device string.  This API allows that OS-specific
+    context information to be passed down from the higher layer (e.g., a
+    VFS implementation) to the block device OS service, which can save it
+    for later use.
+
+    Not all OS ports will call RedOsBDevConfig().  If called, it will be called
+    while the block device is closed, prior to calling RedOsBDevOpen().
+
+    @param bVolNum  The volume number of the volume to configure.
+    @param context  OS-specific block device context information.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL @p bVolNum is not a valid volume number.
+*/
+REDSTATUS RedOsBDevConfig(
+    uint8_t     bVolNum,
+    REDBDEVCTX  context)
+{
+    REDSTATUS   ret;
+
+    /*  None of the FreeRTOS example block device implementations need a block
+        device context.
+    */
+    (void)context;
+
+    if(bVolNum >= REDCONF_VOLUME_COUNT)
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        ret = 0;
+    }
+
+    return ret;
+}
+
+
 /** @brief Initialize a block device.
 
     This function is called when the file system needs access to a block

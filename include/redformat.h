@@ -41,11 +41,15 @@
 */
 typedef struct
 {
-    /** Which on-disk layout version to create.  Supported values:
+    /** Which on-disk layout version to create.  The defined version values are:
         - #RED_DISK_LAYOUT_ORIGINAL: layout for Reliance Edge v0.9 through v2.5.x
         - #RED_DISK_LAYOUT_DIRCRC: updated v2.6 layout with directory data CRCs.
+        - #RED_DISK_LAYOUT_POSIXIER: updated v2.7 layout with support for
+          additional POSIX features.
         - #RED_DISK_LAYOUT_VERSION: alias for the default on-disk layout.
         - `0`: alternate alias for the default on-disk layout.
+        In certain compile-time configurations, only a subset of the defined
+        versions are supported.
     */
     uint32_t ulVersion;
 } REDFMTOPT;

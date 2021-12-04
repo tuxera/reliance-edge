@@ -73,8 +73,13 @@ static REDSTATUS RedInodeBitGet(uint8_t bMR, uint32_t ulInode, uint8_t bWhich, b
     @retval -RED_EIO        A disk I/O error occurred.
     @retval -RED_EBADF      The inode number is free; or the inode number is not
                             valid.
-    @retval -RED_EISDIR     @p type is ::FTYPE_FILE and the inode is a directory.
-    @retval -RED_ENOTDIR    @p type is ::FTYPE_DIR and the inode is a file.
+    @retval -RED_EISDIR     @p type does not include #FTYPE_DIR and the inode is
+                            a directory.
+    @retval -RED_ENOLINK    #REDCONF_API_POSIX_SYMLINK is true and @p type does
+                            not include #FTYPE_SYMLINK and the inode is a
+                            symbolic link.
+    @retval -RED_ENOTDIR    @p type is #FTYPE_DIR and the inode is not a
+                            directory.
 */
 REDSTATUS RedInodeMount(
     CINODE     *pInode,
@@ -127,38 +132,14 @@ REDSTATUS RedInodeMount(
         }
       #endif
 
+      #if REDCONF_API_POSIX == 1
         if(ret == 0)
         {
-            if(RED_S_ISREG(pInode->pInodeBuf->uMode))
-            {
-              #if REDCONF_API_POSIX == 1
-                pInode->fDirectory = false;
+            pInode->fDirectory = RED_S_ISDIR(pInode->pInodeBuf->uMode);
 
-                if(type == FTYPE_DIR)
-                {
-                    ret = -RED_ENOTDIR;
-                }
-              #endif
-            }
-          #if REDCONF_API_POSIX == 1
-            else if(RED_S_ISDIR(pInode->pInodeBuf->uMode))
-            {
-                pInode->fDirectory = true;
-
-                if(type == FTYPE_FILE)
-                {
-                    ret = -RED_EISDIR;
-                }
-            }
-          #endif
-            else
-            {
-                /*  Missing or unsupported inode type.
-                */
-                CRITICAL_ERROR();
-                ret = -RED_EFUBAR;
-            }
+            ret = RedModeTypeCheck(pInode->pInodeBuf->uMode, type);
         }
+      #endif
 
       #if REDCONF_READ_ONLY == 0
         if((ret == 0) && fBranch)
@@ -200,18 +181,25 @@ REDSTATUS RedInodeMount(
 */
 REDSTATUS RedInodeCreate(
     CINODE     *pInode,
-    uint32_t    ulPInode,
+    CINODE     *pPInode,
     uint16_t    uMode)
 {
     REDSTATUS   ret;
 
   #if REDCONF_API_POSIX == 1
-    /*  ulPInode must be a valid inode number, unless we are creating the root
-        directory, in which case ulPInode must be INODE_INVALID (the root
-        directory has no parent).
+    /*  pPInode must be a valid, mounted cached inode, unless we are creating
+        the root directory (during format), in which case there should be no
+        parent inode.
     */
     if(    (pInode == NULL)
-        || (!INODE_IS_VALID(ulPInode) && ((ulPInode != INODE_INVALID) || (pInode->ulInode != INODE_ROOTDIR))))
+        || (!CINODE_IS_MOUNTED(pPInode) && ((pPInode != NULL) || (pInode->ulInode != INODE_ROOTDIR)))
+        || ((uMode & ~RED_S_IFVALID) != 0U)
+        || (    ((uMode & RED_S_IFMT) != RED_S_IFREG)
+             && ((uMode & RED_S_IFMT) != RED_S_IFDIR)
+           #if REDCONF_API_POSIX_SYMLINK == 1
+             && ((uMode & RED_S_IFMT) != RED_S_IFLNK)
+           #endif
+           ))
   #else
     if(pInode == NULL)
   #endif
@@ -232,6 +220,17 @@ REDSTATUS RedInodeCreate(
                 an unused inode number, error if there isn't one.
             */
             ret = InodeFindFree(&pInode->ulInode);
+          #if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
+            if((ret == -RED_ENFILE) && (gpRedMR->ulDefunctOrphanHead != INODE_INVALID))
+            {
+                pInode->ulInode = gpRedMR->ulDefunctOrphanHead;
+
+                /*  There are no free inodes, but there are defunct orphans
+                    which can be freed.
+                */
+                ret = RedVolFreeOrphans(1U);
+            }
+          #endif
         }
         else
       #endif
@@ -297,17 +296,46 @@ REDSTATUS RedInodeCreate(
             pInode->pInodeBuf->ulCTime = ulNow;
           #endif
 
-            pInode->pInodeBuf->uMode = uMode;
-
           #if REDCONF_API_POSIX == 1
           #if REDCONF_API_POSIX_LINK == 1
             pInode->pInodeBuf->uNLink = 1U;
           #endif
-            pInode->pInodeBuf->ulPInode = ulPInode;
+            if(pPInode != NULL)
+            {
+                pInode->pInodeBuf->ulPInode = pPInode->ulInode;
+            }
+            else
+            {
+                pInode->pInodeBuf->ulPInode = INODE_INVALID;
+            }
 
             pInode->fDirectory = RED_S_ISDIR(uMode);
           #else
-            (void)ulPInode;
+            (void)pPInode;
+          #endif
+
+            pInode->pInodeBuf->uMode = uMode;
+
+          #if (REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1)
+            pInode->pInodeBuf->ulUID = RedOsUserId();
+
+            if((pPInode == NULL) || ((pPInode->pInodeBuf->uMode & RED_S_ISGID) == 0U))
+            {
+                pInode->pInodeBuf->ulGID = RedOsGroupId();
+            }
+            else
+            {
+                /*  The setgid bit on a directory causes children to inherit the
+                    directory's GID, and causes child directories to inherit the
+                    setgid bit.
+                */
+                pInode->pInodeBuf->ulGID = pPInode->pInodeBuf->ulGID;
+
+                if(pInode->fDirectory)
+                {
+                    pInode->pInodeBuf->uMode |= RED_S_ISGID;
+                }
+            }
           #endif
 
             pInode->fBranched = true;
@@ -329,6 +357,9 @@ REDSTATUS RedInodeCreate(
            falls to zero.
 
     @param pInode   A pointer to the cached inode structure.
+    @param fOrphan  If the inode link count falls to zero, whether the inode
+                    should continue to exist as an orphan until
+                    RedCoreFreeOrphan() is called.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
@@ -337,7 +368,8 @@ REDSTATUS RedInodeCreate(
     @retval -RED_EIO    A disk I/O error occurred.
 */
 REDSTATUS RedInodeLinkDec(
-    CINODE     *pInode)
+    CINODE     *pInode,
+    bool        fOrphan)
 {
     REDSTATUS   ret;
 
@@ -356,6 +388,32 @@ REDSTATUS RedInodeLinkDec(
         }
     }
   #endif
+  #if REDCONF_DELETE_OPEN == 1
+    else if(fOrphan)
+    {
+        ret = RedInodeBranch(pInode);
+
+        if(ret == 0)
+        {
+          #if REDCONF_API_POSIX_LINK == 1
+            pInode->pInodeBuf->uNLink = 0U;
+          #endif
+
+            pInode->pInodeBuf->ulPInode = INODE_INVALID;
+
+            REDASSERT(    (gpRedMR->ulOrphanHead == INODE_INVALID)
+                       == (gpRedMR->ulOrphanTail == INODE_INVALID));
+
+            if(gpRedMR->ulOrphanTail == INODE_INVALID)
+            {
+                gpRedMR->ulOrphanTail = pInode->ulInode;
+            }
+
+            pInode->pInodeBuf->ulNextOrphan = gpRedMR->ulOrphanHead;
+            gpRedMR->ulOrphanHead = pInode->ulInode;
+        }
+    }
+  #endif
     else
     {
         ret = InodeDelete(pInode);
@@ -363,6 +421,55 @@ REDSTATUS RedInodeLinkDec(
 
     return ret;
 }
+
+
+#if REDCONF_DELETE_OPEN == 1
+/** @brief Free an orphan.
+
+    @param pInode   Pointer to the cached inode structure.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EBADF  The inode is free.
+    @retval -RED_EINVAL @p pInode is `NULL`; or pInode->pBuffer is `NULL`.
+    @retval -RED_EIO    A disk I/O error occurred.
+*/
+REDSTATUS RedInodeFreeOrphan(
+    CINODE     *pInode)
+{
+    REDSTATUS   ret;
+
+    if(!CINODE_IS_MOUNTED(pInode))
+    {
+        ret = -RED_EINVAL;
+    }
+  #if REDCONF_API_POSIX_LINK == 1
+    else if(pInode->pInodeBuf->uNLink != 0U)
+    {
+        /*  The link count should be 0 before the inode is added to the
+            list, and should be unchanged thereafter.
+        */
+        CRITICAL_ERROR();
+        ret = -RED_EFUBAR;
+    }
+  #endif
+    else if(pInode->pInodeBuf->ulPInode != INODE_INVALID)
+    {
+        /*  The parent inode is set to INODE_INVALID when the last link
+            to an inode is removed and it is added to the list.
+        */
+        CRITICAL_ERROR();
+        ret = -RED_EFUBAR;
+    }
+    else
+    {
+        ret = InodeDelete(pInode);
+    }
+
+    return ret;
+}
+#endif /* REDCONF_DELETE_OPEN == 1 */
 
 
 /** @brief Delete an inode.
@@ -1135,4 +1242,3 @@ static uint32_t InodeBlock(
 
     return gpRedCoreVol->ulInodeTableStartBN + ((ulInode - INODE_FIRST_VALID) * 2U) + bWhich;
 }
-

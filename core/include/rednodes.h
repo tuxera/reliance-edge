@@ -55,6 +55,27 @@ typedef struct
 /** Flag set in the master block when (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_LINK == 1). */
 #define MBFLAG_INODE_NLINK      (0x08U)
 
+/** Flag set in the master block when (REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1). */
+#define MBFLAG_INODE_UIDGID     (0x10U)
+
+/** Flag set in the master block when (REDCONF_API_POSIX == 1) && (REDCONF_DELETE_OPEN == 1).  */
+#define MBFLAG_DELETE_OPEN      (0x20U)
+
+/*  With some added features, older drivers might be able to mount read-only;
+    with others, older drivers cannot safely mount the volume at all.  These are
+    part of the on-disk format; do not modify!
+*/
+
+/** Flag set in the master block when (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_SYMLINK == 1).  */
+#define MBFEATURE_SYMLINK           (0x0001U)
+
+/* Mask of all supported features. */
+#define MBFEATURE_MASK_COMPAT       (0U)
+#define MBFEATURE_MASK_WRITEABLE    (((REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_SYMLINK == 1)) ? MBFEATURE_SYMLINK : 0U)
+
+/* Mask of all unsupported features, may be defined by newer drivers. */
+#define MBFEATURE_MASK_INCOMPAT     (~(uint16_t)MBFEATURE_MASK_COMPAT)
+#define MBFEATURE_MASK_UNWRITEABLE  (~(uint16_t)MBFEATURE_MASK_WRITEABLE)
 
 /** @brief Node which identifies the volume and stores static volume information.
 */
@@ -71,15 +92,15 @@ typedef struct
     uint16_t    uDirectPointers;    /**< Compile-time configured number of direct pointers per inode. */
     uint16_t    uIndirectPointers;  /**< Compile-time configured number of indirect pointers per inode. */
     uint8_t     bBlockSizeP2;       /**< Compile-time configured block size, expressed as a power of two. */
-    uint8_t     bFlags;             /**< Compile-time booleans which affect on-disk structures. */
+    uint8_t     bFlags;             /**< Legacy compile-time booleans which affect on-disk structures.  Unknown flags are ignored. */
+    uint16_t    uFeaturesIncompat;  /**< Feature booleans which affect on-disk structures.  Must match features supported by the driver in order to mount. */
+    uint16_t    uFeaturesReadOnly;  /**< Feature booleans which affect on-disk structures.  Must match features supported by the driver in order to mount read/write. */
+    uint8_t     bSectorSizeP2;      /**< Size of a sector, expressed as a power of two, used to generate METAROOT::ulSectorCRC. */
 } MASTERBLOCK;
 
 
-#if REDCONF_API_POSIX == 1
-#define METAROOT_HEADER_SIZE    (NODEHEADER_SIZE + 16U) /* Size in bytes of the metaroot header fields. */
-#else
-#define METAROOT_HEADER_SIZE    (NODEHEADER_SIZE + 12U) /* Size in bytes of the metaroot header fields. */
-#endif
+#define METAROOT_HEADER_SIZE    (NODEHEADER_SIZE + 12U + ((REDCONF_API_POSIX == 0) ? 0U : \
+    (4U + ((REDCONF_DELETE_OPEN == 1) ? 12U : 0U))))
 #define METAROOT_ENTRY_BYTES    (REDCONF_BLOCK_SIZE - METAROOT_HEADER_SIZE) /* Number of bytes remaining in the metaroot block for entries. */
 #define METAROOT_ENTRIES        (METAROOT_ENTRY_BYTES * 8U)
 
@@ -87,14 +108,19 @@ typedef struct
 */
 typedef struct
 {
-    NODEHEADER  hdr;                /**< Common node header. */
+    NODEHEADER  hdr;                    /**< Common node header. */
 
-    uint32_t    ulSectorCRC;        /**< CRC-32 checksum of the first sector. */
-    uint32_t    ulFreeBlocks;       /**< Number of allocable blocks that are free. */
+    uint32_t    ulSectorCRC;            /**< CRC-32 checksum of the first sector. */
+    uint32_t    ulFreeBlocks;           /**< Number of allocable blocks that are free. */
   #if REDCONF_API_POSIX == 1
-    uint32_t    ulFreeInodes;       /**< Number of inode slots that are free. */
+    uint32_t    ulFreeInodes;           /**< Number of inode slots that are free. */
   #endif
-    uint32_t    ulAllocNextBlock;   /**< Forward allocation pointer. */
+    uint32_t    ulAllocNextBlock;       /**< Forward allocation pointer. */
+  #if (REDCONF_API_POSIX == 1) && (REDCONF_DELETE_OPEN == 1)
+    uint32_t    ulDefunctOrphanHead;    /**< Head of the list of inodes already orphaned when the volume was mounted. */
+    uint32_t    ulOrphanHead;           /**< Head of the list of orphaned inodes. */
+    uint32_t    ulOrphanTail;           /**< Tail of the list of orphaned inodes.  Enables concatenation of the lists during mount in O(1) time. */
+  #endif
 
     /** Imap bitmap.  With inline imaps, this is the imap bitmap that indicates
         which inode blocks are used and which allocable blocks are used.
@@ -123,9 +149,16 @@ typedef struct
 } IMAPNODE;
 #endif
 
+#if REDCONF_API_POSIX == 1
+#define ORPHAN_LIST_INODE_HEADER_SIZE   ((REDCONF_DELETE_OPEN == 1) ? 4U : 0U)
+#define OWNER_PERM_INODE_HEADER_SIZE    ((REDCONF_POSIX_OWNER_PERM == 1) ? 8U : 0U)
+#define POSIX_INODE_HEADER_SIZE         (4U + ORPHAN_LIST_INODE_HEADER_SIZE + OWNER_PERM_INODE_HEADER_SIZE)
+#else
+#define POSIX_INODE_HEADER_SIZE         0U
+#endif
 
 #define INODE_HEADER_SIZE   (NODEHEADER_SIZE + 8U + ((REDCONF_INODE_BLOCKS == 1) ? 4U : 0U) + \
-    ((REDCONF_INODE_TIMESTAMPS == 1) ? 12U : 0U) + 4U + ((REDCONF_API_POSIX == 1) ? 4U : 0U))
+    ((REDCONF_INODE_TIMESTAMPS == 1) ? 12U : 0U) + 4U + POSIX_INODE_HEADER_SIZE)
 #define INODE_ENTRIES       ((REDCONF_BLOCK_SIZE - INODE_HEADER_SIZE) / 4U)
 
 #if (REDCONF_DIRECT_POINTERS < 0) || (REDCONF_DIRECT_POINTERS > (INODE_ENTRIES - REDCONF_INDIRECT_POINTERS))
@@ -142,23 +175,30 @@ typedef struct
     NODEHEADER  hdr;            /**< Common node header. */
 
     uint64_t    ullSize;        /**< Size of the inode, in bytes. */
-#if REDCONF_INODE_BLOCKS == 1
+  #if REDCONF_INODE_BLOCKS == 1
     uint32_t    ulBlocks;       /**< Total number file data blocks allocated to the inode. */
-#endif
-#if REDCONF_INODE_TIMESTAMPS == 1
+  #endif
+  #if REDCONF_INODE_TIMESTAMPS == 1
     uint32_t    ulATime;        /**< Time of last access (seconds since January 1, 1970). */
     uint32_t    ulMTime;        /**< Time of last modification (seconds since January 1, 1970). */
     uint32_t    ulCTime;        /**< Time of last status change (seconds since January 1, 1970). */
-#endif
-    uint16_t    uMode;          /**< Inode type (file or directory) and permissions (reserved). */
-#if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_LINK == 1)
+  #endif
+  #if (REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1)
+    uint32_t    ulUID;          /**< User ID of owner. */
+    uint32_t    ulGID;          /**< Group ID of owner. */
+  #endif
+    uint16_t    uMode;          /**< Inode type (file or directory) and permissions. */
+  #if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_LINK == 1)
     uint16_t    uNLink;         /**< Link count, number of names pointing to the inode. */
-#else
+  #else
     uint8_t     abPadding[2];   /**< Padding to 32-bit align the next member. */
-#endif
-#if REDCONF_API_POSIX == 1
+  #endif
+  #if REDCONF_API_POSIX == 1
     uint32_t    ulPInode;       /**< Parent inode number.  Only guaranteed to be accurate for directories. */
-#endif
+  #endif
+  #if (REDCONF_API_POSIX == 1) && (REDCONF_DELETE_OPEN == 1)
+    uint32_t    ulNextOrphan;   /**< Next inode in the list of orphans. */
+  #endif
 
     /** Block numbers for lower levels of the file metadata structure.  Some
         fraction of these entries are for direct pointers (file data block

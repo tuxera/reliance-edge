@@ -91,7 +91,7 @@ REDSTATUS RedIoRead(
         }
     }
 
-    CRITICAL_ASSERT(ret == 0);
+    CRITICAL_ASSERT((ret == 0) || !gaRedVolume[bVolNum].fMounted);
 
     return ret;
 }

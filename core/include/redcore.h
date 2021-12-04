@@ -207,10 +207,13 @@ REDSTATUS RedInodeMount(CINODE *pInode, FTYPE type, bool fBranch);
 REDSTATUS RedInodeBranch(CINODE *pInode);
 #endif
 #if (REDCONF_READ_ONLY == 0) && ((REDCONF_API_POSIX == 1) || FORMAT_SUPPORTED)
-REDSTATUS RedInodeCreate(CINODE *pInode, uint32_t ulPInode, uint16_t uMode);
+REDSTATUS RedInodeCreate(CINODE *pInode, CINODE *pPInode, uint16_t uMode);
 #endif
 #if DELETE_SUPPORTED
-REDSTATUS RedInodeLinkDec(CINODE *pInode);
+REDSTATUS RedInodeLinkDec(CINODE *pInode, bool fOrphan);
+#if REDCONF_DELETE_OPEN == 1
+REDSTATUS RedInodeFreeOrphan(CINODE *pInode);
+#endif
 #endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1)
 REDSTATUS RedInodeFree(CINODE *pInode);
@@ -237,6 +240,10 @@ REDSTATUS RedInodeDataWrite(CINODE *pInode, uint64_t ullStart, uint32_t *pulLen,
 #if DELETE_SUPPORTED || TRUNCATE_SUPPORTED
 REDSTATUS RedInodeDataTruncate(CINODE *pInode, uint64_t ullSize);
 #endif
+#if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1)
+REDSTATUS RedInodeDataReserve(CINODE *pInode, uint64_t ullOffset, uint64_t ullLen);
+REDSTATUS RedInodeDataUnreserve(CINODE *pInode, uint64_t ullOffset);
+#endif
 #endif
 REDSTATUS RedInodeDataSeekAndRead(CINODE *pInode, uint32_t ulBlock);
 
@@ -245,12 +252,10 @@ REDSTATUS RedInodeDataSeekAndRead(CINODE *pInode, uint32_t ulBlock);
 REDSTATUS RedDirEntryCreate(CINODE *pPInode, const char *pszName, uint32_t ulInode);
 #endif
 #if DELETE_SUPPORTED
-REDSTATUS RedDirEntryDelete(CINODE *pPInode, uint32_t ulDeleteIdx);
+REDSTATUS RedDirEntryDelete(CINODE *pPInode, CINODE *pInode, uint32_t ulDeleteIdx);
 #endif
 REDSTATUS RedDirEntryLookup(CINODE *pPInode, const char *pszName, uint32_t *pulEntryIdx, uint32_t *pulInode);
-#if (REDCONF_API_POSIX_READDIR == 1) || (REDCONF_API_POSIX_CWD == 1) || (REDCONF_CHECKER == 1)
 REDSTATUS RedDirEntryRead(CINODE *pPInode, uint32_t *pulIdx, char *pszName, uint32_t *pulInode);
-#endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_RENAME == 1)
 REDSTATUS RedDirEntryRename(CINODE *pSrcPInode, const char *pszSrcName, CINODE *pSrcInode, CINODE *pDstPInode, const char *pszDstName, CINODE *pDstInode);
 #endif
@@ -259,12 +264,16 @@ REDSTATUS RedDirEntryRename(CINODE *pSrcPInode, const char *pszSrcName, CINODE *
 REDSTATUS RedVolInitGeometry(void);
 REDSTATUS RedVolMount(uint32_t ulFlags);
 #if REDCONF_CHECKER == 1
-REDSTATUS RedVolMountMaster(void);
+REDSTATUS RedVolMountMaster(uint32_t ulFlags);
 REDSTATUS RedVolMountMetaroot(uint32_t ulFlags);
 #endif
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedVolTransact(void);
 REDSTATUS RedVolRollback(void);
+#endif
+uint32_t RedVolFreeBlockCount(void);
+#if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
+REDSTATUS RedVolFreeOrphans(uint32_t ulCount);
 #endif
 void RedVolCriticalError(const char *pszFileName, uint32_t ulLineNum);
 REDSTATUS RedVolSeqNumIncrement(uint8_t bVolNum);
@@ -275,4 +284,3 @@ REDSTATUS RedVolFormat(const REDFMTOPT *pOptions);
 
 
 #endif
-

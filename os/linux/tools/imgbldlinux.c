@@ -23,9 +23,10 @@
     more information.
 */
 /** @file
-    @brief Implements methods of the image builder tool that require Windows
+    @brief Implements methods of the image builder tool that require Linux
            OS-specific function calls.
 */
+#define _GNU_SOURCE /* for FTW_ACTIONRETVAL */
 #include <redfs.h>
 
 #if REDCONF_IMAGE_BUILDER == 1
@@ -35,21 +36,27 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <errno.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <ftw.h>        /* Makefile must set _XOPEN_SOURCE >= 500 */
 
 #include <redtools.h>
+#include <redposix.h> /* for red_symlink() */
+#include <redfse.h> /* for RED_FILENUM_FIRST_VALID */
 
 
 #if REDCONF_API_POSIX == 1
+
 static int FtwCopyFile(const char *pszPath, const struct stat *pStat, int flag, struct FTW *pFtw);
+#if HAVE_SETTABLE_ATTR
+static int FtwCopyDirAttr(const char *pszPath, const struct stat *pStat, int flag, struct FTW *pFtw);
+#endif
 
-static const char *gVolName;
-static const char *gBaseDir;
+static const char *gpszVolName;
+static const char *gpszBaseDir;
 
 
-/*  @brief  Recurses through a host directory and copies its contents to a
-            Reliance Edge volume.
+/** @brief Recursively copy a host directory to a Reliance Edge volume.
 
     @param pszVolName   The name of the target Reliance Edge volume.
     @param pszInDir     The path to the directory to copy.
@@ -63,32 +70,55 @@ int IbPosixCopyDirRecursive(
     const char *pszVolName,
     const char *pszInDir)
 {
-    int32_t     ret = 0;
+    int         ret = 0;
     struct stat pathStat;
 
-    /* Check that the pszInDir is a directory */
-    if (stat(pszInDir, &pathStat))
+    /*  Check that the pszInDir is a directory
+    */
+    if(stat(pszInDir, &pathStat))
     {
         fprintf(stderr, "failed to stat %s: ", pszInDir);
         perror("");
         ret = -1;
     }
 
-    if (ret == 0)
+    if(ret == 0)
     {
-        if (!S_ISDIR(pathStat.st_mode))
+        if(!S_ISDIR(pathStat.st_mode))
         {
-            fprintf(stderr, "%s is not a dir\n", pszInDir);
+            fprintf(stderr, "%s is not a directory\n", pszInDir);
             ret = -1;
         }
     }
 
-    if (ret == 0)
+    if(ret == 0)
     {
-        gVolName = pszVolName;
-        gBaseDir = pszInDir;
+        gpszVolName = pszVolName;
+        gpszBaseDir = pszInDir;
 
-        ret = nftw(pszInDir, FtwCopyFile, 20, 0);
+        /*  FTW_PHYS causes nftw() to include symbolic links.
+        */
+        ret = nftw(pszInDir, FtwCopyFile, 20, FTW_PHYS);
+
+      #if HAVE_SETTABLE_ATTR
+        /*  The attributes for directories have to be copied in a second pass.
+            nftw() returns directories prior to their entries, so if we tried to
+            update the directory attributes first and then created entries
+            within that directory, we have an issue: the directory mtime would
+            get stomped on as part of creat() or mkdir().  Furthermore, if the
+            POSIX-like API ever begins to enforce permissions, it would be a
+            problem if we copied restrictive permissions (no write or execute)
+            before creating the entries.
+        */
+        if(ret == 0)
+        {
+            /*  FTW_ACTIONRETVAL is needed so we can use FTW_SKIP_SUBTREE; see
+                comment in FtwCopyDirAttr() for details.  FTW_PHYS is also
+                required for the FTW_SL case in that function.
+            */
+            ret = nftw(pszInDir, FtwCopyDirAttr, 20, FTW_PHYS | FTW_ACTIONRETVAL);
+        }
+      #endif
 
         /*  Print message if errno != 0; otherwise assume an error message has
             already been printed.
@@ -104,13 +134,16 @@ int IbPosixCopyDirRecursive(
 }
 
 
-/** @brief Worker function for ntfw(); copies the given file/creates the
-           given directory.
+/** @brief Worker function for ntfw().
+
+    Copies each given file and creates each given directory.
 
     @param pszPath  The file to copy.
     @param pStat    Unused.
     @param flag     File type flag.
     @param pFtw     Unused.
+
+    @return Zero to tell ntfw() to continue, nonzero to tell it to stop.
 */
 static int FtwCopyFile(
     const char         *pszPath,
@@ -121,38 +154,95 @@ static int FtwCopyFile(
     int                 ret = 0;
     FILEMAPPING         mapping;
 
-    (void) pStat;
-    (void) pFtw;
+    (void)pStat;
+    (void)pFtw;
 
     errno = 0;  /* Protect from extra error messages. */
 
-    switch (flag) {
+    switch(flag)
+    {
         case FTW_D:
             /*  Don't try to create the root dir; it always exists.
             */
-            if(strcmp(pszPath, gBaseDir) != 0)
+            if(strcmp(pszPath, gpszBaseDir) != 0)
             {
-                ret = IbPosixCreateDir(gVolName, pszPath, gBaseDir);
+                ret = IbPosixCreateDir(gpszVolName, pszPath, gpszBaseDir);
             }
             break;
 
         case FTW_F:
-            if (strlen(pszPath) >= HOST_PATH_MAX)
+            if(strlen(pszPath) >= HOST_PATH_MAX)
             {
                 fprintf(stderr, "Error: file path too long: %s\n", pszPath);
                 ret = -1;
             }
             else
             {
-                strcpy(mapping.asInFilePath, pszPath);
-                ret = IbConvertPath(gVolName, pszPath, gBaseDir, mapping.asOutFilePath);
+                strcpy(mapping.szInFilePath, pszPath);
+                ret = IbConvertPath(gpszVolName, pszPath, gpszBaseDir, mapping.szOutFilePath);
 
                 if(ret == 0)
                 {
-                    ret = IbCopyFile(-1, &mapping);
+                    ret = IbCopyFile(0U /* Unused */, &mapping);
                 }
             }
             break;
+
+      #if REDCONF_API_POSIX_SYMLINK == 1
+        case FTW_SL:
+            if(strlen(pszPath) >= HOST_PATH_MAX)
+            {
+                fprintf(stderr, "Error: file path too long: %s\n", pszPath);
+                ret = -1;
+            }
+            else
+            {
+                strcpy(mapping.szInFilePath, pszPath);
+                ret = IbConvertPath(gpszVolName, pszPath, gpszBaseDir, mapping.szOutFilePath);
+
+                if(ret == 0)
+                {
+                    char szBuffer[HOST_PATH_MAX] = {'\0'};
+
+                    printf("Copying symlink %s to %s\n", pszPath, mapping.szOutFilePath);
+
+                    ret = readlink(pszPath, szBuffer, sizeof(szBuffer));
+
+                    if(ret != -1)
+                    {
+                        if(szBuffer[sizeof(szBuffer) - 1U] != '\0')
+                        {
+                            fprintf(stderr, "Error: symlink target in \"%s\" is too long\n", pszPath);
+                            ret = -1;
+                        }
+                        else
+                        {
+                          #if REDCONF_PATH_SEPARATOR != '/'
+                            uint32_t ulIdx = 0U;
+
+                            while(szBuffer[ulIdx] != '\0')
+                            {
+                                if(szBuffer[ulIdx] == '/')
+                                {
+                                    szBuffer[ulIdx] = REDCONF_PATH_SEPARATOR;
+                                }
+
+                                ulIdx++;
+                            }
+                          #endif
+
+                            ret = red_symlink(szBuffer, mapping.szOutFilePath);
+                            if(ret == -1)
+                            {
+                                fprintf(stderr, "Error: red_symlink() failed with error %d\n", (int)red_errno);
+                            }
+                        }
+                    }
+                }
+            }
+
+            break;
+      #endif
 
         default:
             /*  Don't copy special files.
@@ -162,20 +252,88 @@ static int FtwCopyFile(
 
     return ret;
 }
+
+
+#if HAVE_SETTABLE_ATTR
+/** @brief Worker function for ntfw().
+
+    Copies the attributes for directory files.
+
+    @param pszPath  The file to copy.
+    @param pStat    Unused.
+    @param flag     File type flag.
+    @param pFtw     Unused.
+
+    @return Zero to tell ntfw() to continue, nonzero to tell it to stop.
+*/
+static int FtwCopyDirAttr(
+    const char         *pszPath,
+    const struct stat  *pStat,
+    int                 flag,
+    struct FTW         *pFtw)
+{
+    int                 ret = 0;
+
+    (void)pStat;
+    (void)pFtw;
+
+    /*  Only interested in directories.  Unlike FtwCopyFile(), we're also
+        interested in the root directory, so we don't filter it out.
+    */
+    if(flag == FTW_D)
+    {
+        char szRedPath[HOST_PATH_MAX];
+
+        ret = IbConvertPath(gpszVolName, pszPath, gpszBaseDir, szRedPath);
+        if(ret == 0)
+        {
+            ret = IbCopyAttr(pszPath, szRedPath);
+        }
+
+        if(ret == 0)
+        {
+            ret = FTW_CONTINUE;
+        }
+        else
+        {
+            ret = FTW_STOP;
+        }
+    }
+    else if(flag == FTW_SL)
+    {
+        /*  Prevent ntfw() from traversing symbolic links which point at
+            directories.  Such traversal isn't necessary, because we will reach
+            each directory which exists on the volume via non-symlink paths, so
+            reaching them again via symlink paths is either redundant or, for
+            targets outside the volume or which don't exist, unwanted.
+            Additionally, following symlink directories will fail in
+            IbCopyAttr(), because it will construct Reliance Edge paths which
+            have symlinks as part of the path prefix component, leading to
+            RED_ENOLINK errors.
+        */
+        ret = FTW_SKIP_SUBTREE;
+    }
+
+    return ret;
+}
 #endif
+
+#endif /* REDCONF_API_POSIX == 1 */
 
 
 #if REDCONF_API_FSE == 1
-/** @brief Reads the contents of the input directory, assigns a file index
-           to each file name, and fills a linked list structure with the
-           names and indexes. Does not inspect subdirectories. Prints any
-           error messages to stderr.
+
+/** @brief Build a list of files in a given directory.
+
+    Reads the contents of the input directory, assigns a file index to each file
+    name, and fills a linked list structure with the names and indexes.  Does
+    not inspect subdirectories.  Prints any error messages to stderr.
 
     @param pszDirPath       The path to the input directory.
     @param ppFileListHead   A pointer to a FILELISTENTRY pointer to be filled.
                             A linked list is allocated onto this pointer if
                             successful, and thus should be freed after use by
-                            passing it to FreeFileList.
+                            passing it to FreeFileList().
 
     @return An integer indicating the operation result.
 
@@ -187,12 +345,26 @@ int IbFseBuildFileList(
     FILELISTENTRY **ppFileListHead)
 {
     int             ret = 0;
-    int             currFileIndex = 2; /* Indexes 0 and 1 are reserved */
+    uint32_t        ulCurrFileIndex = RED_FILENUM_FIRST_VALID;
     FILELISTENTRY  *pCurrEntry = NULL;
     DIR            *pDir;
+    const char     *pszToAppend;
 
     *ppFileListHead = NULL;
+
     REDASSERT(pszDirPath != NULL);
+
+    /*  A path separator must be added if the directory path does not already
+        end with one.
+    */
+    if(IB_ISPATHSEP(pszDirPath[strlen(pszDirPath) - 1U]))
+    {
+        pszToAppend = "";
+    }
+    else
+    {
+        pszToAppend = "/";
+    }
 
     if(ret == 0)
     {
@@ -210,7 +382,9 @@ int IbFseBuildFileList(
     while(ret == 0)
     {
         struct dirent  *pDirent;
+        char            szDirentPath[HOST_PATH_MAX];
         struct stat     sstat;
+        int             len;
 
         errno = 0;
         pDirent = readdir(pDir);
@@ -219,25 +393,35 @@ int IbFseBuildFileList(
         {
             if(errno != 0)
             {
-                REDASSERT(errno == EBADF);
                 perror("Error reading from input directory");
+                ret = -1;
             }
 
             break;
         }
 
-        ret = stat(pDirent->d_name, &sstat);
-        if(ret != 0)
+        len = snprintf(szDirentPath, sizeof(szDirentPath), "%s%s%s", pszDirPath, pszToAppend, pDirent->d_name);
+        if((len < 0) || (len >= HOST_PATH_MAX))
         {
-            perror("Error getting file information");
+            fprintf(stderr, "Error: file path too long: %s%s%s\n", pszDirPath, pszToAppend, pDirent->d_name);
+            ret = -1;
+        }
+
+        if(ret == 0)
+        {
+            ret = stat(szDirentPath, &sstat);
+            if(ret != 0)
+            {
+                perror("Error getting file information");
+                ret = -1;
+            }
         }
 
         /*  Skip over "irregular" files.
         */
         if((ret == 0) && S_ISREG(sstat.st_mode))
         {
-            int             len;
-            FILELISTENTRY  *pNewEntry = malloc(sizeof(*pNewEntry));
+            FILELISTENTRY *pNewEntry = malloc(sizeof(*pNewEntry));
 
             if(pNewEntry == NULL)
             {
@@ -246,55 +430,32 @@ int IbFseBuildFileList(
             }
             else
             {
-                const char     *pszToAppend;
+                strcpy(pNewEntry->fileMapping.szInFilePath, szDirentPath);
 
-                /*  A path separator must be added if the directory path does
-                    not already end with one.
+                pNewEntry->fileMapping.ulOutFileIndex = ulCurrFileIndex;
+                pNewEntry->pNext = NULL;
+
+                /*  If pCurrEntry is NULL, then pNewEntry will be the root entry.
+                    Otherwise add it to the end of the linked list.
                 */
-                if(pszDirPath[strlen(pszDirPath) - 1] == '/')
+                if(pCurrEntry == NULL)
                 {
-                    pszToAppend = "";
+                    *ppFileListHead = pNewEntry;
                 }
                 else
                 {
-                    pszToAppend = "/";
+                    pCurrEntry->pNext = pNewEntry;
                 }
+                pCurrEntry = pNewEntry;
 
-                len = snprintf(pNewEntry->fileMapping.asInFilePath, HOST_PATH_MAX, "%s%s%s",
-                    pszDirPath, pszToAppend, pDirent->d_name);
-
-                if((len < 0) || (len >= HOST_PATH_MAX))
-                {
-                    fprintf(stderr, "Error: file path too long: %s%s%s", pszDirPath, pszToAppend, pDirent->d_name);
-                    ret = -1;
-                }
-                else
-                {
-                    pNewEntry->fileMapping.ulOutFileIndex = currFileIndex;
-                    pNewEntry->pNext = NULL;
-
-                    /*  If pCurrEntry is NULL, then pNewEntry will be the root entry.
-                        Otherwise add it to the end of the linked list.
-                    */
-                    if(pCurrEntry == NULL)
-                    {
-                        *ppFileListHead = pNewEntry;
-                    }
-                    else
-                    {
-                        pCurrEntry->pNext = pNewEntry;
-                    }
-                    pCurrEntry = pNewEntry;
-
-                    currFileIndex++;
-                }
+                ulCurrFileIndex++;
             }
         }
     }
 
     if(pDir != NULL)
     {
-        (void) closedir(pDir);
+        (void)closedir(pDir);
     }
 
     if(ret != 0)
@@ -304,12 +465,10 @@ int IbFseBuildFileList(
 
     return ret;
 }
-#endif
 
 
-#if REDCONF_API_FSE == 1
-/** @brief  Set the given path to be relative to its parent path if it is
-            is not an absolute path.
+/** @brief Set the given path to be relative to its parent path if it is
+           is not an absolute path.
 */
 int IbSetRelativePath(
     char       *pszPath,
@@ -317,9 +476,9 @@ int IbSetRelativePath(
 {
     int         ret = 0;
 
-    REDASSERT((pszPath != NULL) && (pszParentPath != NULL));
+    REDASSERT(pszPath != NULL);
 
-    if(pszPath[0] != '/')
+    if(pszPath[0U] != '/')
     {
         if(pszParentPath == NULL)
         {
@@ -336,19 +495,19 @@ int IbSetRelativePath(
         }
         else
         {
-            char    asTemp[HOST_PATH_MAX];
+            char    szTemp[HOST_PATH_MAX];
             int     len;
             char   *pszToAppend;
-            size_t  indirLen = strlen(pszParentPath);
+            size_t  nInDirLen = strlen(pszParentPath);
 
-            REDASSERT(indirLen != 0);
+            REDASSERT(nInDirLen != 0U);
 
-            strcpy(asTemp, pszPath);
+            strcpy(szTemp, pszPath);
 
             /*  Ensure a path separator comes between the input directory
                 and the specified relative path.
             */
-            if(pszParentPath[indirLen - 1] == '/')
+            if(IB_ISPATHSEP(pszParentPath[nInDirLen - 1U]))
             {
                 pszToAppend = "";
             }
@@ -357,11 +516,11 @@ int IbSetRelativePath(
                 pszToAppend = "/";
             }
 
-            len = snprintf(pszPath, HOST_PATH_MAX, "%s%s%s", pszParentPath, pszToAppend, asTemp);
+            len = snprintf(pszPath, HOST_PATH_MAX, "%s%s%s", pszParentPath, pszToAppend, szTemp);
 
             if((len < 0) || (len >= HOST_PATH_MAX))
             {
-                fprintf(stderr, "Error: file path too long: %s%s%s", pszParentPath, pszToAppend, asTemp);
+                fprintf(stderr, "Error: file path too long: %s%s%s\n", pszParentPath, pszToAppend, szTemp);
                 ret = -1;
             }
         }
@@ -369,10 +528,11 @@ int IbSetRelativePath(
 
     return ret;
 }
-#endif
+
+#endif /* REDCONF_API_FSE == 1 */
 
 
-/*  Checks whether the given path appears NOT to name a volume.
+/** @brief Checks whether the given path appears NOT to name a volume.
 */
 bool IsRegularFile(
     const char *pszPath)
@@ -393,4 +553,46 @@ bool IsRegularFile(
 }
 
 
-#endif
+/** @brief Retrieve information about a file or directory.
+
+    @param pszPath  The host file system path.
+    @param pStat    Stat structure to populate.
+
+    @return An integer indicating the operation result.
+
+    @retval 0   Operation was successful.
+    @retval -1  An error occurred.
+*/
+int IbStat(
+    const char *pszPath,
+    IBSTAT     *pStat)
+{
+    struct stat sb;
+    int         ret;
+
+    if(lstat(pszPath, &sb) < 0)
+    {
+        perror("stat");
+        ret = -1;
+    }
+    else
+    {
+        memset(pStat, 0, sizeof(*pStat));
+        pStat->uMode = (uint16_t)sb.st_mode;
+        pStat->ulUid = (uint32_t)sb.st_uid;
+        pStat->ulGid = (uint32_t)sb.st_gid;
+        pStat->ullSize = (uint64_t)sb.st_size;
+      #ifdef POSIX_2008_STAT
+        pStat->ulATime = (uint32_t)sb.st_atim.tv_sec;
+        pStat->ulMTime = (uint32_t)sb.st_mtim.tv_sec;
+      #else
+        pStat->ulATime = (uint32_t)sb.st_atime;
+        pStat->ulMTime = (uint32_t)sb.st_mtime;
+      #endif
+        ret = 0;
+    }
+
+    return ret;
+}
+
+#endif /* REDCONF_IMAGE_BUILDER == 1 */

@@ -50,6 +50,7 @@
 #include "redposixcompat.h"
 
 #include <redosserv.h>
+#include <redmisc.h>
 #include <redutils.h>
 #include <redmacs.h>
 #include <redvolume.h>
@@ -69,6 +70,8 @@
 #define ino_t uint32_t
 #define mode_t uint16_t
 #define __int64_t int64_t
+#define uid_t int32_t
+#define gid_t int32_t
 
 
 /** @brief Generate a random number.
@@ -203,28 +206,6 @@ static char *fsstress_getcwd(
 #define truncate64(p, s) truncate(p, s)
 
 
-/** @brief Get the status of a file or directory.
-*/
-static int red_stat(
-    const char *pszPath,
-    REDSTAT    *pStat)
-{
-    int         iFd;
-    int         iRet;
-
-    iFd = open(pszPath, O_RDONLY);
-    iRet = iFd;
-    if(iFd != -1)
-    {
-        iRet = fstat(iFd, pStat);
-
-        (void)close(iFd);
-    }
-
-    return iRet;
-}
-
-
 /** @brief Truncate a file to a specified length.
 */
 static int red_truncate(
@@ -266,6 +247,9 @@ struct dioattr {
 
 
 typedef enum {
+  #if REDCONF_POSIX_OWNER_PERM == 1
+    OP_CHOWN,
+  #endif
     OP_CREAT,
     OP_FDATASYNC,
     OP_FSYNC,
@@ -331,7 +315,9 @@ typedef struct pathname {
 #define NDCACHE 64
 
 #define MAXFSIZE MaxFileSize()
-
+#if REDCONF_POSIX_OWNER_PERM == 1
+static void chown_f(int opno, long r);
+#endif
 static void creat_f(int opno, long r);
 static void fdatasync_f(int opno, long r);
 static void fsync_f(int opno, long r);
@@ -350,6 +336,9 @@ static void check_f(int opno, long r);
 #endif
 
 static opdesc_t ops[] = {
+  #if REDCONF_POSIX_OWNER_PERM == 1
+    {OP_CHOWN, "chown", chown_f, 3, 1},
+  #endif
     {OP_CREAT, "creat", creat_f, 4, 1},
     {OP_FDATASYNC, "fdatasync", fdatasync_f, 1, 1},
     {OP_FSYNC, "fsync", fsync_f, 1, 1},
@@ -410,6 +399,9 @@ static void free_pathname(pathname_t *name);
 static int generate_fname(fent_t *fep, int ft, pathname_t *name, int *idp, int *v);
 static int get_fname(int which, long r, pathname_t *name, flist_t **flpp, fent_t **fepp, int *v);
 static void init_pathname(pathname_t *name);
+#if REDCONF_POSIX_OWNER_PERM == 1
+static int lchown_path(pathname_t * name, uid_t owner, gid_t group);
+#endif
 static int link_path(pathname_t *name1, pathname_t *name2);
 static int lstat64_path(pathname_t *name, REDSTAT *sbuf);
 static void make_freq_table(void);
@@ -977,6 +969,27 @@ static void init_pathname(pathname_t *name)
     name->path = NULL;
 }
 
+#if REDCONF_POSIX_OWNER_PERM == 1
+int lchown_path(pathname_t * name, uid_t owner, gid_t group)
+{
+    char buf[MAXNAMELEN];
+    pathname_t newname;
+    int rval;
+
+    rval = red_chown(name->path, owner, group);
+    if(rval >= 0 || errno != RED_ENAMETOOLONG)
+        return rval;
+    separate_pathname(name,buf, &newname);
+    if(chdir(buf) == 0)
+    {
+        rval = lchown_path(&newname, owner, group);
+        chdir("..");
+    }
+    free_pathname(&newname);
+    return rval;
+}
+#endif
+
 static int link_path(pathname_t *name1, pathname_t *name2)
 {
     char buf1[MAXNAMELEN];
@@ -1341,6 +1354,30 @@ static void usage(const char *progname)
     RedPrintf("      Prints this usage text and exits.\n\n");
     RedPrintf("Warning: This test will format the volume -- destroying all existing data.\n\n");
 }
+
+#if REDCONF_POSIX_OWNER_PERM == 1
+static void chown_f(int opno, long r)
+{
+    int e;
+    pathname_t f;
+    int nbits;
+    uid_t u;
+    int v;
+
+    init_pathname(&f);
+    if(!get_fname(FT_ANYm, r, &f, NULL, NULL, &v))
+        append_pathname(&f, ".");
+    u = (uid_t) random();
+    nbits = (int)(random() % 32);
+    u &= (1 << nbits) - 1;
+    e = lchown_path(&f, u, -1) < 0 ? errno : 0;
+    check_cwd();
+    if(v)
+        printf("%d/%d: chown %s %d %d\n", procid, opno, f.path, u, e);
+    free_pathname(&f);
+
+}
+#endif
 
 static void creat_f(int opno, long r)
 {

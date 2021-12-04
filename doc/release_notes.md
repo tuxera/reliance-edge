@@ -5,7 +5,83 @@ recent releases and a list of known issues.
 
 ## Release History and Changes
 
-### Reliance Edge v2.6, October 2021
+### Reliance Edge v2.7, Unscheduled Future Release
+
+#### Common Code Changes
+
+Reliance Edge v2.7 adds features to the POSIX-like API.  Most of these features
+exist in the POSIX file system interface but were not implemented by Reliance
+Edge until now.  The key new features are:
+
+- POSIX ownership (user ID and group ID) and permissions (07777: read, write,
+  execute, setuid, setgid, sticky bit).  Includes support for using these
+  values for access control.  Relevant new APIs:
+    - `red_open2()`, `red_mkdir2()` (to specify permissions during creation)
+    - `red_chmod()`, `red_fchmodat()`, `red_fchmod()`
+    - `red_chown()`, `red_fchownat()`, `red_fchown()`
+- Symbolic links can be created with `red_symlink()`, read with
+  `red_readlink()`, and followed during path resolution by any API which has a
+  path parameter.
+- Deleting open files: a file (or directory or symlink) which is referenced
+  (has an open file descriptor, open directory handle, or is the current
+  working directory) can be unlinked, and the underlying inode is not freed
+  until the final reference is released.
+
+All of the above are optional, and can be turned off to avoid increasing the
+code size or RAM usage of Reliance Edge.
+
+Other APIs which were implemented for this release:
+
+- The `red_*at()` APIs support relative path parsing starting from an arbitrary
+  directory file descriptor.  This allows for more efficient path parsing: a
+  directory path can be parsed just once to open a directory file descriptor,
+  and other operations within that directory can use the `red_*at()` APIs
+  without reparsing the directory path.  Several of the `red_*at()` APIs also
+  support flags to control symbolic link following which are not available with
+  the non-`at` variants.
+- `red_utimes()`, `red_utimesat()`, and `red_futimes()`: these can be used to
+  update the access and modification timestamps.  The existence of these APIs
+  allows the `touch` command to work with a Reliance Edge FUSE mountpoint.
+- `red_stat()`: similar to `red_fstat()`, but uses a path rather than a file
+  descriptor.
+- `red_pread()`, `red_pwrite()`: read and write to a specific offset.
+- `red_freserve()`: reserve disk space for an upcoming sequential write.  Useful
+  to write a large file without the risk of disk full errors before finishing.
+- New directory APIs:
+    - `red_fdopendir()`: get a `REDIR` handle from a file descriptor.
+    - `red_telldir()`: return the current directory offset.
+    - `red_seekdir()`: seek to a specific directory offset.
+- `red_getdirpath()`: given a directory file descriptor, populate a buffer with
+  the absolute path to that directory.  Similar to `red_getcwd()` but works for
+  any directory, not just the CWD.
+
+#### Upgrading from Reliance Edge v2.6
+
+The following four macros must be added to redconf.h with a value of either `0`
+or `1`:
+
+1. `REDCONF_API_POSIX_SYMLINK`
+2. `REDCONF_DELETE_OPEN`
+3. `REDCONF_API_POSIX_FRESERVE`
+4. `REDCONF_POSIX_OWNER_PERM`
+
+If you want to use disks formatted with a previous release of Reliance Edge, all
+of the above (except `REDCONF_API_POSIX_FRESERVE`) need to be defined as `0`.
+After adding these new macros, then update `RED_CONFIG_UTILITY_VERSION` and
+`RED_CONFIG_MINCOMPAT_VER` to have a value of `0x2070000U`.
+
+Reliance Edge v2.7 introduces a new on-disk layout to support its new features:
+specifically, POSIX ownership and permissions, symbolic links, and deleting open
+files will require the new on-disk layout.  However, if those features are
+disabled, support for older on-disk layouts is retained.
+
+If you have a custom port, it must now define the `REDBDEVCTX` type in
+redostypes.h and implement `RedOsBDevConfig()` in osbdev.c.  The "stubbed"
+implementation can be copied: see os/stub/include/redostypes.h and
+os/stub/services/osbdev.c.  The redosconf.h header file must be created: in most
+cases, os/stub/include/redostypes.h can be copied and used without changes.
+
+### Reliance Edge v2.6, December 2021
 
 #### Common Code Changes
 

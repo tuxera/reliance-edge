@@ -32,17 +32,29 @@
 
     Used to indicate the actual or expected type of an inode or handle.
 */
-typedef enum
-{
-    FTYPE_FILE,     /**< Type is file. */
-    FTYPE_DIR,      /**< Type is directory. */
+typedef uint8_t FTYPE;
 
-    /** Type is either file or directory: used only to indicate an expected
-        type, never as an actual type.
-    */
-    FTYPE_EITHER
-} FTYPE;
+/** Type is file. */
+#define FTYPE_FILE      0x01U
 
+/** Type is directory. */
+#define FTYPE_DIR       0x02U
+
+/** Type is symbolic link. */
+#define FTYPE_SYMLINK   0x04U
+
+#if REDCONF_API_POSIX == 1
+  #if REDCONF_API_POSIX_SYMLINK == 1
+   #define FTYPE_ANY        (FTYPE_FILE | FTYPE_DIR | FTYPE_SYMLINK)
+   #define FTYPE_NOTDIR     (FTYPE_FILE | FTYPE_SYMLINK)
+  #else
+    #define FTYPE_ANY       (FTYPE_FILE | FTYPE_DIR)
+    #define FTYPE_NOTDIR    FTYPE_FILE
+  #endif
+#else
+  #define FTYPE_ANY         FTYPE_FILE
+  #define FTYPE_NOTDIR      FTYPE_FILE
+#endif
 
 #endif
 

@@ -34,11 +34,16 @@
 #include <windows.h>
 
 #include <redtools.h>
+#include <redfse.h> /* for RED_FILENUM_FIRST_VALID */
+#include <redstat.h>
+
+
+static bool FileLooksExecutable(const char *pszPath);
+static uint32_t WinFileTimeToUnixTime(FILETIME winTime);
 
 
 #if REDCONF_API_POSIX == 1
-/*  @brief  Recurses through a Windows directory and copies its contents to a
-            Reliance Edge volume.
+/** @brief Recursively copy a host directory to a Reliance Edge volume.
 
     @param pszVolName   The name of the target Reliance Edge volume.
     @param pszInDir     The path to the directory to copy.
@@ -54,22 +59,22 @@ int IbPosixCopyDirRecursive(
 {
     /*  Used to record pszVolName the first time called in a recursion series.
     */
-    static bool         isRecursing = false;
+    static bool         fIsRecursing = false;
     static const char  *pszBaseDir;
-    bool                rememberIsRecursing = isRecursing;
+    bool                fRememberIsRecursing = fIsRecursing;
     int                 ret = 0;
-    char                asCurrPath[HOST_PATH_MAX];
+    char                szCurrPath[HOST_PATH_MAX];
     HANDLE              h;
-    WIN32_FIND_DATA     sFindData;
+    WIN32_FIND_DATA     findData;
     int                 len;
 
-    if(!isRecursing)
+    if(!fIsRecursing)
     {
         pszBaseDir = pszInDir;
-        isRecursing = true;
+        fIsRecursing = true;
     }
 
-    len = _snprintf(asCurrPath, HOST_PATH_MAX, "%s\\*", pszInDir);
+    len = _snprintf(szCurrPath, HOST_PATH_MAX, "%s\\*", pszInDir);
     if((len < 0) || (len >= HOST_PATH_MAX))
     {
         ret = -1;
@@ -77,7 +82,7 @@ int IbPosixCopyDirRecursive(
 
     if(ret == 0)
     {
-        h = FindFirstFile(asCurrPath, &sFindData);
+        h = FindFirstFile(szCurrPath, &findData);
         if(h == INVALID_HANDLE_VALUE)
         {
             fprintf(stderr, "Error reading from input directory.\n");
@@ -89,38 +94,38 @@ int IbPosixCopyDirRecursive(
     {
         BOOL fFindSuccess;
 
-        if((strcmp(sFindData.cFileName, ".") != 0) && (strcmp(sFindData.cFileName, "..") != 0))
+        if((strcmp(findData.cFileName, ".") != 0) && (strcmp(findData.cFileName, "..") != 0))
         {
-            len = _snprintf(asCurrPath, HOST_PATH_MAX, "%s\\%s", pszInDir, sFindData.cFileName);
+            len = _snprintf(szCurrPath, HOST_PATH_MAX, "%s\\%s", pszInDir, findData.cFileName);
 
             if((len == HOST_PATH_MAX) || (len < 0))
             {
-                fprintf(stderr, "Error: file path too long: %s\\%s\n", pszInDir, sFindData.cFileName);
+                fprintf(stderr, "Error: file path too long: %s\\%s\n", pszInDir, findData.cFileName);
             }
-            else if(sFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            else if(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
             {
                 /*  Create the directory, then recurse!
                 */
-                ret = IbPosixCreateDir(pszVolName, asCurrPath, pszBaseDir);
+                ret = IbPosixCreateDir(pszVolName, szCurrPath, pszBaseDir);
                 if(ret == 0)
                 {
-                    ret = IbPosixCopyDirRecursive(pszVolName, asCurrPath);
+                    ret = IbPosixCopyDirRecursive(pszVolName, szCurrPath);
                 }
             }
             else
             {
                 FILEMAPPING mapping;
 
-                strcpy(mapping.asInFilePath, asCurrPath);
-                ret = IbConvertPath(pszVolName, asCurrPath, pszBaseDir, mapping.asOutFilePath);
+                strcpy(mapping.szInFilePath, szCurrPath);
+                ret = IbConvertPath(pszVolName, szCurrPath, pszBaseDir, mapping.szOutFilePath);
                 if(ret == 0)
                 {
-                    ret = IbCopyFile(-1, &mapping);
+                    ret = IbCopyFile(0U /* Unused */, &mapping);
                 }
             }
         }
 
-        fFindSuccess = FindNextFile(h, &sFindData);
+        fFindSuccess = FindNextFile(h, &findData);
         if(!fFindSuccess)
         {
             DWORD err = GetLastError();
@@ -131,7 +136,7 @@ int IbPosixCopyDirRecursive(
             }
             else
             {
-                fprintf(stderr, "Error traversing input directory %s. Error code: %d\n", pszInDir, err);
+                fprintf(stderr, "Error traversing input directory %s.  Error code: %d\n", pszInDir, (int)err);
                 ret = -1;
             }
         }
@@ -139,27 +144,47 @@ int IbPosixCopyDirRecursive(
 
     if(h != INVALID_HANDLE_VALUE)
     {
-        (void) FindClose(h);
+        (void)FindClose(h);
     }
 
-    isRecursing = rememberIsRecursing;
+  #if HAVE_SETTABLE_ATTR
+    /*  Update directory attributes.  As this function is invoked recursively,
+        this will be done for every copied directory, including the root
+        directory.
+    */
+    if(ret == 0)
+    {
+        char szRedPath[HOST_PATH_MAX];
+
+        ret = IbConvertPath(pszVolName, pszInDir, pszBaseDir, szRedPath);
+
+        if(ret == 0)
+        {
+            ret = IbCopyAttr(pszInDir, szRedPath);
+        }
+    }
+  #endif
+
+    fIsRecursing = fRememberIsRecursing;
 
     return ret;
 }
-#endif
+#endif /* REDCONF_API_POSIX == 1 */
 
 
 #if REDCONF_API_FSE == 1
-/** @brief Reads the contents of the input directory, assigns a file index
-           to each file name, and fills a linked list structure with the
-           names and indexes. Does not inspect subdirectories. Prints any
-           error messages to stderr.
 
-    @param pszDirPath The path to the input directory.
-    @param ppFileListHead a pointer to a FILELISTENTRY pointer to be
-           filled. A linked list is allocated onto this pointer if
-           successful, and thus should be freed after use by passing
-           it to FreeFileList.
+/** @brief Build a list of files in a given directory.
+
+    Reads the contents of the input directory, assigns a file index to each file
+    name, and fills a linked list structure with the names and indexes.  Does
+    not inspect subdirectories.  Prints any error messages to stderr.
+
+    @param pszDirPath       The path to the input directory.
+    @param ppFileListHead   A pointer to a FILELISTENTRY pointer to be filled.
+                            A linked list is allocated onto this pointer if
+                            successful, and thus should be freed after use by
+                            passing it to FreeFileList().
 
     @return An integer indicating the operation result.
 
@@ -171,21 +196,22 @@ int IbFseBuildFileList(
     FILELISTENTRY **ppFileListHead)
 {
     int             ret = 0;
-    char            asSPath[HOST_PATH_MAX];
-    int             currFileIndex = 2; /* Indexes 0 and 1 are reserved */
+    char            szSPath[HOST_PATH_MAX];
+    uint32_t        ulCurrFileIndex = RED_FILENUM_FIRST_VALID;
     FILELISTENTRY  *pCurrEntry = NULL;
     HANDLE          searchHandle = INVALID_HANDLE_VALUE;
-    size_t          pathLen = strlen(pszDirPath);
-    WIN32_FIND_DATA sFindData;
+    size_t          nPathLen = strlen(pszDirPath);
+    WIN32_FIND_DATA findData;
     const char     *pszToAppend;
 
     *ppFileListHead = NULL;
+
     REDASSERT(pszDirPath != NULL);
 
     /*  Assign host path separator to pszToAppend if pszDirPath does not already
         end with one.
     */
-    if((pszDirPath[pathLen - 1] == '/') || (pszDirPath[pathLen - 1] == '\\'))
+    if(IB_ISPATHSEP(pszDirPath[nPathLen - 1U]))
     {
         pszToAppend = "";
     }
@@ -194,7 +220,7 @@ int IbFseBuildFileList(
         pszToAppend = "\\";
     }
 
-    if(pathLen + strlen(pszToAppend) >= HOST_PATH_MAX)
+    if((nPathLen + strlen(pszToAppend)) >= HOST_PATH_MAX)
     {
         fprintf(stderr, "Input directory path exceeds maximum supported length.\n");
         ret = -1;
@@ -204,17 +230,17 @@ int IbFseBuildFileList(
     {
         int stat;
 
-        stat = sprintf(asSPath, "%s%s*", pszDirPath, pszToAppend);
+        stat = sprintf(szSPath, "%s%s*", pszDirPath, pszToAppend);
 
         /*  Strings are already tested; sprintf shouldn't fail.
         */
         REDASSERT(stat >= 0);
-        (void) stat;
+        (void)stat;
     }
 
     if(ret == 0)
     {
-        searchHandle = FindFirstFile(asSPath, &sFindData);
+        searchHandle = FindFirstFile(szSPath, &findData);
 
         if(searchHandle == INVALID_HANDLE_VALUE)
         {
@@ -235,13 +261,12 @@ int IbFseBuildFileList(
     */
     while(ret == 0)
     {
-        /*  Skip over directories. Create a new entry for each file and add it
+        /*  Skip over directories.  Create a new entry for each file and add it
             to ppFileListHead
         */
-        if(!(sFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+        if(!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
         {
-            int             len;
-            FILELISTENTRY  *pNewEntry = malloc(sizeof(*pNewEntry));
+            FILELISTENTRY *pNewEntry = malloc(sizeof(*pNewEntry));
 
             if(pNewEntry == NULL)
             {
@@ -250,17 +275,19 @@ int IbFseBuildFileList(
             }
             else
             {
-                len = _snprintf(pNewEntry->fileMapping.asInFilePath, HOST_PATH_MAX, "%s%s%s",
-                    pszDirPath, pszToAppend, sFindData.cFileName);
+                int len;
+
+                len = _snprintf(pNewEntry->fileMapping.szInFilePath, HOST_PATH_MAX, "%s%s%s",
+                    pszDirPath, pszToAppend, findData.cFileName);
 
                 if((len < 0) || (len >= HOST_PATH_MAX))
                 {
-                    fprintf(stderr, "Error: file path too long: %s%s%s", pszDirPath, pszToAppend, sFindData.cFileName);
+                    fprintf(stderr, "Error: file path too long: %s%s%s\n", pszDirPath, pszToAppend, findData.cFileName);
                     ret = -1;
                 }
                 else
                 {
-                    pNewEntry->fileMapping.ulOutFileIndex = currFileIndex;
+                    pNewEntry->fileMapping.ulOutFileIndex = ulCurrFileIndex;
                     pNewEntry->pNext = NULL;
 
                     /*  If pCurrEntry is NULL, then pNewEntry will be the root entry.
@@ -276,14 +303,14 @@ int IbFseBuildFileList(
                     }
                     pCurrEntry = pNewEntry;
 
-                    currFileIndex++;
+                    ulCurrFileIndex++;
                 }
             }
         }
 
         if(ret == 0)
         {
-            if(!FindNextFile(searchHandle, &sFindData))
+            if(!FindNextFile(searchHandle, &findData))
             {
                 if(GetLastError() != ERROR_NO_MORE_FILES)
                 {
@@ -300,7 +327,7 @@ int IbFseBuildFileList(
 
     if(searchHandle != INVALID_HANDLE_VALUE)
     {
-        (void) FindClose(searchHandle);
+        (void)FindClose(searchHandle);
     }
 
     if(ret != 0)
@@ -310,88 +337,269 @@ int IbFseBuildFileList(
 
     return ret;
 }
-#endif
 
 
-#if REDCONF_API_FSE == 1
-/** @brief  Set the given path to be relative to its parent path if it is
-            is not an absolute path.
+/** @brief Set the given path to be relative to its parent path if it is
+           is not an absolute path.
 */
 int IbSetRelativePath(
     char       *pszPath,
     const char *pszParentPath)
 {
-    int         ret;
+    int         ret = 0;
 
-    REDASSERT((pszPath != NULL) && (pszParentPath != NULL));
+    REDASSERT(pszPath != NULL);
 
-    if(     (    ((pszPath[0U] >= 'A') && (pszPath[0U] <= 'Z'))
-              || ((pszPath[0U] >= 'a') && (pszPath[0U] <= 'z')))
-         && (pszPath[1U] == ':')
-         && ((pszPath[2U] == '\\') || (pszPath[2U] == '/')))
+    if(    (    ((pszPath[0U] >= 'A') && (pszPath[0U] <= 'Z'))
+             || ((pszPath[0U] >= 'a') && (pszPath[0U] <= 'z')))
+        && (pszPath[1U] == ':')
+        && ((pszPath[2U] == '\\') || (pszPath[2U] == '/')))
     {
         /*  The path appears to be absolute; no need to modify it.
         */
-    	ret = 0;
+        ret = 0;
+    }
+    else if(pszParentPath == NULL)
+    {
+        fprintf(stderr, "Error: paths in mapping file must be absolute if no input directory is specified.\n");
+        ret = -1;
     }
     else
     {
-        if(pszParentPath == NULL)
+        char    szTemp[HOST_PATH_MAX];
+        int     len;
+        char   *pszToAppend;
+        size_t  nInDirLen = strlen(pszParentPath);
+
+        REDASSERT(nInDirLen != 0U);
+
+        strcpy(szTemp, pszPath);
+
+        /*  Ensure a path separator comes between the input directory and the
+            specified relative path.
+        */
+        if(IB_ISPATHSEP(pszParentPath[nInDirLen - 1U]))
         {
-            fprintf(stderr, "Error: paths in mapping file must be absolute if no input directory is specified.\n");
-            ret = -1;
+            pszToAppend = "";
         }
         else
         {
-            char    asTemp[HOST_PATH_MAX];
-            int     len;
-            char   *pszToAppend;
-            size_t  indirLen = strlen(pszParentPath);
+            pszToAppend = "\\";
+        }
 
-            REDASSERT(indirLen != 0);
+        len = _snprintf(pszPath, HOST_PATH_MAX, "%s%s%s", pszParentPath, pszToAppend, szTemp);
 
-            strcpy(asTemp, pszPath);
-
-            /*  Ensure a path separator comes between the input directory
-                and the specified relative path.
-            */
-            if((pszParentPath[indirLen - 1] == '/') || (pszParentPath[indirLen - 1] == '\\'))
-            {
-                pszToAppend = "";
-            }
-            else
-            {
-                pszToAppend = "\\";
-            }
-
-            len = _snprintf(pszPath, HOST_PATH_MAX, "%s%s%s", pszParentPath, pszToAppend, asTemp);
-
-            if((len < 0) || (len >= HOST_PATH_MAX))
-            {
-                fprintf(stderr, "Error: file path too long: %s%s%s", pszParentPath, pszToAppend, asTemp);
-                ret = -1;
-            }
+        if((len < 0) || (len >= HOST_PATH_MAX))
+        {
+            fprintf(stderr, "Error: file path too long: %s%s%s\n", pszParentPath, pszToAppend, szTemp);
+            ret = -1;
         }
     }
 
     return ret;
 }
-#endif
+
+#endif /* REDCONF_API_FSE == 1 */
 
 
-/*  Checks whether the given path appears NOT to name a volume. Expects the
-    path to be in massaged "//./diskname" format if it names a volume.
+/** @brief Checks whether the given path appears NOT to name a volume.
+
+    Expects the path to be in massaged "//./diskname" format if it names a
+    volume.
 */
 bool IsRegularFile(
     const char *pszPath)
 {
-    return !((pszPath[0] == '\\')
-          && (pszPath[1] == '\\')
-          && (pszPath[2] == '.')
-          && (pszPath[3] == '\\')
-          && (strchr(&pszPath[4], '\\') == NULL)
-          && (strchr(&pszPath[4], '/') == NULL));
+    return !((pszPath[0U] == '\\')
+          && (pszPath[1U] == '\\')
+          && (pszPath[2U] == '.')
+          && (pszPath[3U] == '\\')
+          && (strchr(&pszPath[4U], '\\') == NULL)
+          && (strchr(&pszPath[4U], '/') == NULL));
 }
 
 
-#endif
+/** @brief Retrieve information about a file or directory.
+
+    @param pszPath  The host file system path.
+    @param pStat    Stat structure to populate.
+
+    @return An integer indicating the operation result.
+
+    @retval 0   Operation was successful.
+    @retval -1  An error occurred.
+*/
+int IbStat(
+    const char         *pszPath,
+    IBSTAT             *pStat)
+{
+    HANDLE              hFindFile;
+    WIN32_FIND_DATAA    findData;
+    int                 ret = 0;
+
+    hFindFile = FindFirstFileA(pszPath, &findData);
+    if(hFindFile == INVALID_HANDLE_VALUE)
+    {
+        fprintf(stderr, "FindFirstFileA(\"%s\") failed with error %lu\n", pszPath, (unsigned long)GetLastError());
+        ret = -1;
+    }
+    else
+    {
+        (void)FindClose(hFindFile);
+
+        memset(pStat, 0, sizeof(*pStat));
+
+        if((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0U)
+        {
+            pStat->uMode = RED_S_IFDIR;
+
+            /*  0755: rwx for owner, rx for group and other
+            */
+            pStat->uMode |= RED_S_IRWXU|RED_S_IRGRP|RED_S_IXGRP|RED_S_IROTH|RED_S_IXOTH;
+        }
+        else
+        {
+            pStat->uMode = RED_S_IFREG;
+
+            /*  0644: rw for owner, r for group and other
+            */
+            pStat->uMode |= RED_S_IRUSR|RED_S_IWUSR|RED_S_IRGRP|RED_S_IROTH;
+
+            if(FileLooksExecutable(pszPath))
+            {
+                /*  0755: add execute permissions for everyone.
+                */
+                pStat->uMode |= RED_S_IXUSR|RED_S_IXGRP|RED_S_IXOTH;
+            }
+        }
+
+        /*  Clear write permissions if read-only.
+        */
+        if((findData.dwFileAttributes & FILE_ATTRIBUTE_READONLY) != 0U)
+        {
+            pStat->uMode &= ~(RED_S_IWUSR|RED_S_IWGRP|RED_S_IWOTH);
+        }
+
+      #if (REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1)
+        /*  Windows doesn't have uid/gid.  Use whatever the OS service was
+            implemented to return.
+        */
+        pStat->ulUid = RedOsUserId();
+        pStat->ulGid = RedOsGroupId();
+      #endif
+
+        pStat->ullSize = (findData.nFileSizeHigh * (MAXDWORD + 1U)) + findData.nFileSizeLow;
+
+        pStat->ulATime = WinFileTimeToUnixTime(findData.ftLastAccessTime);
+        pStat->ulMTime = WinFileTimeToUnixTime(findData.ftLastWriteTime);
+    }
+
+    return ret;
+}
+
+
+/** @brief Probe a file to see if it looks like a Unix executable.
+
+    @param pszPath  Path to the file on the host file system.
+
+    @return Whether the file looks like a Unix executable.
+*/
+static bool FileLooksExecutable(
+    const char *pszPath)
+{
+    FILE       *pFile;
+    bool        fExecutable = false;
+
+    pFile = fopen(pszPath, "rb");
+    if(pFile == NULL)
+    {
+        perror("fopen");
+        fprintf(stderr, "warning: unable to open file \"%s\" to probe for executable\n", pszPath);
+    }
+    else
+    {
+        char    acMagic[4U];
+        size_t  nLen = fread(acMagic, 1U, sizeof(acMagic), pFile);
+
+        if((nLen < sizeof(acMagic)) && ferror(pFile))
+        {
+            fprintf(stderr, "warning: unable to read file \"%s\" to probe for executable\n", pszPath);
+        }
+        else if((nLen >= 2U) && (acMagic[0U] == '#') && (acMagic[1U] == '!'))
+        {
+            /*  Found shebang, assume it's a script.
+            */
+            fExecutable = true;
+        }
+        else if((nLen >= 4U) && (acMagic[0U] == 0x7F) && (strncmp(&acMagic[1U], "ELF", 3U) == 0U))
+        {
+            /*  Found magic number of an ELF executable.
+            */
+            fExecutable = true;
+        }
+        else
+        {
+            /*  Other files are not executable.
+
+                Windows/DOS executables (.exe, .bat, .ps1, .com, etc.) are _not_
+                executable in any operating system where execute permissions
+                actually matter, and so they are treated as normal files.
+            */
+        }
+
+        if(fclose(pFile) == EOF)
+        {
+            perror("fclose");
+        }
+    }
+
+    return fExecutable;
+}
+
+
+/** @brief Convert Windows file time to Unix time.
+
+    @param winTime  The Windows file time to convert.
+
+    @return The Unix time equivalent to @p winTime.
+*/
+static uint32_t WinFileTimeToUnixTime(
+    FILETIME        winTime)
+{
+    ULARGE_INTEGER  unixTime;
+
+    /*  Place the file time in a union so that we can access it as one 64-bit
+        value.
+    */
+    unixTime.LowPart = winTime.dwLowDateTime;
+    unixTime.HighPart = winTime.dwHighDateTime;
+
+    /*  Account for the difference in base-points for the timestamps.
+        Windows file time starts at January 1, 1601.
+        Unix time starts at January 1, 1970.
+    */
+    unixTime.QuadPart -= TIME_1601_TO_1970_DAYS * TIME_100NANOS_PER_DAY;
+
+    /*  For dates prior to the Unix epoch, use the Unix epoch.
+    */
+    if(unixTime.QuadPart < 0)
+    {
+        unixTime.QuadPart = 0;
+    }
+
+    /*  Translate from "100-nanosecond intervals" to one-second intervals.
+    */
+    unixTime.QuadPart /= 10000000;
+
+    /*  For dates which cannot be represented by uint32_t (> circa 2106 A.D.),
+        use the maximum value.
+    */
+    if(unixTime.QuadPart > UINT32_MAX)
+    {
+        unixTime.QuadPart = UINT32_MAX;
+    }
+
+    return (uint32_t)unixTime.QuadPart;
+}
+
+#endif /* REDCONF_IMAGE_BUILDER == 1 */

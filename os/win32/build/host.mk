@@ -39,7 +39,6 @@ TOOLHDR=							\
 	$(P_BASEDIR)/include/redtools.h				\
 	$(P_BASEDIR)/os/win32/tools/wintlcmn.h
 IMGBLDOBJ=							\
-	$(P_BASEDIR)/tools/imgbld/ibcommon.$(B_OBJEXT)		\
 	$(P_BASEDIR)/tools/imgbld/ibfse.$(B_OBJEXT)		\
 	$(P_BASEDIR)/tools/imgbld/ibposix.$(B_OBJEXT)		\
 	$(P_BASEDIR)/tools/imgbld/imgbld.$(B_OBJEXT)		\
@@ -79,4 +78,3 @@ clean:
 	del /f /q $(subst /,\,$(P_BASEDIR)/os/win32/tools/*.$(B_OBJEXT))
 	del /f /q $(subst /,\,$(P_BASEDIR)/tools/*.$(B_OBJEXT))
 	del /f /q *.ilk *.pdb *.$(B_OBJEXT) *.exe
-

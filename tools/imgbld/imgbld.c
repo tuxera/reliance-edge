@@ -23,7 +23,7 @@
     more information.
 */
 /** @file
-    @brief Implements a Win32 command-line image builder tool
+    @brief Implements a command-line image builder tool.
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,7 +49,7 @@
 static void Usage(const char *pszProgramName, bool fError);
 
 
-void *gpCopyBuffer = NULL;
+void *gpCopyBuffer;
 uint32_t gulCopyBufferSize;
 
 
@@ -70,10 +70,6 @@ int ImgbldStart(
 
     if(ret == 0)
     {
-      #if REDCONF_API_POSIX == 0
-        FILELISTENTRY  *psFileListHead = NULL;
-      #endif
-
         /*  Keep track of whether the target device has been formatted. If an
             operation fails before the device is formatted, then the image file
             does not need to be deleted.
@@ -81,22 +77,24 @@ int ImgbldStart(
         bool            fFormatted = false;
 
       #if REDCONF_API_FSE == 1
+        FILELISTENTRY  *pFileListHead = NULL;
+
         if(ret == 0)
         {
             if(pParam->pszMapFile != NULL)
             {
-                ret = IbFseGetFileList(pParam->pszMapFile, pParam->pszInputDir, &psFileListHead);
+                ret = IbFseGetFileList(pParam->pszMapFile, pParam->pszInputDir, &pFileListHead);
             }
             else
             {
-                ret = IbFseBuildFileList(pParam->pszInputDir, &psFileListHead);
+                ret = IbFseBuildFileList(pParam->pszInputDir, &pFileListHead);
             }
         }
       #endif
 
         if(ret == 0)
         {
-            REDSTATUS err = RedOsBDevConfig(pParam->bVolNumber, pParam->pszOutputFile);
+            REDSTATUS err = RedOsBDevConfig(pParam->bVolNum, pParam->pszOutputFile);
 
             if(err != 0)
             {
@@ -114,7 +112,7 @@ int ImgbldStart(
 
         if(ret == 0)
         {
-            if(RedCoreVolSetCurrent(pParam->bVolNumber) != 0)
+            if(RedCoreVolSetCurrent(pParam->bVolNum) != 0)
             {
                 REDERROR();
                 ret = -1;
@@ -130,7 +128,7 @@ int ImgbldStart(
             if(formaterr != 0)
             {
                 ret = -1;
-                fprintf(stderr, "Error number %d formatting volume.\n", -formaterr);
+                fprintf(stderr, "Error number %d formatting volume.\n", (int)-formaterr);
             }
         }
 
@@ -154,7 +152,7 @@ int ImgbldStart(
                         break;
                     }
 
-                    gulCopyBufferSize /= 2;
+                    gulCopyBufferSize /= 2U;
                 }
             }
         }
@@ -165,23 +163,23 @@ int ImgbldStart(
             ret = IbPosixCopyDir(pParam->pszVolName, pParam->pszInputDir);
         }
       #else
-
         if(ret == 0)
         {
-            ret = IbFseCopyFiles(pParam->bVolNumber, psFileListHead);
+            ret = IbFseCopyFiles(pParam->bVolNum, pFileListHead);
         }
 
         if((ret == 0) && (pParam->pszDefineFile != NULL))
         {
-            ret = IbFseOutputDefines(psFileListHead, pParam);
+            ret = IbFseOutputDefines(pFileListHead, pParam);
         }
 
-        FreeFileList(&psFileListHead);
+        FreeFileList(&pFileListHead);
       #endif
 
         if(gpCopyBuffer != NULL)
         {
             free(gpCopyBuffer);
+            gpCopyBuffer = NULL;
         }
 
         if(IbApiUninit() != 0)
@@ -214,11 +212,11 @@ int ImgbldStart(
 
 /** @brief Helper function to parse command line arguments.
 
-    Does not return if params are invalid. (Prints usage and exits).
+    Does not return if params are invalid.  (Prints usage and exits).
 
-    @brief argc     The number of arguments.
-    @brief argv     The argument array.
-    @param pParam   IMGBLDPARAM structure to fill
+    @param argc     The number of arguments.
+    @param argv     The argument array.
+    @param pParam   IMGBLDPARAM structure to fill.
 */
 void ImgbldParseParams(
     int             argc,
@@ -271,7 +269,7 @@ void ImgbldParseParams(
                 pParam->pszDefineFile = red_optarg;
                 break;
             case 'W': /* --no-warn */
-                pParam->fNowarn = true;
+                pParam->fNoWarn = true;
                 break;
           #endif
             case 'V': /* --version */
@@ -316,15 +314,15 @@ void ImgbldParseParams(
         goto BadOpt;
     }
 
-    pParam->bVolNumber = RedFindVolumeNumber(argv[red_optind]);
-    if(pParam->bVolNumber == REDCONF_VOLUME_COUNT)
+    pParam->bVolNum = RedFindVolumeNumber(argv[red_optind]);
+    if(pParam->bVolNum == REDCONF_VOLUME_COUNT)
     {
         fprintf(stderr, "Error: \"%s\" is not a valid volume identifier.\n", argv[red_optind]);
         goto BadOpt;
     }
 
   #if REDCONF_API_POSIX == 1
-    pParam->pszVolName = gaRedVolConf[pParam->bVolNumber].pszPathPrefix;
+    pParam->pszVolName = gaRedVolConf[pParam->bVolNum].pszPathPrefix;
   #endif
 
     red_optind++; /* Move past volume parameter. */
@@ -343,7 +341,7 @@ void ImgbldParseParams(
   #if REDCONF_API_POSIX == 1
     if(pParam->pszInputDir == NULL)
     {
-        fprintf(stderr, "Input directory must be specified (--dir).\n");
+        fprintf(stderr, "Input directory (--dir) must be specified.\n");
         goto BadOpt;
     }
   #else
@@ -411,7 +409,8 @@ static void Usage(
   #endif
 "  --version=layout_ver, -V layout_ver\n"
 "      Specify the on-disk layout version to use.  If unspecified, the default\n"
-"      is %u.  Supported versions are %u and %u.\n"
+"      is %u.  With the current file system configuration, supported version(s)\n"
+"      are: %s.\n"
 "  --dir=inputDir, -i inputDir\n"
 "      A path to a directory that contains all of the files to be copied into\n"
 #if REDCONF_API_POSIX == 1
@@ -433,9 +432,9 @@ static void Usage(
 "  --help, -H\n"
 "      Prints this usage text and exits.\n\n";
 
-    fprintf(pOut, szUsage, pszProgramName, RED_DISK_LAYOUT_VERSION, RED_DISK_LAYOUT_ORIGINAL, RED_DISK_LAYOUT_DIRCRC);
+    fprintf(pOut, szUsage, pszProgramName, RED_DISK_LAYOUT_VERSION, RED_DISK_LAYOUT_SUPPORTED_STR);
     exit(iExitStatus);
 }
 
 
-#endif
+#endif /* REDCONF_IMAGE_BUILDER == 1 */

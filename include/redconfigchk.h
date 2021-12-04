@@ -73,6 +73,9 @@
   #ifndef REDCONF_API_POSIX_FTRUNCATE
     #error "Configuration error: REDCONF_API_POSIX_FTRUNCATE must be defined."
   #endif
+  #ifndef REDCONF_API_POSIX_FRESERVE
+    #error "Configuration error: REDCONF_API_POSIX_FRESERVE must be defined."
+  #endif
   #ifndef REDCONF_API_POSIX_READDIR
     #error "Configuration error: REDCONF_API_POSIX_READDIR must be defined."
   #endif
@@ -80,15 +83,8 @@
     #error "Configuration error: REDCONF_API_POSIX_CWD must be defined."
   #endif
   #ifndef REDCONF_API_POSIX_FSTRIM
-    /*  Reliance Edge v2.3 and below did not have REDCONF_API_POSIX_FSTRIM.  You
-        can fix this error by downloading the latest version of the
-        Configuration Utility (assuming you are using the latest version of
-        Reliance Edge) from http://www.datalight.com/reliance-edge, loading your
-        redconf.c and redconf.h files, and saving them again, replacing the
-        original files.
-    */
-  #error "Configuration error: your redconf.h is not compatible. Update your redconf files with a compatible version of the configuration utility."
-#endif
+    #error "Configuration error: REDCONF_API_POSIX_FSTRIM must be defined."
+  #endif
   #ifndef REDCONF_NAME_MAX
     #error "Configuration error: REDCONF_NAME_MAX must be defined."
   #endif
@@ -115,6 +111,19 @@
   #ifndef REDCONF_API_FSE_TRANSMASKGET
     #error "Configuration error: REDCONF_API_FSE_TRANSMASKGET must be defined."
   #endif
+#endif
+
+/*  Because of how these are used in rednodes.h, they need to be defined in all
+    configurations (not just POSIX configurations).
+*/
+#ifndef REDCONF_API_POSIX_SYMLINK
+  #error "Configuration error: REDCONF_API_POSIX_SYMLINK must be defined."
+#endif
+#ifndef REDCONF_POSIX_OWNER_PERM
+  #error "Configuration error: REDCONF_POSIX_OWNER_PERM must be defined."
+#endif
+#ifndef REDCONF_DELETE_OPEN
+  #error "Configuration error: REDCONF_DELETE_OPEN must be defined."
 #endif
 
 #ifndef REDCONF_TASK_COUNT
@@ -175,14 +184,7 @@
   #error "Configuration error: REDCONF_VOLUME_COUNT must be defined."
 #endif
 #ifndef REDCONF_DISCARDS
-    /*  Reliance Edge 1.0.5 and below did not have REDCONF_DISCARDS. You can
-        fix this error by downloading the latest version of the Configuration
-        Utility (assuming you are using the latest version of Reliance Edge)
-        from http://www.datalight.com/reliance-edge, loading your redconf.c
-        and redconf.h files, and saving them again, replacing the original
-        files.
-    */
-  #error "Configuration error: your redconf.h is not compatible. Update your redconf files with a compatible version of the configuration utility."
+  #error "Configuration error: REDCONF_DISCARDS must be defined."
 #endif
 #ifndef REDCONF_IMAGE_BUILDER
   #error "Configuration error: REDCONF_IMAGE_BUILDER must be defined."
@@ -239,6 +241,10 @@
     #error "Configuration error: REDCONF_API_POSIX_FTRUNCATE must be either 0 or 1."
   #endif
 
+  #if (REDCONF_API_POSIX_FRESERVE != 0) && (REDCONF_API_POSIX_FRESERVE != 1)
+    #error "Configuration error: REDCONF_API_POSIX_FRESERVE must be either 0 or 1."
+  #endif
+
   #if (REDCONF_API_POSIX_READDIR != 0) && (REDCONF_API_POSIX_READDIR != 1)
     #error "Configuration error: REDCONF_API_POSIX_READDIR must be either 0 or 1."
   #endif
@@ -293,6 +299,18 @@
   #if (REDCONF_API_FSE_TRANSMASKGET != 0) && (REDCONF_API_FSE_TRANSMASKGET != 1)
     #error "Configuration error: REDCONF_API_FSE_TRANSMASKGET must be either 0 or 1."
   #endif
+#endif
+
+#if (REDCONF_API_POSIX_SYMLINK != 0) && (REDCONF_API_POSIX_SYMLINK != 1)
+  #error "Configuration error: REDCONF_API_POSIX_SYMLINK must be either 0 or 1."
+#endif
+
+#if (REDCONF_POSIX_OWNER_PERM != 0) && (REDCONF_POSIX_OWNER_PERM != 1)
+  #error "Configuration error: REDCONF_POSIX_OWNER_PERM must be either 0 or 1."
+#endif
+
+#if (REDCONF_DELETE_OPEN != 0) && (REDCONF_DELETE_OPEN != 1)
+  #error "Configuration error: REDCONF_DELETE_OPEN must be either 0 or 1."
 #endif
 
 #if REDCONF_TASK_COUNT < 1U
@@ -374,5 +392,3 @@
 
 
 #endif
-
-

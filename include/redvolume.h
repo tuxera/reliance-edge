@@ -29,6 +29,16 @@
 
 
 #include "redexclude.h" /* for DISCARD_SUPPORTED */
+#include <redosconf.h> /* for REDOSCONF_MUTABLE_VOLCONF */
+
+
+/** Indicates that the sector size should be queried from the block device.
+*/
+#define SECTOR_SIZE_AUTO    0U
+
+/** Indicates that the sector count should be queried from the block device.
+*/
+#define SECTOR_COUNT_AUTO   0U
 
 
 /** @brief Per-volume configuration structure.
@@ -87,7 +97,13 @@ typedef struct
   #endif
 } VOLCONF;
 
-extern const VOLCONF gaRedVolConf[REDCONF_VOLUME_COUNT];
+#if REDOSCONF_MUTABLE_VOLCONF == 1
+  #define VOLCONF_CONST
+#else
+  #define VOLCONF_CONST const
+#endif
+
+extern VOLCONF_CONST VOLCONF gaRedVolConf[REDCONF_VOLUME_COUNT];
 extern const VOLCONF * CONST_IF_ONE_VOLUME gpRedVolConf;
 
 

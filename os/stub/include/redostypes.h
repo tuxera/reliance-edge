@@ -37,6 +37,20 @@
 */
 typedef uint64_t REDTIMESTAMP;
 
+/** @brief Implementation-defined block device context type.
+
+    The underlying type of the context parameter passed into RedOsBDevConfig().
+    This can be anything that is convenient for the implementation: a void
+    pointer, a pointer to an opaque structure, a string (`const char *`), an
+    integer, etc.
+
+    Common code should treat this as an opaque type.  OS-specific code may
+    assume the OS-specific underlying type.  In code for the host tools,
+    compiled with the host operating systems (e.g., Windows or Linux), this is
+    assumed to be a string (`const char *`).
+*/
+typedef void *REDBDEVCTX;
+
 
 #endif
 

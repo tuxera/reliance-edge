@@ -1025,11 +1025,14 @@ unsigned long getInodeEntries()
     Q_ASSERT(allSettings.rbtnsUsePosix != NULL);
     Q_ASSERT(allSettings.cmisBlockSize != NULL);
 
+    bool posix = allSettings.rbtnsUsePosix->GetValue();
     unsigned long inodeHeaderSize = 16 + 8
             + (allSettings.cbsInodeBlockCount->GetValue() ? 4 : 0)
             + (allSettings.cbsInodeTimestamps->GetValue() ? 12 : 0)
+            + ((posix && allSettings.cbsPosixOwnerPerm->GetValue()) ? 8 : 0)
             + 4
-            + (allSettings.rbtnsUsePosix->GetValue() ? 4 : 0);
+            + (posix ? 4 : 0)
+            + ((posix && allSettings.cbsDeleteOpen->GetValue()) ? 4 : 0);
 
     return (allSettings.cmisBlockSize->GetValue() - inodeHeaderSize) / 4;
 }
@@ -1041,7 +1044,7 @@ qulonglong getVolSizeMaxBytes()
     qlonglong blockSize = allSettings.cmisBlockSize->GetValue();
     bool posix = allSettings.rbtnsUsePosix->GetValue();
 
-    qlonglong mrHeader = 28 + (posix ? 4 : 0);
+    qlonglong mrHeader = 28 + (posix ? 4 : 0) + ((posix && allSettings.cbsDeleteOpen->GetValue()) ? 12 : 0);
     qlonglong mrImapBits = (static_cast<qlonglong>(blockSize) - mrHeader) * 8;
     qlonglong imapBits = (static_cast<qlonglong>(blockSize) - 16) * 8;
 

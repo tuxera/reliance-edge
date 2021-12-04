@@ -169,6 +169,11 @@
 			<locationURI>REDFS_SRC_PATH/util/crc.c</locationURI>
 		</link>
 		<link>
+			<name>RelianceEdge/ftype.c</name>
+			<type>1</type>
+			<locationURI>REDFS_SRC_PATH/util/ftype.c</locationURI>
+		</link>
+		<link>
 			<name>RelianceEdge/dir.c</name>
 			<type>1</type>
 			<locationURI>REDFS_SRC_PATH/core/driver/dir.c</locationURI>
@@ -219,6 +224,11 @@
 			<locationURI>REDFS_SRC_PATH/util/namelen.c</locationURI>
 		</link>
 		<link>
+			<name>RelianceEdge/perm.c</name>
+			<type>1</type>
+			<locationURI>REDFS_SRC_PATH/util/perm.c</locationURI>
+		</link>
+		<link>
 			<name>RelianceEdge/osassert.c</name>
 			<type>1</type>
 			<locationURI>REDFS_SRC_PATH/os/freertos/services/osassert.c</locationURI>
@@ -247,6 +257,11 @@
 			<name>RelianceEdge/ostimestamp.c</name>
 			<type>1</type>
 			<locationURI>REDFS_SRC_PATH/os/freertos/services/ostimestamp.c</locationURI>
+		</link>
+		<link>
+			<name>RelianceEdge/osuidgid.c</name>
+			<type>1</type>
+			<locationURI>REDFS_SRC_PATH/os/freertos/services/osuidgid.c</locationURI>
 		</link>
 		<link>
 			<name>RelianceEdge/path.c</name>

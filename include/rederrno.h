@@ -52,6 +52,9 @@ typedef int32_t REDSTATUS;
 /** Out of memory */
 #define RED_ENOMEM          12
 
+/** Permission denied. */
+#define RED_EACCES          13
+
 /** Device or resource busy. */
 #define RED_EBUSY           16
 
@@ -100,8 +103,14 @@ typedef int32_t REDSTATUS;
 /** Directory not empty. */
 #define RED_ENOTEMPTY       39
 
+/** Too many symbolic links encountered. */
+#define RED_ELOOP           40
+
 /** No data available. */
 #define RED_ENODATA         61
+
+/** Link has been severed. */
+#define RED_ENOLINK         67
 
 /** Too many users. */
 #define RED_EUSERS          87
@@ -114,4 +123,3 @@ typedef int32_t REDSTATUS;
 
 
 #endif
-

@@ -25,13 +25,12 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-#define CONFIG_VERSION      "2.6"
+#define CONFIG_VERSION      "2.7"
 
 // Hex representation of version above. Most significant byte is the
 // major version, etc.  The low byte should be left 00.  This is exported
 // with the configuration to allow Reliance Edge to print a more helpful
 // message if the configuration is too old.
-#define CONFIG_VERSION_VAL  0x02060000U
+#define CONFIG_VERSION_VAL  0x02070000U
 
 #endif // VERSION_H
-

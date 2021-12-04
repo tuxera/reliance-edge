@@ -74,6 +74,122 @@ extern "C" {
 /** Truncate file to size zero. */
 #define RED_O_TRUNC     0x00000040U
 
+/** If last path component is a symbolic link, return #RED_ELOOP. */
+#define RED_O_NOFOLLOW  0x00000080U
+
+#if REDCONF_API_POSIX_SYMLINK == 1
+/** Expect last path component to be a symbolic link (POSIX extension). */
+#define RED_O_SYMLINK   0x00000100U
+#endif
+
+
+#if REDCONF_API_POSIX_CWD == 1
+/** Pseudo file descriptor representing the current working directory.
+
+    When used as the file descriptor parameter with the `red_*at()` APIs, this
+    causes the corresponding relative path to be parsed from the current working
+    directory.
+
+    @note This macro only exists when #REDCONF_API_POSIX_CWD is enabled.  When
+          #REDCONF_API_POSIX_CWD is false, #RED_AT_FDABS can be used instead of
+          this macro.  Alternatively, #RED_AT_FDNONE can be used to do the
+          "right thing" regardless of whether #REDCONF_API_POSIX_CWD is enabled.
+
+    @note This value is _only_ understood by the `red_*at()` APIs.  Use with any
+          other file descriptor API will result in a #RED_EBADF error.
+*/
+#define RED_AT_FDCWD    (-100) /* Any invalid fd value would work; Linux uses -100. */
+#endif
+
+/** Psuedo file descriptor indicating an absolute path.
+
+    When used as the file descriptor parameter with the `red_*at()` APIs, this
+    forces the corresponding path argument to be parsed as an absolute path.
+
+    This macro has no POSIX equivalent.  It is provided as a POSIX extension.
+    In POSIX, the `*at()` APIs can be supplied with `AT_CWD` as the file
+    descriptor in order to be equivalent to the non-`*at()` versions: e.g.,
+    `unlinkat(AT_CWD, path, 0)` is equivalent to `unlink(path)`.  In Reliance
+    Edge, the CWD feature is optional, enabled by #REDCONF_API_POSIX_CWD.  It
+    would be confusing to allow #RED_AT_FDCWD when CWDs are disabled.  Instead,
+    when CWDs are disabled, this macro may be used to make the red_\*at() APIs
+    equivalent to the non-`*at()` versions.
+
+    @note Applications are recommended to use #RED_AT_FDNONE rather than using
+          this macro directly.  Using #RED_AT_FDNONE will do the "right thing"
+          regardless of whether #REDCONF_API_POSIX_CWD is enabled, so fewer
+          changes will be required to the application code if the Reliance Edge
+          configuration is changed.
+
+    @note This value is _only_ understood by the `red_*at()` APIs.  Use with any
+          other file descriptor API will result in a #RED_EBADF error.
+*/
+#define RED_AT_FDABS    (-101) /* Any invalid fd value would work. */
+
+/** Pseudo file descriptor indicating that only the path should be used.
+
+    When used as the file descriptor parameter with the `red_*at()` APIs, this
+    indicates that only the corresponding path argument should be used.  The
+    interpretation of the path argument depends on the Reliance Edge
+    configuration:
+
+    1. If #REDCONF_API_POSIX_CWD is false, the path is parsed as an absolute
+       path.
+    2. If #REDCONF_API_POSIX_CWD is true, the path is parsed as an absolute path
+       if it looks like an absolute path, otherwise it is parsed relative to the
+       current working directory.
+
+    This macro has no POSIX equivalent.  It is provided as a POSIX extension.
+    In cases where the `red_*at()` APIs are being used without a real file
+    descriptor, this macro is convenient for doing the "right thing" regardless
+    of whether #REDCONF_API_POSIX_CWD is enabled.
+
+    @note This value is _only_ understood by the `red_*at()` APIs.  Use with any
+          other file descriptor API will result in a #RED_EBADF error.
+*/
+#if REDCONF_API_POSIX_CWD == 1
+#define RED_AT_FDNONE   RED_AT_FDCWD
+#else
+#define RED_AT_FDNONE   RED_AT_FDABS
+#endif
+
+
+#if REDCONF_API_POSIX_RMDIR == 1
+/** red_unlinkat() flag which tells it to expect a directory. */
+#define RED_AT_REMOVEDIR 0x1U
+#endif
+
+/** @brief If the final path component names a symbolic link, do not follow it.
+
+    This flag is supported by the following APIs:
+    - red_fchmodat()
+    - red_fchownat()
+    - red_utimesat()
+    - red_fstatat()
+
+    This flag only applies to the final path component.  Symbolic links in path
+    prefix components are still followed when this flag is used.
+
+    If #REDCONF_API_POSIX_SYMLINK is false, symbolic links do not exist, and
+    this flag has no effect.  If #REDOSCONF_SYMLINK_FOLLOW is false, symbolic
+    links are never followed, and this flag has no effect.
+*/
+#define RED_AT_SYMLINK_NOFOLLOW 0x2U
+
+/** @brief If the final path component names a symbolic link, follow it.
+
+    This flag is supported by red_linkat().
+
+    This flag only applies to the final path component of the first path
+    parameter of red_linkat() (@p pszPath).  Symbolic links in both path prefix
+    components are still followed even if this flag is not specified.
+
+    If #REDCONF_API_POSIX_SYMLINK is false, symbolic links do not exist, and
+    this flag has no effect.  If #REDOSCONF_SYMLINK_FOLLOW is false, symbolic
+    links are never followed, and this flag has no effect.
+*/
+#define RED_AT_SYMLINK_FOLLOW 0x4U
+
 
 /** @brief Last file system error (errno).
 
@@ -90,8 +206,7 @@ extern "C" {
     system driver is uninitialized, there are no registered file system users
     and `red_errno` always refers to the global errno.  Under these
     circumstances, multiple tasks manipulating `red_errno` could be
-    problematic.  When the task count is set to one, `red_errno` always refers
-    to the global errno.
+    problematic.
 
     Note that `red_errno` is usable as an lvalue; i.e., in addition to reading
     the error value, the error value can be set:
@@ -153,48 +268,92 @@ int32_t red_settransmask(const char *pszVolume, uint32_t ulEventMask);
 #endif
 int32_t red_gettransmask(const char *pszVolume, uint32_t *pulEventMask);
 int32_t red_statvfs(const char *pszVolume, REDSTATFS *pStatvfs);
+#if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
+int32_t red_freeorphans(const char *pszVolume, uint32_t ulMaxDeletions);
+#endif
 #if REDCONF_READ_ONLY == 0
 int32_t red_sync(void);
 #endif
 int32_t red_open(const char *pszPath, uint32_t ulOpenMode);
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_POSIX_OWNER_PERM == 1)
+int32_t red_open2(const char *pszPath, uint32_t ulOpenFlags, uint16_t uMode);
+#endif
+int32_t red_openat(int32_t iDirFildes, const char *pszPath, uint32_t ulOpenFlags, uint16_t uMode);
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_SYMLINK == 1)
+int32_t red_symlink(const char *pszPath, const char *pszSymlink);
+#endif
+#if REDCONF_API_POSIX_SYMLINK == 1
+int32_t red_readlink(const char *pszSymlink, char *pszBuffer, uint32_t ulBufferSize);
+#endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_UNLINK == 1)
 int32_t red_unlink(const char *pszPath);
 #endif
+#if (REDCONF_READ_ONLY == 0) && ((REDCONF_API_POSIX_UNLINK == 1) || (REDCONF_API_POSIX_RMDIR == 1))
+int32_t red_unlinkat(int32_t iDirFildes, const char *pszPath, uint32_t ulFlags);
+#endif
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_POSIX_OWNER_PERM == 1)
+int32_t red_chmod(const char *pszPath, uint16_t uMode);
+int32_t red_fchmodat(int32_t iDirFildes, const char *pszPath, uint16_t uMode, uint32_t ulFlags);
+int32_t red_fchmod(int32_t iFildes, uint16_t uMode);
+int32_t red_chown(const char *pszPath, uint32_t ulUID, uint32_t ulGID);
+int32_t red_fchownat(int32_t iDirFildes, const char *pszPath, uint32_t ulUID, uint32_t ulGID, uint32_t ulFlags);
+int32_t red_fchown(int32_t iFildes, uint32_t ulUID, uint32_t ulGID);
+#endif
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_INODE_TIMESTAMPS == 1)
+int32_t red_utimes(const char *pszPath, const uint32_t *pulTimes);
+int32_t red_utimesat(int32_t iDirFildes, const char *pszPath, const uint32_t *pulTimes, uint32_t ulFlags);
+int32_t red_futimes(int32_t iFildes, const uint32_t *pulTimes);
+#endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_MKDIR == 1)
 int32_t red_mkdir(const char *pszPath);
+#if REDCONF_POSIX_OWNER_PERM == 1
+int32_t red_mkdir2(const char *pszPath, uint16_t uMode);
+#endif
+int32_t red_mkdirat(int32_t iDirFildes, const char *pszPath, uint16_t uMode);
 #endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_RMDIR == 1)
 int32_t red_rmdir(const char *pszPath);
 #endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_RENAME == 1)
 int32_t red_rename(const char *pszOldPath, const char *pszNewPath);
+int32_t red_renameat(int32_t iOldDirFildes, const char *pszOldPath, int32_t iNewDirFildes, const char *pszNewPath);
 #endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_LINK == 1)
 int32_t red_link(const char *pszPath, const char *pszHardLink);
+int32_t red_linkat(int32_t iDirFildes, const char *pszPath, int32_t iHardLinkDirFildes, const char *pszHardLink, uint32_t ulFlags);
 #endif
+int32_t red_stat(const char *pszPath, REDSTAT *pStat);
+int32_t red_fstatat(int32_t iDirFildes, const char *pszPath, REDSTAT *pStat, uint32_t ulFlags);
+int32_t red_fstat(int32_t iFildes, REDSTAT *pStat);
 int32_t red_close(int32_t iFildes);
 int32_t red_read(int32_t iFildes, void *pBuffer, uint32_t ulLength);
+int32_t red_pread(int32_t iFildes, void *pBuffer, uint32_t ulLength, uint64_t ullOffset);
 #if REDCONF_READ_ONLY == 0
 int32_t red_write(int32_t iFildes, const void *pBuffer, uint32_t ulLength);
-#endif
-#if REDCONF_READ_ONLY == 0
+int32_t red_pwrite(int32_t iFildes, const void *pBuffer, uint32_t ulLength, uint64_t ullOffset);
 int32_t red_fsync(int32_t iFildes);
 #endif
 int64_t red_lseek(int32_t iFildes, int64_t llOffset, REDWHENCE whence);
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_FTRUNCATE == 1)
 int32_t red_ftruncate(int32_t iFildes, uint64_t ullSize);
 #endif
-int32_t red_fstat(int32_t iFildes, REDSTAT *pStat);
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1)
+int32_t red_freserve(int32_t iFildes, uint64_t ullSize);
+#endif
 #if REDCONF_API_POSIX_READDIR == 1
 REDDIR *red_opendir(const char *pszPath);
+REDDIR *red_fdopendir(int32_t iFildes);
 REDDIRENT *red_readdir(REDDIR *pDirStream);
 void red_rewinddir(REDDIR *pDirStream);
+void red_seekdir(REDDIR *pDirStream, uint32_t ulPosition);
+uint32_t red_telldir(REDDIR *pDirStream);
 int32_t red_closedir(REDDIR *pDirStream);
 #endif
 #if REDCONF_API_POSIX_CWD == 1
 int32_t red_chdir(const char *pszPath);
 char *red_getcwd(char *pszBuffer, uint32_t ulBufferSize);
 #endif
+char *red_getdirpath(int32_t iFildes, char *pszBuffer, uint32_t ulBufferSize);
 REDSTATUS *red_errnoptr(void);
 
 #endif /* REDCONF_API_POSIX */
@@ -205,4 +364,3 @@ REDSTATUS *red_errnoptr(void);
 #endif
 
 #endif
-

@@ -11,7 +11,7 @@ INCLUDES=					\
 EXTRA_CFLAGS +=-Wall
 EXTRA_CFLAGS +=-Werror
 EXTRA_CFLAGS +=$(call cc-option,-Wframe-larger-than=4096)
-EXTRA_CFLAGS += -D_FILE_OFFSET_BITS=64 -D_XOPEN_SOURCE=500
+EXTRA_CFLAGS += -D_FILE_OFFSET_BITS=64 -D_XOPEN_SOURCE=500 -D_POSIX_C_SOURCE=200809
 
 ifneq ($(B_DEBUG),0)
 EXTRA_CFLAGS += -g -DDEBUG
@@ -33,10 +33,12 @@ REDPROJHDR=$(P_CONFDIR)/redconf.h
 
 include $(P_BASEDIR)/build/reliance.mk
 
+# FUSE driver reimplements the UID/GID OS service in fuse.c.
+REDFUSEDRIVOBJ := $(subst $(P_BASEDIR)/os/$(P_OS)/services/osuidgid.$(B_OBJEXT),,$(REDDRIVOBJ))
+
 TOOLHDR=							\
 	$(P_BASEDIR)/include/redtools.h
 IMGBLDOBJ=							\
-	$(P_BASEDIR)/tools/imgbld/ibcommon.$(B_OBJEXT)		\
 	$(P_BASEDIR)/tools/imgbld/ibfse.$(B_OBJEXT)		\
 	$(P_BASEDIR)/tools/imgbld/ibposix.$(B_OBJEXT)		\
 	$(P_BASEDIR)/tools/imgbld/imgbld.$(B_OBJEXT)		\
@@ -46,7 +48,6 @@ REDPROJOBJ=							\
 	$(IMGBLDOBJ)						\
 	$(P_BASEDIR)/os/linux/tools/linuxchk.$(B_OBJEXT)	\
 	$(P_BASEDIR)/os/linux/tools/linuxfmt.$(B_OBJEXT)
-
 
 
 $(P_BASEDIR)/tools/imgbld/ibcommon.$(B_OBJEXT):		$(P_BASEDIR)/tools/imgbld/ibcommon.c $(REDHDR) $(TOOLHDR)
@@ -69,7 +70,7 @@ redfmt: $(P_BASEDIR)/os/linux/tools/linuxfmt.$(B_OBJEXT) $(REDDRIVOBJ) $(REDTOOL
 redimgbld: $(IMGBLDOBJ) $(REDDRIVOBJ) $(REDTOOLOBJ)
 	$(CC) $(EXTRA_CFLAGS) $^ -o $@
 
-redfuse: $(P_BASEDIR)/os/linux/tools/fuse.$(B_OBJEXT) $(REDTOOLOBJ) $(REDDRIVOBJ)
+redfuse: $(P_BASEDIR)/os/linux/tools/fuse.$(B_OBJEXT) $(REDTOOLOBJ) $(REDFUSEDRIVOBJ)
 	$(CC) $^ $(LDFLAGS) -lfuse -o $@
 
 .phony: clean
@@ -78,5 +79,3 @@ clean:
 	-rm -f $(P_BASEDIR)/os/linux/tools/*.$(B_OBJEXT)
 	-rm -f $(P_BASEDIR)/tools/*.$(B_OBJEXT)
 	-rm -f redfmt redimgbld redfuse
-
-

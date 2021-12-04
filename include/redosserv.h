@@ -23,6 +23,11 @@
     more information.
 */
 /** @file
+    @brief Defines types and prototypes for the OS services.
+
+    The OS services are used by cross-platform code to interact with the
+    operating environment in a portable way.  The functions defined here are
+    implemented for each OS in `os/[osname]/services`.
 */
 #ifndef REDOSSERV_H
 #define REDOSSERV_H
@@ -46,7 +51,7 @@ typedef struct
 {
     /** The sector size for the block device: the basic unit for reading and
         writing to the storage media.  This value is either taken from the
-        #VOLCONF, or queried from the block device.
+        ::VOLCONF, or queried from the block device.
     */
     uint32_t    ulSectorSize;
 
@@ -55,19 +60,15 @@ typedef struct
     uint64_t    ullSectorCount;
 } BDEVINFO;
 
+REDSTATUS RedOsBDevConfig(uint8_t bVolNum, REDBDEVCTX context);
 REDSTATUS RedOsBDevOpen(uint8_t bVolNum, BDEVOPENMODE mode);
 REDSTATUS RedOsBDevGetGeometry(uint8_t bVolNum, BDEVINFO *pInfo);
 REDSTATUS RedOsBDevClose(uint8_t bVolNum);
 REDSTATUS RedOsBDevRead(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, void *pBuffer);
-
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedOsBDevWrite(uint8_t bVolNum, uint64_t ullSectorStart, uint32_t ulSectorCount, const void *pBuffer);
 REDSTATUS RedOsBDevFlush(uint8_t bVolNum);
 #endif
-
-/*  Non-standard API: for host machines only.
-*/
-REDSTATUS RedOsBDevConfig(uint8_t bVolNum, const char *pszBDevSpec);
 
 
 #if REDCONF_TASK_COUNT > 1U
@@ -79,6 +80,16 @@ void RedOsMutexRelease(void);
 
 #if (REDCONF_TASK_COUNT > 1U) && (REDCONF_API_POSIX == 1)
 uint32_t RedOsTaskId(void);
+#endif
+
+#if (REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1)
+uint32_t RedOsUserId(void);
+uint32_t RedOsGroupId(void);
+bool RedOsIsGroupMember(uint32_t ulGid);
+bool RedOsIsPrivileged(void);
+#if REDOSCONF_FAKE_UID_GID == 1
+void RedOsFakeUidGid(uint32_t ulUid, uint32_t ulGid);
+#endif
 #endif
 
 REDSTATUS RedOsClockInit(void);
@@ -100,4 +111,3 @@ void RedOsAssertFail(const char *pszFileName, uint32_t ulLineNum);
 
 
 #endif
-

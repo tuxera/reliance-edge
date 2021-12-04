@@ -41,7 +41,7 @@ typedef struct
     */
     bool        fImapInline;
 
-#if REDCONF_IMAP_EXTERNAL == 1
+  #if REDCONF_IMAP_EXTERNAL == 1
     /** First block number of the on-disk imap.  Valid only when fImapInline
         is false.
     */
@@ -50,7 +50,7 @@ typedef struct
     /** The number of double-allocated imap nodes that make up the imap.
     */
     uint32_t    ulImapNodeCount;
-#endif
+  #endif
 
     /** Block number where the inode table starts.
     */
@@ -81,6 +81,21 @@ typedef struct
         space.
     */
     bool        fUseReservedBlocks;
+  #endif
+
+  #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1)
+    /** The number of inodes which have reserved space.
+    */
+    uint32_t    ulReservedInodes;
+
+    /** The number of blocks reserved, including file data, indirects and
+        double-indirects.
+    */
+    uint32_t    ulReservedInodeBlocks;
+
+    /** Set to true only when writing to reserved inode space.
+    */
+    bool        fUseReservedInodeBlocks;
   #endif
 } COREVOLUME;
 

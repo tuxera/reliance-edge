@@ -227,11 +227,12 @@ static void Usage(
 "      device file like /dev/sdb).\n"
 "  --version=layout_ver, -V layout_ver\n"
 "      Specify the on-disk layout version to use.  If unspecified, the default\n"
-"      is %u.  Supported versions are %u and %u.\n"
+"      is %u.  With the current file system configuration, supported version(s)\n"
+"      are: %s.\n"
 "  --help, -H\n"
 "      Prints this usage text and exits.\n\n";
 
-    fprintf(pOut, szUsage, pszProgramName, RED_DISK_LAYOUT_VERSION, RED_DISK_LAYOUT_ORIGINAL, RED_DISK_LAYOUT_DIRCRC);
+    fprintf(pOut, szUsage, pszProgramName, RED_DISK_LAYOUT_VERSION, RED_DISK_LAYOUT_SUPPORTED_STR);
     exit(iExitStatus);
 }
 

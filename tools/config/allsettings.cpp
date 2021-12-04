@@ -120,10 +120,14 @@ QString AllSettings::FormatHeaderOutput()
     // Set POSIX calls to true if selected and POSIX is enabled
     toReturn += outputLine(allSettings.cbsPosixFormat->GetMacroName(),
                            (posix && allSettings.cbsPosixFormat->GetValue() ? str1 : str0));
+    toReturn += outputLine(allSettings.cbsPosixSymlink->GetMacroName(),
+                           (posix && allSettings.cbsPosixSymlink->GetValue() ? str1 : str0));
     toReturn += outputLine(allSettings.cbsPosixLink->GetMacroName(),
                            (posix && allSettings.cbsPosixLink->GetValue() ? str1 : str0));
     toReturn += outputLine(allSettings.cbsPosixUnlink->GetMacroName(),
                            (posix && allSettings.cbsPosixUnlink->GetValue() ? str1 : str0));
+    toReturn += outputLine(allSettings.cbsDeleteOpen->GetMacroName(),
+                           (posix && allSettings.cbsDeleteOpen->GetValue() ? str1 : str0));
     toReturn += outputLine(allSettings.cbsPosixMkdir->GetMacroName(),
                            (posix && allSettings.cbsPosixMkdir->GetValue() ? str1 : str0));
     toReturn += outputLine(allSettings.cbsPosixRmdir->GetMacroName(),
@@ -136,12 +140,16 @@ QString AllSettings::FormatHeaderOutput()
                             && allSettings.cbsPosixAtomicRename->GetValue() ? str1 : str0));
     toReturn += outputLine(allSettings.cbsPosixFtruncate->GetMacroName(),
                            (posix && allSettings.cbsPosixFtruncate->GetValue() ? str1 : str0));
+    toReturn += outputLine(allSettings.cbsPosixFreserve->GetMacroName(),
+                           (posix && allSettings.cbsPosixFreserve->GetValue() ? str1 : str0));
     toReturn += outputLine(allSettings.cbsPosixDirOps->GetMacroName(),
                            (posix && allSettings.cbsPosixDirOps->GetValue() ? str1 : str0));
     toReturn += outputLine(allSettings.cbsPosixCwd->GetMacroName(),
                            (posix && allSettings.cbsPosixCwd->GetValue() ? str1 : str0));
     toReturn += outputLine(allSettings.cbsPosixFstrim->GetMacroName(),
                            (posix && allSettings.cbsPosixFstrim->GetValue() ? str1 : str0));
+    toReturn += outputLine(allSettings.cbsPosixOwnerPerm->GetMacroName(),
+                           (posix && allSettings.cbsPosixOwnerPerm->GetValue() ? str1 : str0));
 
     addIntSetting(toReturn, allSettings.sbsMaxNameLen);
 
@@ -332,9 +340,9 @@ QString outputIfNotBlank(const QString &macroName, const QString &value,
 // helpful error message.
 static qint32 getMinCompatVer()
 {
-    // Reliance Edge v2.6 added new buffer configuration macros that previous
-    // versions of Reliance Edge (and this utility) don't know about.
-    return 0x02060000;
+    // Reliance Edge v2.7 added new POSIX-like API configuration macros that
+    // previous versions of Reliance Edge (and this utility) don't know about.
+    return 0x02070000;
 }
 
 QString AllSettings::FormatCodefileOutput()
@@ -353,16 +361,20 @@ void AllSettings::GetErrors(QStringList &errors, QStringList &warnings)
     AllSettings::CheckError(allSettings.rbtnsUsePosix, errors, warnings);
     AllSettings::CheckError(allSettings.rbtnsUseFse, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixFormat, errors, warnings);
+    AllSettings::CheckError(allSettings.cbsPosixSymlink, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixLink, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixUnlink, errors, warnings);
+    AllSettings::CheckError(allSettings.cbsDeleteOpen, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixMkdir, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixRmdir, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixRename, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixAtomicRename, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixFtruncate, errors, warnings);
+    AllSettings::CheckError(allSettings.cbsPosixFreserve, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixDirOps, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixCwd, errors, warnings);
     AllSettings::CheckError(allSettings.cbsPosixFstrim, errors, warnings);
+    AllSettings::CheckError(allSettings.cbsPosixOwnerPerm, errors, warnings);
     AllSettings::CheckError(allSettings.sbsMaxNameLen, errors, warnings);
     AllSettings::CheckError(allSettings.pssPathSepChar, errors, warnings);
     AllSettings::CheckError(allSettings.sbsTaskCount, errors, warnings);
@@ -484,16 +496,20 @@ void AllSettings::ParseHeaderToSettings(const QString &text,
     parseToSetting(text, allSettings.rbtnsUsePosix, notFound, notParsed);
     parseToSetting(text, allSettings.rbtnsUseFse, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixFormat, notFound, notParsed);
+    parseToSetting(text, allSettings.cbsPosixSymlink, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixLink, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixUnlink, notFound, notParsed);
+    parseToSetting(text, allSettings.cbsDeleteOpen, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixMkdir, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixRmdir, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixRename, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixAtomicRename, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixFtruncate, notFound, notParsed);
+    parseToSetting(text, allSettings.cbsPosixFreserve, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixDirOps, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixCwd, notFound, notParsed);
     parseToSetting(text, allSettings.cbsPosixFstrim, notFound, notParsed);
+    parseToSetting(text, allSettings.cbsPosixOwnerPerm, notFound, notParsed);
     parseToSetting(text, allSettings.sbsMaxNameLen, notFound, notParsed);
     parseToSetting(text, allSettings.pssPathSepChar, notFound, notParsed);
     parseToSetting(text, allSettings.sbsTaskCount, notFound, notParsed);
@@ -731,16 +747,20 @@ void AllSettings::DeleteAll()
     deleteAndNullify(&allSettings.rbtnsUsePosix);
     deleteAndNullify(&allSettings.rbtnsUseFse);
     deleteAndNullify(&allSettings.cbsPosixFormat);
+    deleteAndNullify(&allSettings.cbsPosixSymlink);
     deleteAndNullify(&allSettings.cbsPosixLink);
     deleteAndNullify(&allSettings.cbsPosixUnlink);
+    deleteAndNullify(&allSettings.cbsDeleteOpen);
     deleteAndNullify(&allSettings.cbsPosixMkdir);
     deleteAndNullify(&allSettings.cbsPosixRmdir);
     deleteAndNullify(&allSettings.cbsPosixRename);
     deleteAndNullify(&allSettings.cbsPosixAtomicRename);
     deleteAndNullify(&allSettings.cbsPosixFtruncate);
+    deleteAndNullify(&allSettings.cbsPosixFreserve);
     deleteAndNullify(&allSettings.cbsPosixDirOps);
     deleteAndNullify(&allSettings.cbsPosixCwd);
     deleteAndNullify(&allSettings.cbsPosixFstrim);
+    deleteAndNullify(&allSettings.cbsPosixOwnerPerm);
     deleteAndNullify(&allSettings.sbsMaxNameLen);
     deleteAndNullify(&allSettings.pssPathSepChar);
     deleteAndNullify(&allSettings.sbsTaskCount);
@@ -801,16 +821,20 @@ const QString macroNameAutomaticDiscards = "REDCONF_DISCARDS";
 const QString macroNameUsePosix = "REDCONF_API_POSIX";
 const QString macroNameUseFse = "REDCONF_API_FSE";
 const QString macroNamePosixFormat = "REDCONF_API_POSIX_FORMAT";
+const QString macroNamePosixSymlink = "REDCONF_API_POSIX_SYMLINK";
 const QString macroNamePosixLink = "REDCONF_API_POSIX_LINK";
 const QString macroNamePosixUnlink = "REDCONF_API_POSIX_UNLINK";
+const QString macroNameDeleteOpen = "REDCONF_DELETE_OPEN";
 const QString macroNamePosixMkdir = "REDCONF_API_POSIX_MKDIR";
 const QString macroNamePosixRmdir = "REDCONF_API_POSIX_RMDIR";
 const QString macroNamePosixRename = "REDCONF_API_POSIX_RENAME";
 const QString macroNamePosixRenameAtomic = "REDCONF_RENAME_ATOMIC";
 const QString macroNamePosixFtruncate = "REDCONF_API_POSIX_FTRUNCATE";
+const QString macroNamePosixFreserve = "REDCONF_API_POSIX_FRESERVE";
 const QString macroNamePosixDirOps = "REDCONF_API_POSIX_READDIR";
 const QString macroNamePosixCwd = "REDCONF_API_POSIX_CWD";
 const QString macroNamePosixFstrim = "REDCONF_API_POSIX_FSTRIM";
+const QString macroNamePosixOwnerPerm = "REDCONF_POSIX_OWNER_PERM";
 const QString macroNameMaxNameLen = "REDCONF_NAME_MAX";
 const QString macroNamePathSepChar = "REDCONF_PATH_SEPARATOR";
 const QString macroNameTaskCount = "REDCONF_TASK_COUNT";

@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include <redfse.h>
 #include <redtools.h>
@@ -42,20 +43,25 @@
 typedef struct sSTRLISTENTRY STRLISTENTRY;
 struct sSTRLISTENTRY
 {
-    char            asStr[MACRO_NAME_MAX_LEN + 1];
+    char            szStr[MACRO_NAME_MAX_LEN + 1U];
     STRLISTENTRY   *pNext;
 };
 
 
+static int WriteToFile(uint8_t bVolNum, const FILEMAPPING *pFileMapping, uint64_t ullOffset, const void *pData, uint32_t ulDataLen);
 static int WriteDefineOut(FILE *pFileOut, const FILEMAPPING *pFileMapping, STRLISTENTRY **ppListNames);
+static int CheckFileExists(const char *pszPath, bool *pfExists);
+static int GetFileLen(FILE *fp, uint64_t *pullLength);
 
-/*  Private helper method to get the tail entry of a linked list
+
+/** @brief Get the tail entry of the linked list.
 */
-static STRLISTENTRY *GetLastEntry(STRLISTENTRY *pStrList)
+static STRLISTENTRY *GetLastEntry(
+    STRLISTENTRY *pStrList)
 {
     STRLISTENTRY *pCurrEntry = pStrList;
 
-    while(pCurrEntry != NULL && pCurrEntry->pNext != NULL)
+    while((pCurrEntry != NULL) && (pCurrEntry->pNext != NULL))
     {
         pCurrEntry = pCurrEntry->pNext;
     }
@@ -64,11 +70,11 @@ static STRLISTENTRY *GetLastEntry(STRLISTENTRY *pStrList)
 }
 
 
-/*  Private helper function to free a linked list of STRLISTENTRY's. *ppStrList
-    will be NULL after calling
+/** @brief Free a linked list of STRLISTENTRY's.
+
+    `*ppStrList` will be NULL after calling.
 
     @param ppStrList    Pointer to the base STRLISTENTRY of the linked list.
-                        Returns without taking action if this is NULL.
 */
 static void FreeStrList(
     STRLISTENTRY **ppStrList)
@@ -83,11 +89,11 @@ static void FreeStrList(
 }
 
 
-/** Helper function to free a linked list of FILELISTENTRY's.
-    *ppFileList will be NULL after calling.
+/** @brief Free a linked list of FILELISTENTRY's.
+
+    `*ppFileList` will be NULL after calling.
 
     @param ppFileList   Pointer to the base FILELISTENTRY of the linked list.
-                        Returns without taking action if this is NULL.
 */
 void FreeFileList(
     FILELISTENTRY **ppFileList)
@@ -110,7 +116,7 @@ int IbApiInit(void)
 
     if(rstat != 0)
     {
-        fprintf(stderr, "Error number %d initializing file system.\n", -rstat);
+        fprintf(stderr, "Error number %d initializing file system.\n", (int)-rstat);
     }
 
     return (rstat == 0) ? 0 : -1;
@@ -123,24 +129,26 @@ int IbApiUninit(void)
 
     if(rstat != 0)
     {
-        fprintf(stderr, "Error number %d uninitializing file system.\n", -rstat);
+        fprintf(stderr, "Error number %d uninitializing file system.\n", (int)-rstat);
     }
 
     return (rstat == 0) ? 0 : -1;
 }
 
 
-/** @brief Reads a file map file off the disk and fills a linked structure with
-           the file indexes and names therein specified. Prints any error
-           messages to stderr.
+/** @brief Build a list of files from a map file.
+
+    Reads a file map file off the disk and fills a linked structure with the
+    file indexes and names therein specified.  Prints any error messages to
+    stderr.
 
     @param pszMapPath       The path to the file map file.
-    @param pszIndirPath     The path to the input directory. Should be set to
+    @param pszIndirPath     The path to the input directory.  Should be set to
                             NULL if no input directory was specified.
-    @param ppFileListHead   A pointer to a FILELISTENTRY to be filled. A linked
+    @param ppFileListHead   A pointer to a FILELISTENTRY to be filled.  A linked
                             list is allocated onto this pointer if successful,
                             and thus should be freed after use by passing it to
-                            FreeFileList.
+                            FreeFileList().
 
     @return An integer indicating the operation result.
 
@@ -155,12 +163,13 @@ int IbFseGetFileList(
     int             ret = 0;
     FILELISTENTRY  *pCurrEntry = NULL;
     FILE           *pFile = NULL;
-    uint32_t        lastIndex = 0; /* Used to ensure no duplicate indexes. */
+    uint32_t        ulLastIndex = 0U; /* Used to ensure no duplicate indexes. */
 
     *ppFileListHead = NULL;
+
     if(pszMapPath == NULL)
     {
-        REDASSERT(false);
+        REDERROR();
         ret = -1;
     }
 
@@ -177,10 +186,10 @@ int IbFseGetFileList(
     /*  Parse each line of the map file and store the mapping information as a
         new entry in ppFileListHead
     */
-    while (ret == 0)
+    while(ret == 0)
     {
-        uint32_t    currIndex = 0;
-        char        currPath[HOST_PATH_MAX];
+        uint32_t    ulCurrIndex = 0U;
+        char        szCurrPath[HOST_PATH_MAX];
         int         currChar = fgetc(pFile);
 
         /*  Skip over comment lines and whitespace between lines (allowing
@@ -192,7 +201,7 @@ int IbFseGetFileList(
             {
                 /*  Skip over the entire comment line.
                 */
-                while(currChar != '\n' && currChar != EOF)
+                while((currChar != '\n') && (currChar != EOF))
                 {
                     currChar = fgetc(pFile);
                 }
@@ -222,28 +231,23 @@ int IbFseGetFileList(
         {
             ret = -1;
         }
+        else if(fscanf(pFile, "%u\t", &ulCurrIndex) != 1) /* Read out the index number. */
+        {
+            ret = -1;
+        }
+        else if(ulCurrIndex < RED_FILENUM_FIRST_VALID)
+        {
+            fprintf(stderr, "Error in mapping file: file indexes less than %u are reserved.\n", RED_FILENUM_FIRST_VALID);
+            ret = -1;
+        }
+        else if(ulCurrIndex <= ulLastIndex)
+        {
+            fprintf(stderr, "Syntax error in mapping file: file indexes must unique and in ascending order.\n");
+            ret = -1;
+        }
         else
         {
-            /*  Read out the index number.
-            */
-            if(fscanf(pFile, "%u\t", &currIndex) != 1)
-            {
-                ret = -1;
-            }
-            else if(currIndex <= 1)
-            {
-                fprintf(stderr, "Error in mapping file: file indexes 0 and 1 are reserved.\n");
-                ret = -1;
-            }
-            else if(currIndex <= lastIndex)
-            {
-                fprintf(stderr, "Syntax error in mapping file: file indexes must unique and in ascending order.\n");
-                ret = -1;
-            }
-            else
-            {
-                lastIndex = currIndex;
-            }
+            ulLastIndex = ulCurrIndex;
         }
 
         /*  Read the host path to the file for the index number.
@@ -260,7 +264,7 @@ int IbFseGetFileList(
 
         if(ret == 0)
         {
-            char asScanFormat[14];
+            char szScanFormat[14U];
 
             /*  The host path may be surrounded with quotes, in which case the
                 string between the quotes is the host path, or it may not be
@@ -269,11 +273,7 @@ int IbFseGetFileList(
             */
             if(currChar == '"')
             {
-                if(sprintf(asScanFormat, "%%%u[^\"]\"", HOST_PATH_MAX - 1) < 0)
-                {
-                    ret = -1;
-                }
-                else if(fscanf(pFile, asScanFormat, currPath) != 1)
+                if(sprintf(szScanFormat, "%%%u[^\"]\"", HOST_PATH_MAX - 1U) < 0)
                 {
                     ret = -1;
                 }
@@ -288,23 +288,24 @@ int IbFseGetFileList(
                 {
                     ret = -1;
                 }
-                else if(sprintf(asScanFormat, "%%%us", HOST_PATH_MAX - 1) < 0)
+                else if(sprintf(szScanFormat, "%%%us", HOST_PATH_MAX - 1U) < 0)
                 {
                     ret = -1;
                 }
-                else if(fscanf(pFile, asScanFormat, currPath) != 1)
-                {
-                    ret = -1;
-                }
+            }
+
+            if((ret == 0) && (fscanf(pFile, szScanFormat, szCurrPath) != 1))
+            {
+                ret = -1;
             }
         }
 
         /*  Ensure the rest of the line is whitespace
         */
-        while(ret == 0 && currChar != '\n' && currChar != EOF)
+        while((ret == 0) && (currChar != '\n') && (currChar != EOF))
         {
             currChar = fgetc(pFile);
-            if(!isspace(currChar) && currChar != EOF)
+            if(!isspace(currChar) && (currChar != EOF))
             {
                 fprintf(stderr, "Syntax error in mapping file: unexpected token %c at char #%ld.\n", currChar, ftell(pFile));
                 ret = -1;
@@ -316,7 +317,7 @@ int IbFseGetFileList(
             /*  If a relative path was specified, set it to be relative to the input
                 directory.
             */
-            ret = IbSetRelativePath(currPath, pszIndirPath);
+            ret = IbSetRelativePath(szCurrPath, pszIndirPath);
         }
 
         /*  Store index and host file path as a new entry in ppFileListHead
@@ -325,14 +326,14 @@ int IbFseGetFileList(
         {
             FILELISTENTRY *pNewEntry = malloc(sizeof(*pNewEntry));
 
-            if(!pNewEntry)
+            if(pNewEntry == NULL)
             {
                 fprintf(stderr, "Error allocating memory.\n");
                 ret = -1;
             }
 
-            strcpy(pNewEntry->fileMapping.asInFilePath, currPath);
-            pNewEntry->fileMapping.ulOutFileIndex = currIndex;
+            strcpy(pNewEntry->fileMapping.szInFilePath, szCurrPath);
+            pNewEntry->fileMapping.ulOutFileIndex = ulCurrIndex;
             pNewEntry->pNext = NULL;
 
             /*  If pCurrEntry is NULL, then pNewEntry will be the root entry.
@@ -357,10 +358,10 @@ int IbFseGetFileList(
 
     if(pFile != NULL)
     {
-        (void) fclose(pFile);
+        (void)fclose(pFile);
     }
 
-    if(ret == 0 && pCurrEntry == NULL)
+    if((ret == 0) && (pCurrEntry == NULL))
     {
         fprintf(stderr, "Warning: empty or invalid mapping file specified.\n");
     }
@@ -378,51 +379,47 @@ int IbFseGetFileList(
 /** @brief Mounts the volume and copies files to it.
 */
 int IbFseCopyFiles(
-    int                     volNum,
+    uint8_t                 bVolNum,
     const FILELISTENTRY    *pFileList)
 {
     REDSTATUS               err;
     int                     ret = 0;
-    const FILELISTENTRY    *currEntry = pFileList;
-    bool                    mountfail = false;
 
     REDASSERT(pFileList != NULL);
 
-    err = RedFseMount(volNum);
+    err = RedFseMount(bVolNum);
     if(err != 0)
     {
-        fprintf(stderr, "Error number %d mounting volume.\n", -err);
-        mountfail = true;
+        fprintf(stderr, "Error number %d mounting volume.\n", (int)-err);
         ret = -1;
     }
     else
     {
+        const FILELISTENTRY *pCurrEntry = pFileList;
+
         /*  Iterate over pFileList and copy files
         */
-        while((ret == 0) && (currEntry != NULL))
+        while((ret == 0) && (pCurrEntry != NULL))
         {
-            ret = IbCopyFile(volNum, &currEntry->fileMapping);
-            currEntry = currEntry->pNext;
+            ret = IbCopyFile(bVolNum, &pCurrEntry->fileMapping);
+            pCurrEntry = pCurrEntry->pNext;
         }
 
         if(ret == 0)
         {
-            err = RedFseTransact(volNum);
+            err = RedFseTransact(bVolNum);
             if(err != 0)
             {
-                fprintf(stderr, "Unexpected error number %d in RedFseTransact.\n", -err);
+                fprintf(stderr, "Unexpected error number %d transacting volume.\n", (int)-err);
                 ret = -1;
             }
         }
 
-        if(!mountfail)
+        err = RedFseUnmount(bVolNum);
+        if(err != 0)
         {
-            err = RedFseUnmount(volNum);
-            if(err != 0)
-            {
-                fprintf(stderr, "Error number %d unmounting volume.\n", -err);
-                ret = -1;
-            }
+            fprintf(stderr, "Error number %d unmounting volume.\n", (int)-err);
+            ret = -1;
         }
     }
 
@@ -430,11 +427,123 @@ int IbFseCopyFiles(
 }
 
 
-int IbWriteFile(
-    int                 volNum,
+/** @brief Copies from the file at the given path to the file of the given
+           index.
+
+    @param bVolNum      The FSE volume to which to copy the file.
+    @param pFileMapping Mapping for the file to be copied.
+
+    @return An integer indicating the operation result.
+
+    @retval 0   Operation was successful.
+    @retval -1  An error occurred.
+*/
+int IbCopyFile(
+    uint8_t             bVolNum,
+    const FILEMAPPING  *pFileMapping)
+{
+    int                 ret = 0;
+    uint64_t            ullCurrOffset = 0U;
+    uint64_t            ullFSize = 0U; /* Init'd for picky compilers */
+    FILE               *pFile;
+
+    /*  Open the file which is being copied and query its length.
+    */
+    pFile = fopen(pFileMapping->szInFilePath, "rb");
+    if(pFile == NULL)
+    {
+        if(errno == ENOENT)
+        {
+            fprintf(stderr, "Input file not found: %s\n", pFileMapping->szInFilePath);
+        }
+        else
+        {
+            fprintf(stderr, "Error opening input file: %s\n", pFileMapping->szInFilePath);
+        }
+
+        ret = -1;
+    }
+    else
+    {
+        ret = GetFileLen(pFile, &ullFSize);
+        if(ret != 0)
+        {
+            fprintf(stderr, "Error getting file length: %s\n", pFileMapping->szInFilePath);
+        }
+    }
+
+    /*  Copy data from input to target file
+    */
+    while((ret == 0) && (ullCurrOffset < ullFSize))
+    {
+        uint32_t    ulCurrLen = 0U;
+        size_t      rresult;
+
+        ulCurrLen = ((ullFSize - ullCurrOffset) < gulCopyBufferSize) ?
+            (uint32_t)(ullFSize - ullCurrOffset) : gulCopyBufferSize;
+        rresult = fread(gpCopyBuffer, 1U, ulCurrLen, pFile);
+
+        if(rresult != ulCurrLen)
+        {
+            if(feof(pFile))
+            {
+                /*  Shouldn't happen; we just checked file length.
+                */
+                REDERROR();
+                fprintf(stderr, "Warning: file size changed while reading file.\n");
+
+                ulCurrLen = (uint32_t)rresult;
+                ullFSize = ullCurrOffset + rresult;
+            }
+            else
+            {
+                REDASSERT(ferror(pFile));
+                ret = -1;
+                fprintf(stderr, "Error reading input file %s\n", pFileMapping->szInFilePath);
+
+                break;
+            }
+        }
+
+        if(ret == 0)
+        {
+            ret = WriteToFile(bVolNum, pFileMapping, ullCurrOffset, gpCopyBuffer, ulCurrLen);
+
+            ullCurrOffset += ulCurrLen;
+        }
+    }
+
+    if(pFile != NULL)
+    {
+        (void)fclose(pFile);
+    }
+
+    return ret;
+}
+
+
+/** @brief Writes file data to a file.
+
+    This method may be called multiple times to write consecutive chunks of file
+    data.
+
+    @param bVolNum      Volume number.
+    @param pFileMapping The file being copied.  File data will be written to
+                        ::ulOutFileIndex.
+    @param ullOffset    The position in the file to which to write data.
+    @param pData        Data to write to the file.
+    @param ulDataLen    The number of bytes in @p pData to write.
+
+    @return An integer indicating the operation result.
+
+    @retval 0   Operation was successful.
+    @retval -1  An error occurred.
+*/
+static int WriteToFile(
+    uint8_t             bVolNum,
     const FILEMAPPING  *pFileMapping,
     uint64_t            ullOffset,
-    void               *pData,
+    const void         *pData,
     uint32_t            ulDataLen)
 {
     int                 ret = 0;
@@ -444,10 +553,10 @@ int IbWriteFile(
     */
     if(ullOffset == 0U)
     {
-        printf("Copying file %s to index %d\n", pFileMapping->asInFilePath, pFileMapping->ulOutFileIndex);
+        printf("Copying file %s to index %lu\n", pFileMapping->szInFilePath, (unsigned long)pFileMapping->ulOutFileIndex);
     }
 
-    wResult = RedFseWrite(volNum, pFileMapping->ulOutFileIndex, ullOffset, ulDataLen, pData);
+    wResult = RedFseWrite(bVolNum, pFileMapping->ulOutFileIndex, ullOffset, ulDataLen, pData);
 
     if(wResult < 0)
     {
@@ -456,10 +565,10 @@ int IbWriteFile(
         switch(wResult)
         {
             case -RED_EFBIG:
-                fprintf(stderr, "Error: input file too big: %s\n", pFileMapping->asInFilePath);
+                fprintf(stderr, "Error: input file too big: %s\n", pFileMapping->szInFilePath);
                 break;
             case -RED_EBADF:
-                fprintf(stderr, "Error: invalid file index %d\n", pFileMapping->ulOutFileIndex);
+                fprintf(stderr, "Error: invalid file index %lu\n", (unsigned long)pFileMapping->ulOutFileIndex);
                 break;
             case -RED_ENOSPC:
                 fprintf(stderr, "Error: insufficient space on target volume.\n");
@@ -470,11 +579,12 @@ int IbWriteFile(
             default:
                 /*  Other errors not expected.
                 */
+                fprintf(stderr, "Unexpected error %d from RedFseWrite()\n", (int)wResult);
                 REDERROR();
                 break;
         }
     }
-    else if((uint32_t) wResult != ulDataLen)
+    else if((uint32_t)wResult != ulDataLen)
     {
         ret = -1;
         fprintf(stderr, "Error: insufficient space on target volume.\n");
@@ -490,14 +600,15 @@ int IbWriteFile(
 }
 
 
-/** @brief Outputs a list of C/C++ macros identifying the files in the given
-           file map and outputs them based on the given given imgbld options.
-           If the imgbld options provide a defines output file but there are
-           errors accessing it, then the user is alerted and the output is
-           written to stdout.
+/** @brief Output C macros for the file list.
+
+    Outputs a list of C/C++ macros identifying the files in the given file map
+    and outputs them based on the given given imgbld options.  If the imgbld
+    options provide a defines output file but there are errors accessing it,
+    then the user is alerted and the output is written to stdout.
 
     @param pFileList    The map of input files paths processed and their file
-                        indexes
+                        indexes.
     @param pParam       The struct of command line options.
 
     @return An integer indicating the operation result.
@@ -506,23 +617,23 @@ int IbWriteFile(
     @retval -1  An error occurred.
 */
 int IbFseOutputDefines(
-    FILELISTENTRY          *pFileList,
-    const IMGBLDPARAM      *pParam)
+    FILELISTENTRY      *pFileList,
+    const IMGBLDPARAM  *pParam)
 {
-    int                     ret = 0;
-    FILELISTENTRY          *pCurrEntry = pFileList;
-    STRLISTENTRY           *pStrList = NULL;
-    FILE                   *pFileOut = NULL;
-    bool                    fUseFile = (pParam->pszDefineFile != NULL);
+    int                 ret = 0;
+    FILELISTENTRY      *pCurrEntry = pFileList;
+    STRLISTENTRY       *pStrList = NULL;
+    FILE               *pFileOut = NULL;
+    bool                fUseFile = (pParam->pszDefineFile != NULL);
 
     /*  When using a defines file, check if file exists and confirm overwrite
         unless nowarn was specified
     */
-    if(fUseFile && !pParam->fNowarn)
+    if(fUseFile && !pParam->fNoWarn)
     {
         bool fExists;
 
-        ret = IbCheckFileExists(pParam->pszDefineFile, &fExists);
+        ret = CheckFileExists(pParam->pszDefineFile, &fExists);
 
         if((ret == 0) && fExists)
         {
@@ -560,7 +671,7 @@ int IbFseOutputDefines(
 
     /*  Iterate over pFileList and output #define information.
     */
-    while(ret == 0 && pCurrEntry != NULL)
+    while((ret == 0) && (pCurrEntry != NULL))
     {
         ret = WriteDefineOut(pFileOut, &pCurrEntry->fileMapping, &pStrList);
         pCurrEntry = pCurrEntry->pNext;
@@ -568,7 +679,7 @@ int IbFseOutputDefines(
 
     FreeStrList(&pStrList);
 
-    if(pFileOut != NULL)
+    if((pFileOut != NULL) && (pFileOut != stdout))
     {
         fclose(pFileOut);
     }
@@ -580,9 +691,9 @@ int IbFseOutputDefines(
 /** @brief Creates a macro name for the given file and outputs it on the given
            stream.
 
-    @param pfileOut     The open output stream to write to.
-    @param pFileMapping The file for which to create a macro
-    @param ppListNames  A linked list of macro names already used. The name
+    @param pFileOut     The open output stream to write to.
+    @param pFileMapping The file for which to create a macro.
+    @param ppListNames  A linked list of macro names already used.  The name
                         generated by this function will be appended.
 
     @return An integer indicating the operation result.
@@ -591,17 +702,17 @@ int IbFseOutputDefines(
     @retval -1  An error occurred.
 */
 static int WriteDefineOut(
-    FILE               *pfileOut,
+    FILE               *pFileOut,
     const FILEMAPPING  *pFileMapping,
     STRLISTENTRY      **ppListNames)
 {
     int                 ret = 0;
-    int                 fromIndex = 0;
-    int                 toIndex = 5;    /* Index of next char after "FILE_" */
+    size_t              nFromIndex = 0U;
+    size_t              nToIndex = 5U;  /* Index of next char after "FILE_" */
     STRLISTENTRY       *pCurrEntry = malloc(sizeof(*pCurrEntry));
 
     REDASSERT(ppListNames != NULL);
-    REDASSERT(pFileMapping->asInFilePath != NULL);
+    REDASSERT(pFileMapping->szInFilePath != NULL);
 
     if(pCurrEntry == NULL)
     {
@@ -613,23 +724,19 @@ static int WriteDefineOut(
     {
         pCurrEntry->pNext = NULL;
 
-        (void) strcpy(pCurrEntry->asStr, "FILE_");
+        (void)strcpy(pCurrEntry->szStr, "FILE_");
 
         /*  Copy host file path to current entry, replacing non-compatible
             characters for preprocessor symbols with underscores.
         */
-        while((toIndex < MACRO_NAME_MAX_LEN) && (pFileMapping->asInFilePath[fromIndex] != '\0'))
+        while((nToIndex < MACRO_NAME_MAX_LEN) && (pFileMapping->szInFilePath[nFromIndex] != '\0'))
         {
-            char c = pFileMapping->asInFilePath[fromIndex];
+            char c = pFileMapping->szInFilePath[nFromIndex];
 
-            if(    (c == '/')
-              #ifdef _WIN32
-                || (c == '\\')
-              #endif
-              )
+            if(IB_ISPATHSEP(c))
             {
-                toIndex = 5; /* Reset output: only use the file name, not path */
-                fromIndex++;
+                nToIndex = 5U; /* Reset output: only use the file name, not path */
+                nFromIndex++;
             }
             else
             {
@@ -638,14 +745,14 @@ static int WriteDefineOut(
                     c = '_';
                 }
 
-                pCurrEntry->asStr[toIndex] = c;
+                pCurrEntry->szStr[nToIndex] = c;
 
-                fromIndex++;
-                toIndex++;
+                nFromIndex++;
+                nToIndex++;
             }
         }
 
-        pCurrEntry->asStr[toIndex] = '\0';
+        pCurrEntry->szStr[nToIndex] = '\0';
     }
 
     /*  Ensure current entry is not a duplicate, appending a number (or
@@ -654,54 +761,55 @@ static int WriteDefineOut(
     */
     while(ret == 0)
     {
-        STRLISTENTRY *cmpEntry = *ppListNames;
+        STRLISTENTRY *pCmpEntry = *ppListNames;
 
-        while(cmpEntry != NULL)
+        while(pCmpEntry != NULL)
         {
-            if(strncmp(cmpEntry->asStr, pCurrEntry->asStr, MACRO_NAME_MAX_LEN) == 0)
+            if(strncmp(pCmpEntry->szStr, pCurrEntry->szStr, MACRO_NAME_MAX_LEN) == 0)
             {
-                /*  Duplicate name found. Append a 0 or increment the number
+                /*  Duplicate name found.  Append a 0 or increment the number
                     found at the end.
                 */
-                uint32_t ulEndStr = (uint32_t)strlen(pCurrEntry->asStr);
-                uint32_t ulBeginNum = ulEndStr;
+                size_t nEndStr = strlen(pCurrEntry->szStr);
+                size_t nBeginNum = nEndStr;
 
-                /*  Don't allow pBeginNum closer than 6 from the beginning for
+                /*  Don't allow nBeginNum closer than 6 from the beginning for
                     "FILE_" plus one character
                 */
-                while((ulBeginNum > 6U) && isdigit(pCurrEntry->asStr[ulBeginNum - 1]))
+                while((nBeginNum > 6U) && isdigit(pCurrEntry->szStr[nBeginNum - 1U]))
                 {
-                    ulBeginNum--;
+                    nBeginNum--;
                 }
 
-                if(ulBeginNum == ulEndStr)
+                if(nBeginNum == nEndStr)
                 {
-                    if(ulEndStr == MACRO_NAME_MAX_LEN)
+                    if(nEndStr == MACRO_NAME_MAX_LEN)
                     {
-                        pCurrEntry->asStr[ulEndStr - 1] = '\0';
+                        pCurrEntry->szStr[nEndStr - 1U] = '\0';
                     }
 
-                    strcat(pCurrEntry->asStr, "0");
+                    strcat(pCurrEntry->szStr, "0");
                 }
                 else
                 {
-                    uint32_t num;
-                    int stat = sscanf(&pCurrEntry->asStr[ulBeginNum], "%u", &num);
+                    unsigned num;
+                    int stat = sscanf(&pCurrEntry->szStr[nBeginNum], "%u", &num);
 
                     /*  We just checked and found decimal digits. Scanf should
                         find them too.
                     */
                     REDASSERT(stat == 1);
+                    (void)stat; /* Avoid warnings when assertions are disabled. */
 
                     num++;
-                    if(((num % 10) == 0) && (ulEndStr == MACRO_NAME_MAX_LEN))
+                    if(((num % 10U) == 0U) && (nEndStr == MACRO_NAME_MAX_LEN))
                     {
-                        /*  Overwrite with the new digit--no space is left.
+                        /*  Overwrite with the new digit -- no space is left.
                         */
-                        ulBeginNum--;
+                        nBeginNum--;
                     }
 
-                    sprintf(&pCurrEntry->asStr[ulBeginNum], "%d", num);
+                    sprintf(&pCurrEntry->szStr[nBeginNum], "%u", num);
                 }
 
                 /*  Break to outer loop; check again and see if the new name is
@@ -710,10 +818,10 @@ static int WriteDefineOut(
                 break;
             }
 
-            cmpEntry = cmpEntry->pNext;
+            pCmpEntry = pCmpEntry->pNext;
         }
 
-        if(cmpEntry == NULL)
+        if(pCmpEntry == NULL)
         {
             /*  Final entry reached without finding a duplicate.
             */
@@ -721,7 +829,7 @@ static int WriteDefineOut(
         }
     }
 
-    fprintf(pfileOut, "#define %s %d\n", pCurrEntry->asStr, pFileMapping->ulOutFileIndex);
+    fprintf(pFileOut, "#define %s %lu\n", pCurrEntry->szStr, (unsigned long)pFileMapping->ulOutFileIndex);
 
     if(*ppListNames == NULL)
     {
@@ -735,5 +843,81 @@ static int WriteDefineOut(
     return ret;
 }
 
-#endif /* (REDCONF_IMAGE_BUILDER == 1) && (REDCONF_API_FSE == 1) */
 
+/** @brief Determine if the given file path refers to an existing file.
+
+    @param pszPath  File path to check.
+    @param pfExists Non-null pointer to bool.  Assigned true if the file is
+                    found, false if not found, indeterminate if an error occurs.
+
+    @return An integer indicating the operation result.
+
+    @retval 0   Operation was successful.
+    @retval -1  An error occurred.
+*/
+static int CheckFileExists(
+    const char *pszPath,
+    bool       *pfExists)
+{
+    int         ret = 0;
+    FILE       *pFile;
+
+    if((pfExists == NULL) || (pszPath == NULL))
+    {
+        ret = -1;
+    }
+
+    if(ret == 0)
+    {
+        pFile = fopen(pszPath, "r");
+
+        if(pFile == NULL)
+        {
+            if(errno == ENOENT)
+            {
+                *pfExists = false;
+            }
+            else
+            {
+                ret = -1;
+            }
+        }
+        else
+        {
+            *pfExists = true;
+            (void)fclose(pFile);
+        }
+    }
+
+    return ret;
+}
+
+
+/** @brief Get the file size.
+
+    Gets the file length by seeking to the end and reading the file pointer
+    offset.  Seeks back to the beginning of the file on completion.
+*/
+static int GetFileLen(
+    FILE       *fp,
+    uint64_t   *pullLength)
+{
+    int         ret = -1;
+
+    if(fseek(fp, 0, SEEK_END) == 0)
+    {
+        long length = ftell(fp);
+
+        if(length >= 0)
+        {
+            ret = 0;
+            *pullLength = (uint64_t)length;
+        }
+
+        (void)fseek(fp, 0, SEEK_SET);
+    }
+
+    return ret;
+}
+
+#endif /* (REDCONF_IMAGE_BUILDER == 1) && (REDCONF_API_FSE == 1) */

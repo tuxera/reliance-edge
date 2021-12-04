@@ -40,7 +40,7 @@
 
     <!-- This macro is updated automatically: do not edit! -->
 */
-#define RED_BUILD_NUMBER "900"
+#define RED_BUILD_NUMBER "902"
 
 #define RED_KIT_GPL         0U  /* Open source GPL kit. */
 #define RED_KIT_COMMERCIAL  1U  /* Commercially-licensed kit. */
@@ -70,9 +70,7 @@
 
 /** @brief Original Reliance Edge on-disk layout.
 
-    Used by Reliance Edge v0.9 through v2.5.x.  Depending on configuration,
-    might no longer be used by default, but can still be used via explicit
-    format options.
+    Used by Reliance Edge v0.9 through v2.5.x.
 */
 #define RED_DISK_LAYOUT_ORIGINAL 1U
 
@@ -83,9 +81,62 @@
 */
 #define RED_DISK_LAYOUT_DIRCRC 4U
 
-/** @brief Whether an on-disk layout version is supported by the driver.
+/** @brief Reliance Edge on-disk layout with additional POSIX support.
+
+    On-disk layout which adds POSIX ownership and permissions, symbolic links,
+    and allows inodes to be unlinked while open.
 */
-#define RED_DISK_LAYOUT_IS_SUPPORTED(ver) (((ver) == RED_DISK_LAYOUT_ORIGINAL) || ((ver) == RED_DISK_LAYOUT_DIRCRC))
+#define RED_DISK_LAYOUT_POSIXIER 5U
+
+/** @brief Minimum on-disk layout required to support the current configuration.
+
+    Enabling certain features will require a newer on-disk layout.
+*/
+#if (REDCONF_API_POSIX == 1) && ((REDCONF_POSIX_OWNER_PERM == 1) || (REDCONF_DELETE_OPEN == 1) || (REDCONF_API_POSIX_SYMLINK == 1))
+  #define RED_DISK_LAYOUT_MINIMUM RED_DISK_LAYOUT_POSIXIER
+#else
+  #define RED_DISK_LAYOUT_MINIMUM RED_DISK_LAYOUT_ORIGINAL
+#endif
+
+/** @brief Maximum on-disk layout supported by the current configuration.
+
+    Enabling certain deprecated features will require an older on-disk layout.
+*/
+#if (REDCONF_API_POSIX == 1) && (REDCONF_NAME_MAX > (REDCONF_BLOCK_SIZE - 4U /* Inode */ - 16U /* NodeHeader */))
+  #define RED_DISK_LAYOUT_MAXIMUM RED_DISK_LAYOUT_ORIGINAL
+  #if RED_DISK_LAYOUT_MAXIMUM < RED_DISK_LAYOUT_MINIMUM
+    #error "error: REDCONF_NAME_MAX cannot exceed REDCONF_BLOCK_SIZE minus 20 in this configuration"
+  #endif
+#else
+  #define RED_DISK_LAYOUT_MAXIMUM RED_DISK_LAYOUT_POSIXIER
+#endif
+
+/** @brief On-disk layouts supported by the current configuration as a string.
+
+    Used by the --help text of the interactive front-ends for the formatter and
+    the image builder.
+*/
+#if RED_DISK_LAYOUT_MAXIMUM == RED_DISK_LAYOUT_ORIGINAL
+  #define RED_DISK_LAYOUT_SUPPORTED_STR "1"
+#elif RED_DISK_LAYOUT_MINIMUM == RED_DISK_LAYOUT_POSIXIER
+  #define RED_DISK_LAYOUT_SUPPORTED_STR "5"
+#else
+  #define RED_DISK_LAYOUT_SUPPORTED_STR "1, 4, and 5"
+#endif
+
+/** @brief Whether an on-disk layout version is supported by _any_ configuration
+           of the driver.
+*/
+#define RED_DISK_LAYOUT_IS_VALID(ver) ( \
+       ((ver) == RED_DISK_LAYOUT_ORIGINAL) \
+    || ((ver) == RED_DISK_LAYOUT_DIRCRC) \
+    || ((ver) == RED_DISK_LAYOUT_POSIXIER))
+
+/** @brief Whether an on-disk layout version is supported by the _current_
+           configuration of the driver.
+*/
+#define RED_DISK_LAYOUT_IS_SUPPORTED(ver) \
+    (RED_DISK_LAYOUT_IS_VALID(ver) && ((ver) >= RED_DISK_LAYOUT_MINIMUM) && ((ver) <= RED_DISK_LAYOUT_MAXIMUM))
 
 /** @brief Default on-disk version number.
 
@@ -98,19 +149,23 @@
     - 2: Custom version of Reliance Edge for a specific customer
     - 3: Custom version of Reliance Edge for a specific customer
     - 4: Reliance Edge v2.6+
+    - 5: Reliance Edge v2.7+
 
     The default on-disk version number depends on the file system configuration:
-    - Directory blocks don't exist with the FSE API, so there's no advantage
-      to using the new layout.  Keep using the old layout for backwards
-      compatibility.
-    - The new on-disk layout has a lower maximum name length.  If the
-      #REDCONF_NAME_MAX value is only legal with the original layout, then use
-      it by default.  Doing this avoids breaking existing configurations.
+    - None of the features in the newer on-disk layouts are relevant to the
+      FSE API, so keep using the original layout for backwards compatibility.
+    - The v4+ on-disk layout has a lower maximum name length than the original
+      layout.  If the #REDCONF_NAME_MAX value is only legal with the original
+      layout, then use it by default.  Doing this avoids breaking existing
+      configurations.
+    - Certain POSIX-like features require the v5 on-disk layout.
 */
-#if (REDCONF_API_FSE == 1) || (REDCONF_NAME_MAX > (REDCONF_BLOCK_SIZE - 4U /* Inode */ - 16U /* NodeHeader */))
-#define RED_DISK_LAYOUT_VERSION RED_DISK_LAYOUT_ORIGINAL
+#if (REDCONF_API_FSE == 1) || (RED_DISK_LAYOUT_MAXIMUM < RED_DISK_LAYOUT_DIRCRC)
+  #define RED_DISK_LAYOUT_VERSION RED_DISK_LAYOUT_ORIGINAL
+#elif RED_DISK_LAYOUT_MINIMUM < RED_DISK_LAYOUT_DIRCRC
+  #define RED_DISK_LAYOUT_VERSION RED_DISK_LAYOUT_DIRCRC
 #else
-#define RED_DISK_LAYOUT_VERSION RED_DISK_LAYOUT_DIRCRC
+  #define RED_DISK_LAYOUT_VERSION RED_DISK_LAYOUT_MINIMUM
 #endif
 
 

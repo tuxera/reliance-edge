@@ -58,6 +58,17 @@
 #define INODE_DATA_BLOCKS   (REDCONF_DIRECT_POINTERS + INODE_INDIR_BLOCKS + INODE_DINDIR_BLOCKS)
 #define INODE_SIZE_MAX      (UINT64_SUFFIX(1) * REDCONF_BLOCK_SIZE * INODE_DATA_BLOCKS)
 
+/*  Maximum depth of allocable blocks below the inode, including (if applicable)
+    double-indirect node, indirect node, and data block.
+*/
+#if DINDIR_POINTERS > 0U
+  #define INODE_MAX_DEPTH   3U
+#elif REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+  #define INODE_MAX_DEPTH   2U
+#else
+  #define INODE_MAX_DEPTH   1U
+#endif
+
 
 /*  First inode number that can be allocated.
 */

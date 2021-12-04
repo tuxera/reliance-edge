@@ -74,6 +74,9 @@ static REDSTATUS TruncIndir(CINODE *pInode, bool *pfFreed);
 static REDSTATUS TruncDataBlock(const CINODE *pInode, uint32_t *pulBlock, bool fPropagate);
 #endif
 static REDSTATUS ExpandPrepare(CINODE *pInode);
+#if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1)
+static REDSTATUS CountSparseBlocks(CINODE *pInode, uint64_t ullOffset, uint64_t ullLen, uint32_t *pulSparseBlocks);
+#endif
 #endif
 static REDSTATUS SeekInode(CINODE *pInode, uint32_t ulBlock);
 static void SeekCoord(CINODE *pInode, uint32_t ulBlock);
@@ -88,7 +91,6 @@ static REDSTATUS GetExtent(CINODE *pInode, uint32_t ulBlockStart, uint32_t *pulE
 static REDSTATUS BranchBlock(CINODE *pInode, BRANCHDEPTH depth, bool fBuffer);
 static REDSTATUS BranchOneBlock(uint32_t *pulBlock, void **ppBuffer, uint16_t uBFlag);
 static REDSTATUS BranchBlockCost(const CINODE *pInode, BRANCHDEPTH depth, uint32_t *pulCost);
-static uint32_t FreeBlockCount(void);
 #endif
 
 
@@ -884,6 +886,262 @@ static REDSTATUS ExpandPrepare(
 #endif /* REDCONF_READ_ONLY == 0 */
 
 
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1)
+/** @brief Expand a file and reserve space to allow writing the expanded region.
+
+    The inode size is updated to @p ullOffset + @p ullLen.
+
+    @note In the current implementation, @p ullOffset _must_ be equal to the
+          original size of the inode.
+
+    @param pInode       A pointer to the cached inode structure.
+    @param ullOffset    The inode offset at which the reserved space starts.
+    @param ullLen       The number of bytes beyond @p ullOffset to reserve.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EFBIG  @p ullOffset + @p ullLen is greater than the maximum
+                        inode size.
+    @retval -RED_EINVAL @p pInode is not a mounted dirty inode structure; or
+                        @p ullOffset not equal to the original inode size; or
+                        @p ullLen is zero.
+    @retval -RED_EIO    A disk I/O error occurred.
+    @retval -RED_ENOSPC Insufficient free space for the reservation.  When this
+                        is returned, the inode size is unchanged.
+*/
+REDSTATUS RedInodeDataReserve(
+    CINODE     *pInode,
+    uint64_t    ullOffset,
+    uint64_t    ullLen)
+{
+    REDSTATUS   ret;
+
+    if(!CINODE_IS_DIRTY(pInode) || (ullOffset != pInode->pInodeBuf->ullSize) || (ullLen == 0U))
+    {
+        ret = -RED_EINVAL;
+    }
+    else if((ullOffset > INODE_SIZE_MAX) || ((INODE_SIZE_MAX - ullOffset) < ullLen))
+    {
+        ret = -RED_EFBIG;
+    }
+    else
+    {
+        /*  This operation will extend the file.  If it's current size does not
+            fall on a block boundary, then data within the last block of the
+            file (if it is allocated) that is beyond the current EOF must be
+            zeroed, just like if the file was being written beyond EOF.
+        */
+        ret = ExpandPrepare(pInode);
+
+        if(ret == 0)
+        {
+            uint32_t ulNeedBlocks;
+
+            ret = CountSparseBlocks(pInode, ullOffset, ullLen, &ulNeedBlocks);
+
+            if(ret == 0)
+            {
+                if((ulNeedBlocks + INODE_MAX_DEPTH) > RedVolFreeBlockCount())
+                {
+                    ret = -RED_ENOSPC;
+                }
+                else
+                {
+                    gpRedCoreVol->ulReservedInodes++;
+                    gpRedCoreVol->ulReservedInodeBlocks += ulNeedBlocks;
+
+                    pInode->pInodeBuf->ullSize = ullOffset + ullLen;
+                }
+            }
+        }
+    }
+
+    return ret;
+}
+
+
+/** @brief Unreserve space previously reserved by RedInodeDataReserve().
+
+    All space from @p ullOffset to the EOF is unreserved.
+
+    @param pInode       A pointer to the cached inode structure.
+    @param ullOffset    The inode offset at which to start unreserving.  The
+                        inode must _not_ have been written beyond this offset!
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL @p pInode is not a mounted cached inode pointer; or
+                        @p ullOffset is beyond the EOF.
+    @retval -RED_EIO    A disk I/O error occurred.
+*/
+REDSTATUS RedInodeDataUnreserve(
+    CINODE     *pInode,
+    uint64_t    ullOffset)
+{
+    REDSTATUS   ret;
+
+    if(!CINODE_IS_MOUNTED(pInode) || (ullOffset > pInode->pInodeBuf->ullSize))
+    {
+        ret = -RED_EINVAL;
+    }
+    else if(gpRedCoreVol->ulReservedInodes == 0U)
+    {
+        CRITICAL_ERROR();
+        ret = -RED_EFUBAR;
+    }
+    else
+    {
+        uint32_t ulReclaimBlocks;
+
+        ret = CountSparseBlocks(pInode, ullOffset, pInode->pInodeBuf->ullSize - ullOffset, &ulReclaimBlocks);
+
+        if(ret == 0)
+        {
+            if(gpRedCoreVol->ulReservedInodeBlocks < ulReclaimBlocks)
+            {
+                CRITICAL_ERROR();
+                ret = -RED_EFUBAR;
+            }
+            else
+            {
+                gpRedCoreVol->ulReservedInodes--;
+                gpRedCoreVol->ulReservedInodeBlocks -= ulReclaimBlocks;
+            }
+        }
+    }
+
+    return ret;
+}
+
+
+/** @brief Count sparse blocks in the given inode byte range.
+
+    Except for the data block at EOF and the metadata nodes leading to it, all
+    blocks in the given range *must* be sparse.
+
+    @param pInode           A pointer to the cached inode structure.
+    @param ullOffset        The file offset at which to start counting.
+    @param ullLen           The number of bytes in the range.
+    @param pulSparseBlocks  On success, populated with the number of sparse
+                            blocks between @p ullOffset and @p ullOffset +
+                            @p ullLen.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL @p pulSparseBlocks is `NULL`.
+    @retval -RED_EIO    A disk I/O error occurred.
+*/
+static REDSTATUS CountSparseBlocks(
+    CINODE     *pInode,
+    uint64_t    ullOffset,
+    uint64_t    ullLen,
+    uint32_t   *pulSparseBlocks)
+{
+    uint32_t    ulStartBlockOff = (uint32_t)(ullOffset >> BLOCK_SIZE_P2);
+    uint32_t    ulEndBlockOffset = (uint32_t)((ullOffset + ullLen + REDCONF_BLOCK_SIZE - 1U) >> BLOCK_SIZE_P2);
+    uint32_t    ulBlockOff = ulStartBlockOff;
+    uint16_t    uPrevInodeEntry = COORD_ENTRY_INVALID;
+    uint16_t    uPrevDindirEntry = COORD_ENTRY_INVALID;
+    uint16_t    uPrevIndirEntry = COORD_ENTRY_INVALID;
+    uint32_t    ulSparseBlocks = 0U;
+    REDSTATUS   ret;
+
+    if(pulSparseBlocks == NULL)
+    {
+        REDERROR();
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        ret = SeekInode(pInode, ulBlockOff);
+        if(ret == -RED_ENODATA)
+        {
+            ret = 0;
+        }
+    }
+
+    if(ret == 0)
+    {
+        if(pInode->pInodeBuf->aulEntries[pInode->uInodeEntry] != BLOCK_SPARSE)
+        {
+            uPrevInodeEntry = pInode->uInodeEntry;
+        }
+
+        if(    (pInode->uDindirEntry != COORD_ENTRY_INVALID)
+            && (pInode->pDindir->aulEntries[pInode->uDindirEntry] != BLOCK_SPARSE))
+        {
+            uPrevDindirEntry = pInode->uDindirEntry;
+        }
+
+        if(    (pInode->uIndirEntry != COORD_ENTRY_INVALID)
+            && (pInode->pIndir->aulEntries[pInode->uIndirEntry] != BLOCK_SPARSE))
+        {
+            uPrevIndirEntry = pInode->uIndirEntry;
+        }
+    }
+
+    /*  TODO: This loop is inefficient.  It seeks to every single block offset
+        when it could advance by indirect or double indirect offset counts when
+        they are sparse.
+    */
+    while((ret == 0) && (ulBlockOff < ulEndBlockOffset))
+    {
+        ret = SeekInode(pInode, ulBlockOff);
+        if(ret == -RED_ENODATA)
+        {
+            ret = 0;
+        }
+        else if((ret == 0) && (ulBlockOff > ulStartBlockOff))
+        {
+            /*  Every block except the first (which is at the EOF) must be
+                sparse.
+            */
+            CRITICAL_ERROR();
+            ret = -RED_EFUBAR;
+        }
+        else
+        {
+            /*  Unexpected error (propagate it) or acceptable success.
+            */
+        }
+
+        if(ret == 0)
+        {
+            if(uPrevInodeEntry != pInode->uInodeEntry)
+            {
+                uPrevInodeEntry = pInode->uInodeEntry;
+                ulSparseBlocks++;
+            }
+
+            if((pInode->uDindirEntry != COORD_ENTRY_INVALID) && (uPrevDindirEntry != pInode->uDindirEntry))
+            {
+                uPrevDindirEntry = pInode->uDindirEntry;
+                ulSparseBlocks++;
+            }
+
+            if((pInode->uIndirEntry != COORD_ENTRY_INVALID) && (uPrevIndirEntry != pInode->uIndirEntry))
+            {
+                uPrevIndirEntry = pInode->uIndirEntry;
+                ulSparseBlocks++;
+            }
+
+            ulBlockOff++;
+        }
+    }
+
+    if(ret == 0)
+    {
+        *pulSparseBlocks = ulSparseBlocks;
+    }
+
+    return ret;
+}
+#endif /* (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1) */
+
+
 /** @brief Seek to a given position within an inode, then buffer the data block.
 
     On successful return, pInode->pbData will be populated with a buffer
@@ -1585,7 +1843,7 @@ static REDSTATUS BranchBlock(
 
     ret = BranchBlockCost(pInode, depth, &ulCost);
 
-    if((ret == 0) && (ulCost > FreeBlockCount()))
+    if((ret == 0) && (ulCost > RedVolFreeBlockCount()))
     {
         ret = -RED_ENOSPC;
     }
@@ -1764,10 +2022,25 @@ static REDSTATUS BranchOneBlock(
                 {
                     if(ulPrevBlock == BLOCK_SPARSE)
                     {
+                      #if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1)
+                        if(gpRedCoreVol->fUseReservedInodeBlocks)
+                        {
+                            if(gpRedCoreVol->ulReservedInodeBlocks == 0U)
+                            {
+                                CRITICAL_ERROR();
+                                ret = -RED_EFUBAR;
+                            }
+                            else
+                            {
+                                gpRedCoreVol->ulReservedInodeBlocks--;
+                            }
+                        }
+                      #endif
+
                         /*  Block did not exist previously, so just get it
                             buffered if requested.
                         */
-                        if(ppBuffer != NULL)
+                        if((ret == 0) && (ppBuffer != NULL))
                         {
                             if(*ppBuffer != NULL)
                             {
@@ -1855,13 +2128,7 @@ static REDSTATUS BranchBlockCost(
             be branched, and decremented for every block we determine does not
             need to be branched.
         */
-      #if DINDIR_POINTERS > 0U
-        uint32_t    ulCost = 3U;
-      #elif REDCONF_DIRECT_POINTERS < INODE_ENTRIES
-        uint32_t    ulCost = 2U;
-      #else
-        uint32_t    ulCost = 1U;
-      #endif
+        uint32_t    ulCost = INODE_MAX_DEPTH;
 
       #if DINDIR_POINTERS > 0U
         if(pInode->uDindirEntry != COORD_ENTRY_INVALID)
@@ -1949,35 +2216,6 @@ static REDSTATUS BranchBlockCost(
     }
 
     return ret;
-}
-
-
-/** @brief Yields the number of currently available free blocks.
-
-    Accounts for reserved blocks, subtracting the number of reserved blocks if
-    they are unavailable.
-
-    @return Number of currently available free blocks.
-*/
-static uint32_t FreeBlockCount(void)
-{
-    uint32_t ulFreeBlocks = gpRedMR->ulFreeBlocks;
-
-  #if RESERVED_BLOCKS > 0U
-    if(!gpRedCoreVol->fUseReservedBlocks)
-    {
-        if(ulFreeBlocks >= RESERVED_BLOCKS)
-        {
-            ulFreeBlocks -= RESERVED_BLOCKS;
-        }
-        else
-        {
-            ulFreeBlocks = 0U;
-        }
-    }
-  #endif
-
-    return ulFreeBlocks;
 }
 #endif /* REDCONF_READ_ONLY == 0 */
 

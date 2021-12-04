@@ -31,9 +31,8 @@
 
 REDSTATUS RedPathVolumePrefixLookup(const char *pszPath, uint8_t *pbVolNum);
 REDSTATUS RedPathVolumeLookup(const char *pszVolume, uint8_t *pbVolNum);
-REDSTATUS RedPathLookup(uint32_t ulCwdInode, const char *pszLocalPath, uint32_t *pulInode);
-REDSTATUS RedPathToName(uint32_t ulCwdInode, const char *pszLocalPath, REDSTATUS rootDirError, uint32_t *pulPInode, const char **ppszName);
+REDSTATUS RedPathLookup(uint32_t ulDirInode, const char *pszLocalPath, uint32_t ulFlags, uint32_t *pulInode);
+REDSTATUS RedPathToName(uint32_t ulDirInode, const char *pszLocalPath, REDSTATUS rootDirError, uint32_t *pulPInode, const char **ppszName);
 
 
 #endif
-

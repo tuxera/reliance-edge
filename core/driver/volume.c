@@ -38,10 +38,13 @@
 
 
 #if REDCONF_CHECKER == 0
-static REDSTATUS RedVolMountMaster(void);
+static REDSTATUS RedVolMountMaster(uint32_t ulFlags);
 static REDSTATUS RedVolMountMetaroot(uint32_t ulFlags);
 #endif
 static bool MetarootIsValid(METAROOT *pMR, bool *pfSectorCRCIsValid);
+#if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
+static REDSTATUS ConcatOrphanLists(void);
+#endif
 #ifdef REDCONF_ENDIAN_SWAP
 static void MetaRootEndianSwap(METAROOT *pMetaRoot);
 #endif
@@ -206,13 +209,61 @@ REDSTATUS RedVolMount(
 
             if(ret == 0)
             {
-                ret = RedVolMountMaster();
+                ret = RedVolMountMaster(ulFlags);
             }
 
             if(ret == 0)
             {
                 ret = RedVolMountMetaroot(ulFlags);
             }
+
+          #if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
+            if(ret == 0)
+            {
+                if((ulFlags & RED_MOUNT_SKIP_DELETE) == 0U)
+                {
+                    ret = RedVolFreeOrphans(UINT32_MAX);
+
+                    if(ret == 0)
+                    {
+                        /*  At mount time, all orphans are defunct and should be
+                            freed.
+                        */
+                        gpRedMR->ulDefunctOrphanHead = gpRedMR->ulOrphanHead;
+                        gpRedMR->ulOrphanHead = INODE_INVALID;
+                        gpRedMR->ulOrphanTail = INODE_INVALID;
+
+                        ret = RedVolFreeOrphans(UINT32_MAX);
+                    }
+                }
+                else if(gpRedMR->ulDefunctOrphanHead == INODE_INVALID)
+                {
+                    gpRedMR->ulDefunctOrphanHead = gpRedMR->ulOrphanHead;
+                    gpRedMR->ulOrphanHead = INODE_INVALID;
+                    gpRedMR->ulOrphanTail = INODE_INVALID;
+                }
+                else if(gpRedMR->ulOrphanHead != INODE_INVALID)
+                {
+                    /*  There are two lists, neither of which are empty, that
+                        both contain inodes which were orphaned prior to mount.
+                        However, the caller requested that we not free the
+                        orphans during mount.  Combine the two lists into the
+                        defunct list, so that new orphans have a home.
+                    */
+                    ret = ConcatOrphanLists();
+                }
+                else
+                {
+                    /*  There are orphans in the defunct list only, and the
+                        caller has asked us not to free orphans at this time, so
+                        there's nothing to do.
+                    */
+                }
+
+                REDASSERT(    (gpRedMR->ulOrphanHead == INODE_INVALID)
+                           == (gpRedMR->ulOrphanTail == INODE_INVALID));
+            }
+          #endif
 
             if(ret != 0)
             {
@@ -240,7 +291,8 @@ REDSTATUS RedVolMount(
 #if REDCONF_CHECKER == 0
 static
 #endif
-REDSTATUS RedVolMountMaster(void)
+REDSTATUS RedVolMountMaster(
+    uint32_t        ulFlags)
 {
     REDSTATUS       ret;
     MASTERBLOCK    *pMB;
@@ -266,7 +318,12 @@ REDSTATUS RedVolMountMaster(void)
             || (pMB->bBlockSizeP2 != BLOCK_SIZE_P2)
             || (((pMB->bFlags & MBFLAG_API_POSIX) != 0U) != (REDCONF_API_POSIX == 1))
             || (((pMB->bFlags & MBFLAG_INODE_TIMESTAMPS) != 0U) != (REDCONF_INODE_TIMESTAMPS == 1))
-            || (((pMB->bFlags & MBFLAG_INODE_BLOCKS) != 0U) != (REDCONF_INODE_BLOCKS == 1)))
+            || (((pMB->bFlags & MBFLAG_INODE_BLOCKS) != 0U) != (REDCONF_INODE_BLOCKS == 1))
+            || (((pMB->bFlags & MBFLAG_INODE_UIDGID) != 0U) != ((REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1)))
+            || (((pMB->bFlags & MBFLAG_DELETE_OPEN) != 0U) != ((REDCONF_API_POSIX == 1) && (REDCONF_DELETE_OPEN == 1)))
+            || ((pMB->uFeaturesIncompat & MBFEATURE_MASK_INCOMPAT) != 0U)
+            || (    (pMB->ulVersion >= RED_DISK_LAYOUT_POSIXIER)
+                 && (gaRedBdevInfo[gbRedVolNum].ulSectorSize != (1U << pMB->bSectorSizeP2))))
         {
             ret = -RED_EIO;
         }
@@ -295,6 +352,17 @@ REDSTATUS RedVolMountMaster(void)
                 the metadata.
             */
             gpRedCoreVol->ulVersion = pMB->ulVersion;
+
+          #if REDCONF_READ_ONLY == 0
+            gpRedVolume->fReadOnly = (ulFlags & RED_MOUNT_READONLY) != 0U;
+
+            /*  Check for feature flags that prevent this driver from writing.
+            */
+            if(!gpRedVolume->fReadOnly && ((pMB->uFeaturesReadOnly & MBFEATURE_MASK_UNWRITEABLE) != 0U))
+            {
+                ret = -RED_EROFS;
+            }
+          #endif
         }
 
         RedBufferPut(pMB);
@@ -321,14 +389,14 @@ static
 REDSTATUS RedVolMountMetaroot(
     uint32_t    ulFlags)
 {
+    REDSTATUS   retMR0;
+    REDSTATUS   retMR1;
     REDSTATUS   ret;
 
-    ret = RedIoRead(gbRedVolNum, BLOCK_NUM_FIRST_METAROOT, 1U, &gpRedCoreVol->aMR[0U]);
+    retMR0 = RedIoRead(gbRedVolNum, BLOCK_NUM_FIRST_METAROOT, 1U, &gpRedCoreVol->aMR[0U]);
+    retMR1 = RedIoRead(gbRedVolNum, BLOCK_NUM_FIRST_METAROOT + 1U, 1U, &gpRedCoreVol->aMR[1U]);
 
-    if(ret == 0)
-    {
-        ret = RedIoRead(gbRedVolNum, BLOCK_NUM_FIRST_METAROOT + 1U, 1U, &gpRedCoreVol->aMR[1U]);
-    }
+    ret = ((retMR0 == 0) || (retMR1 == 0)) ? 0 : retMR0;
 
     /*  Determine which metaroot is the most recent copy that was written
         completely.
@@ -338,26 +406,29 @@ REDSTATUS RedVolMountMetaroot(
         uint8_t bMR = UINT8_MAX;
         bool    fSectorCRCIsValid;
 
-        if(MetarootIsValid(&gpRedCoreVol->aMR[0U], &fSectorCRCIsValid))
+        if(retMR0 == 0)
         {
-            bMR = 0U;
+            if(MetarootIsValid(&gpRedCoreVol->aMR[0U], &fSectorCRCIsValid))
+            {
+                bMR = 0U;
 
-          #ifdef REDCONF_ENDIAN_SWAP
-            MetaRootEndianSwap(&gpRedCoreVol->aMR[0U]);
-          #endif
-        }
-        else if(gpRedVolConf->fAtomicSectorWrite && !fSectorCRCIsValid)
-        {
-            ret = -RED_EIO;
-        }
-        else
-        {
-            /*  Metaroot is not valid, so it is ignored and there's nothing
-                to do here.
-            */
+              #ifdef REDCONF_ENDIAN_SWAP
+                MetaRootEndianSwap(&gpRedCoreVol->aMR[0U]);
+              #endif
+            }
+            else if(gpRedVolConf->fAtomicSectorWrite && !fSectorCRCIsValid)
+            {
+                ret = -RED_EIO;
+            }
+            else
+            {
+                /*  Metaroot is not valid, so it is ignored and there's nothing
+                    to do here.
+                */
+            }
         }
 
-        if(ret == 0)
+        if((ret == 0) && (retMR1 == 0))
         {
             if(MetarootIsValid(&gpRedCoreVol->aMR[1U], &fSectorCRCIsValid))
             {
@@ -420,10 +491,6 @@ REDSTATUS RedVolMountMetaroot(
     if(ret == 0)
     {
         gpRedVolume->fMounted = true;
-      #if REDCONF_READ_ONLY == 0
-        gpRedVolume->fReadOnly = (ulFlags & RED_MOUNT_READONLY) != 0U;
-      #endif
-
       #if RESERVED_BLOCKS > 0U
         gpRedCoreVol->fUseReservedBlocks = false;
       #endif
@@ -632,17 +699,17 @@ REDSTATUS RedVolRollback(void)
 
     if(gpRedCoreVol->fBranched)
     {
+        uint32_t ulFlags = RED_MOUNT_DEFAULT;
+
         ret = RedBufferDiscardRange(0U, gpRedVolume->ulBlockCount);
 
         if(ret == 0)
         {
-            ret = RedVolMountMaster();
+            ret = RedVolMountMaster(ulFlags);
         }
 
         if(ret == 0)
         {
-            uint32_t ulFlags = RED_MOUNT_DEFAULT;
-
             ret = RedVolMountMetaroot(ulFlags);
         }
 
@@ -657,6 +724,196 @@ REDSTATUS RedVolRollback(void)
     return ret;
 }
 #endif /* REDCONF_READ_ONLY == 0 */
+
+
+/** @brief Yields the number of currently available free blocks.
+
+    Accounts for reserved blocks, subtracting the number of reserved blocks if
+    they are unavailable.
+
+    @return Number of currently available free blocks.
+*/
+uint32_t RedVolFreeBlockCount(void)
+{
+    uint32_t ulFreeBlocks = gpRedMR->ulFreeBlocks;
+
+  #if RESERVED_BLOCKS > 0U
+    if(!gpRedCoreVol->fUseReservedBlocks)
+    {
+        if(ulFreeBlocks >= RESERVED_BLOCKS)
+        {
+            ulFreeBlocks -= RESERVED_BLOCKS;
+        }
+        else
+        {
+            ulFreeBlocks = 0U;
+        }
+    }
+  #endif
+
+  #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1)
+    if(!gpRedCoreVol->fUseReservedInodeBlocks)
+    {
+        if(ulFreeBlocks < gpRedCoreVol->ulReservedInodeBlocks)
+        {
+            REDERROR();
+            ulFreeBlocks = 0U;
+        }
+        else
+        {
+            ulFreeBlocks -= gpRedCoreVol->ulReservedInodeBlocks;
+        }
+
+        if(gpRedCoreVol->ulReservedInodes > 0U)
+        {
+            uint32_t ulBranchBlocks = gpRedCoreVol->ulReservedInodes * INODE_MAX_DEPTH;
+
+            /*  The blocks set aside for freserve branching are, for simplicity,
+                always reserved: even if they have already been branched.  If blocks
+                are both reserved and branched, they are double-counted against free
+                space, and so it's possible for this reserved count to be larger
+                than remaining free space.
+            */
+            ulFreeBlocks -= REDMIN(ulFreeBlocks, ulBranchBlocks);
+        }
+    }
+  #endif
+
+    return ulFreeBlocks;
+}
+
+
+#if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
+/** @brief Free inodes which were orphaned before the most recent mount of the
+           volume (defunct orphans).
+
+    If there are fewer defunct orphans than were requested, all defunct orphans
+    will be freed.
+
+    @param ulCount  The maximum number of defunct orphans to free.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL @p ulCount is zero.
+    @retval -RED_EIO    A disk I/O error occurred.
+*/
+REDSTATUS RedVolFreeOrphans(
+    uint32_t    ulCount)
+{
+    REDSTATUS   ret = 0;
+
+    if(ulCount == 0U)
+    {
+        REDERROR();
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        uint32_t ulIdx;
+
+        /*  Inode numbers are 32-bits, thus a count of UINT32_MAX will always be
+            sufficient to include all defunct orphans.
+        */
+        for(ulIdx = 0U; ulIdx < ulCount; ulIdx++)
+        {
+            CINODE ino;
+
+            ino.ulInode = gpRedMR->ulDefunctOrphanHead;
+            ret = RedInodeMount(&ino, FTYPE_ANY, false);
+
+            if(ret == 0)
+            {
+                uint32_t ulNextInode = ino.pInodeBuf->ulNextOrphan;
+
+                ret = RedInodeFreeOrphan(&ino);
+
+                if(ret == 0)
+                {
+                    gpRedMR->ulDefunctOrphanHead = ulNextInode;
+                }
+            }
+
+            if(ret != 0)
+            {
+                break;
+            }
+        }
+
+        /*  RED_EBADF is the only expected error, which can be returned by
+            RedInodeMount() when we reach the end of the list.  However,
+            RedInodeMount() will also return RED_EBADF for invalid inodes, which
+            is a critical error.  Thus the special handling of RED_EBADF here.
+        */
+        if(ret == -RED_EBADF)
+        {
+            if(gpRedMR->ulDefunctOrphanHead == INODE_INVALID)
+            {
+                /*  The loop above does not look for the end of the list
+                    (indicated by an orphan list value of INODE_INVALID). It
+                    will instead call RedInodeMount() with the inode number
+                    INODE_INVALID, which will return -RED_EBADF.  That condition
+                    is not an error for this function because the count is a
+                    maximum.
+                */
+                ret = 0;
+            }
+            else
+            {
+                /*  The loop above encountered an inode in the list that is not
+                    valid.
+                */
+                CRITICAL_ERROR();
+                ret = -RED_EFUBAR;
+            }
+        }
+    }
+
+    return ret;
+}
+
+
+/** @brief Concatenate the two lists of orphans.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EIO    A disk I/O error occurred.
+*/
+static REDSTATUS ConcatOrphanLists(void)
+{
+    CINODE ino;
+    REDSTATUS ret;
+
+    REDASSERT(gpRedMR->ulDefunctOrphanHead != INODE_INVALID);
+    REDASSERT(gpRedMR->ulOrphanHead != INODE_INVALID);
+    REDASSERT(gpRedMR->ulOrphanTail != INODE_INVALID);
+
+    ino.ulInode = gpRedMR->ulOrphanTail;
+    ret = RedInodeMount(&ino, FTYPE_ANY, true);
+
+    if(ret == 0)
+    {
+        if(ino.pInodeBuf->ulNextOrphan != INODE_INVALID)
+        {
+            CRITICAL_ERROR();
+            ret = -RED_EFUBAR;
+        }
+        else
+        {
+            ino.pInodeBuf->ulNextOrphan = gpRedMR->ulDefunctOrphanHead;
+            gpRedMR->ulDefunctOrphanHead = gpRedMR->ulOrphanHead;
+
+            gpRedMR->ulOrphanHead = INODE_INVALID;
+            gpRedMR->ulOrphanTail = INODE_INVALID;
+        }
+
+        RedInodePut(&ino, 0U);
+    }
+
+    return ret;
+}
+#endif /* DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1) */
 
 
 #ifdef REDCONF_ENDIAN_SWAP

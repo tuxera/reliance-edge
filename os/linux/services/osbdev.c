@@ -91,26 +91,31 @@ static LINUXBDEV gaDisk[REDCONF_VOLUME_COUNT];
 
 /** @brief Configure a block device.
 
-    @note   This is a non-standard block device API!  The standard block device
-            APIs are designed for implementations running on targets with block
-            devices that are known in advance and can be statically defined by
-            the implementation.  However, this implementation is intended for
-            host systems, and it needs to support writing to raw disks (like
-            "H:" etc.) and file disks which are supplied on the command line.
+    In some operating environments, block devices need to be configured with
+    run-time context information that is only available at higher layers.
+    For example, a block device might need to be associated with a block
+    device handle or a device string.  This API allows that OS-specific
+    context information to be passed down from the higher layer (e.g., a
+    VFS implementation) to the block device OS service, which can save it
+    for later use.
 
-    @param bVolNum      The volume number of the volume to configure.
-    @param pszBDevSpec  Drive or file to associate with the volume.
+    Not all OS ports will call RedOsBDevConfig().  If called, it will be called
+    while the block device is closed, prior to calling RedOsBDevOpen().
+
+    @param bVolNum  The volume number of the volume to configure.
+    @param context  OS-specific block device context information.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
-    @retval -RED_EINVAL @p bVolNum is not a valid volume number; or
-                        @p pszBDevSpec is `NULL` or an empty string.
+    @retval -RED_EINVAL @p bVolNum is not a valid volume number; or @p context
+                        is `NULL` or an empty string.
 */
 REDSTATUS RedOsBDevConfig(
     uint8_t     bVolNum,
-    const char *pszBDevSpec)
+    REDBDEVCTX  context)
 {
+    const char *pszBDevSpec = context;
     REDSTATUS   ret;
 
     if((bVolNum >= REDCONF_VOLUME_COUNT) || gaDisk[bVolNum].fOpen || (pszBDevSpec == NULL) || (pszBDevSpec[0U] == '\0'))

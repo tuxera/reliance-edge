@@ -56,6 +56,9 @@ REDSTATUS RedCoreVolRollback(void);
 #if REDCONF_API_POSIX == 1
 REDSTATUS RedCoreVolStat(REDSTATFS *pStatFS);
 #endif
+#if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
+REDSTATUS RedCoreVolFreeOrphans(uint32_t ulCount);
+#endif
 
 #if (REDCONF_READ_ONLY == 0) && ((REDCONF_API_POSIX == 1) || (REDCONF_API_FSE_TRANSMASKSET == 1))
 REDSTATUS RedCoreTransMaskSet(uint32_t ulEventMask);
@@ -65,22 +68,32 @@ REDSTATUS RedCoreTransMaskGet(uint32_t *pulEventMask);
 #endif
 
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1)
-REDSTATUS RedCoreCreate(uint32_t ulPInode, const char *pszName, bool fDir, uint32_t *pulInode);
+REDSTATUS RedCoreCreate(uint32_t ulPInode, const char *pszName, uint16_t uMode, uint32_t *pulInode);
 #endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_LINK == 1)
 REDSTATUS RedCoreLink(uint32_t ulPInode, const char *pszName, uint32_t ulInode);
 #endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && ((REDCONF_API_POSIX_UNLINK == 1) || (REDCONF_API_POSIX_RMDIR == 1))
-REDSTATUS RedCoreUnlink(uint32_t ulPInode, const char *pszName);
+REDSTATUS RedCoreUnlink(uint32_t ulPInode, const char *pszName, bool fOrphan);
+#endif
+#if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
+REDSTATUS RedCoreFreeOrphan(uint32_t ulInode);
 #endif
 #if REDCONF_API_POSIX == 1
 REDSTATUS RedCoreLookup(uint32_t ulPInode, const char *pszName, uint32_t *pulInode);
 #endif
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_RENAME == 1)
-REDSTATUS RedCoreRename(uint32_t ulSrcPInode, const char *pszSrcName, uint32_t ulDstPInode, const char *pszDstName);
+REDSTATUS RedCoreRename(uint32_t ulSrcPInode, const char *pszSrcName, uint32_t ulDstPInode, const char *pszDstName, bool fOrphan);
 #endif
 #if REDCONF_API_POSIX == 1
 REDSTATUS RedCoreStat(uint32_t ulInode, REDSTAT *pStat);
+#endif
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1)
+REDSTATUS RedCoreChmod(uint32_t ulInode, uint16_t uMode);
+REDSTATUS RedCoreChown(uint32_t ulInode, uint32_t ulUID, uint32_t ulGID);
+#endif
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_INODE_TIMESTAMPS == 1)
+REDSTATUS RedCoreUTimes(uint32_t ulInode, const uint32_t *pulTimes);
 #endif
 #if REDCONF_API_FSE == 1
 REDSTATUS RedCoreFileSizeGet(uint32_t ulInode, uint64_t *pullSize);
@@ -90,17 +103,22 @@ REDSTATUS RedCoreFileRead(uint32_t ulInode, uint64_t ullStart, uint32_t *pulLen,
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedCoreFileWrite(uint32_t ulInode, uint64_t ullStart, uint32_t *pulLen, const void *pBuffer);
 #endif
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1)
+REDSTATUS RedCoreFileWriteReserved(uint32_t ulInode, uint64_t ullStart, uint32_t *pulLen, const void *pBuffer);
+#endif
 #if TRUNCATE_SUPPORTED
 REDSTATUS RedCoreFileTruncate(uint32_t ulInode, uint64_t ullSize);
 #endif
 
-#if (REDCONF_API_POSIX == 1) && ((REDCONF_API_POSIX_READDIR == 1) || (REDCONF_API_POSIX_CWD == 1))
-REDSTATUS RedCoreDirRead(uint32_t ulInode, uint32_t *pulPos, char *pszName, uint32_t *pulInode);
+#if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FRESERVE == 1)
+REDSTATUS RedCoreFileReserve(uint32_t ulInode, uint64_t ullOffset, uint64_t ullLen);
+REDSTATUS RedCoreFileUnreserve(uint32_t ulInode, uint64_t ullOffset);
 #endif
-#if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_CWD == 1)
+
+#if REDCONF_API_POSIX == 1
+REDSTATUS RedCoreDirRead(uint32_t ulInode, uint32_t *pulPos, char *pszName, uint32_t *pulInode);
 REDSTATUS RedCoreDirParent(uint32_t ulInode, uint32_t *pulPInode);
 #endif
 
 
 #endif
-

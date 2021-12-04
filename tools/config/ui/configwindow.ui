@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>451</width>
-    <height>868</height>
+    <height>703</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -68,8 +68,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>443</width>
-             <height>811</height>
+             <width>431</width>
+             <height>902</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_11">
@@ -275,10 +275,24 @@
                         <item>
                          <widget class="QCheckBox" name="cbPosixFormat">
                           <property name="toolTip">
-                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the red_format() API will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to format or reformat the storage media on the target, enable this setting; otherwise, disable it to reduce code size. Often the media is formatted only once, when the system is &amp;quot;flashed&amp;quot;, and never again; in this case there is no need for red_format(). Enabling red_format() will be required to run most of the tests provided with Reliance Edge.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the red_format() and red_format2() APIs will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to format or reformat the storage media on the target, enable this setting; otherwise, disable it to reduce code size. Often the media is formatted only once, when the system is &amp;quot;flashed&amp;quot;, and never again; in this case there is no need for red_format() or red_format2(). Enabling format will be required to run most of the tests provided with Reliance Edge.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                           </property>
                           <property name="text">
                            <string>format</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QHBoxLayout" name="horizontalLayout_2b">
+                        <item>
+                         <widget class="QCheckBox" name="cbPosixSymlink">
+                          <property name="toolTip">
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether the symbolic link APIs will be available: red_symlink() and red_readlink().&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to create symbolic links in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          </property>
+                          <property name="text">
+                           <string>symlink</string>
                           </property>
                          </widget>
                         </item>
@@ -289,7 +303,7 @@
                         <item>
                          <widget class="QCheckBox" name="cbPosixLink">
                           <property name="toolTip">
-                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether the red_link() API will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to create hard links in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether the red_link() and red_linkat() APIs will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to create hard links in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                           </property>
                           <property name="text">
                            <string>link</string>
@@ -303,7 +317,7 @@
                         <item>
                          <widget class="QCheckBox" name="cbPosixUnlink">
                           <property name="toolTip">
-                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the red_unlink() API will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to delete files in your application, enable this setting; otherwise, disable it to reduce code size. red_unlink() shares most of its code with red_rmdir(), so the difference in code size is small unless both APIs are enabled or disabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the red_unlink() API will be available. Additionally, enabling either this setting or &amp;quot;rmdir&amp;quot; will make the red_unlinkat() API available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to delete files in your application, enable this setting; otherwise, disable it to reduce code size. red_unlink() shares most of its code with red_rmdir(), so the difference in code size is small unless both APIs are enabled or disabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                           </property>
                           <property name="text">
                            <string>unlink</string>
@@ -317,7 +331,7 @@
                         <item>
                          <widget class="QCheckBox" name="cbPosixMkdir">
                           <property name="toolTip">
-                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether the red_mkdir() API will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to create directories in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether the red_mkdir() and red_mkdirat() APIs will be available.  When &amp;quot;ownership/permissions&amp;quot; is enabled, this setting also determines whether the red_mkdir2() API is available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to create directories in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                           </property>
                           <property name="text">
                            <string>mkdir</string>
@@ -331,10 +345,150 @@
                         <item>
                          <widget class="QCheckBox" name="cbPosixRmDir">
                           <property name="toolTip">
-                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the red_rmdir() API will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to delete directories in your application, enable this setting; otherwise, disable it to reduce code size. red_rmdir() shares most of its code with red_unlink(), so the difference in code size is small unless both APIs are enabled or disabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the red_rmdir() API will be available.  Additionally, enabling either this etting or &amp;quot;unlink&amp;quot; will make the red_unlinkat() API available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to delete directories in your application, enable this setting; otherwise, disable it to reduce code size. red_rmdir() shares most of its code with red_unlink(), so the difference in code size is small unless both APIs are enabled or disabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                           </property>
                           <property name="text">
                            <string>rmdir</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <widget class="QFrame" name="framePosixRenames">
+                        <layout class="QVBoxLayout" name="vlayPosixRenames">
+                         <property name="leftMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="topMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="rightMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="bottomMargin">
+                          <number>0</number>
+                         </property>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_14">
+                           <item>
+                            <widget class="QCheckBox" name="cbPosixRename">
+                             <property name="toolTip">
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the red_rename() and red_renameat() APIs will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you need to rename files or directories in your application, enable this setting; otherwise, disable it to reduce code size and memory usage. Rename substantially increases the minimum number of block buffers (the increase is between 3 and 6 block size buffers, depending on other settings), thereby increasing the amount of RAM needed to use Reliance Edge. Therefore it is recommended to disable this setting unless rename is actually needed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             </property>
+                             <property name="text">
+                              <string>rename</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                         <item>
+                          <layout class="QHBoxLayout" name="horizontalLayout_24">
+                           <property name="spacing">
+                            <number>0</number>
+                           </property>
+                           <property name="leftMargin">
+                            <number>20</number>
+                           </property>
+                           <item>
+                            <widget class="QCheckBox" name="cbPosixAtomicRename">
+                             <property name="toolTip">
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether red_rename() and red_renameat() will support atomic rename functionality, as described in its documentation.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you want to replace a file with another file, one method is to red_unlink() the original file and red_rename() the new file to have the same name as the original file. But there are several things that could go wrong: it leaves an interval where the file does not exist with its original name, and if another task tries to open it, the open will fail; if another task commits a transaction point, a transacted state could be created where the original file does not exist, which could possibly cause problems if power is lost and the file is missing after reboot; or the rename could fail, and the original file would have been deleted without a replacement. Atomic rename allows red_rename() and red_renameat() to rename onto an existing file, removing the need for the red_unlink() and guaranteeing that the file will exist with either its old or new contents. If this sounds like a useful feature for your application, enable this setting; otherwise, disable it to reduce code size and decrease the minimum block buffer count by one.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             </property>
+                             <property name="text">
+                              <string>atomic rename</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </item>
+                        </layout>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <layout class="QVBoxLayout" name="verticalLayout_8">
+                      <item>
+                       <layout class="QHBoxLayout" name="horizontalLayout_17">
+                        <item>
+                         <widget class="QCheckBox" name="cbPosixFtruncate">
+                          <property name="toolTip">
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether truncation functionality will be available, namely the red_ftruncate() API and the RED_O_TRUNC flag for red_open().&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to truncate files in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          </property>
+                          <property name="text">
+                           <string>ftruncate</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QHBoxLayout" name="horizontalLayout_17b">
+                        <item>
+                         <widget class="QCheckBox" name="cbPosixFreserve">
+                          <property name="toolTip">
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the red_freserve() API will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; red_freserve() allows an application to temporarily reserve space for an upcoming sequential write. If you are not planning to use red_freserve(), it should be disabled to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          </property>
+                          <property name="text">
+                           <string>freserve</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QHBoxLayout" name="horizontalLayout_18">
+                        <item>
+                         <widget class="QCheckBox" name="cbPosixDirOps">
+                          <property name="toolTip">
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether the following APIs will be available:&lt;/p&gt;&lt;p&gt;- red_opendir()&lt;br/&gt;- red_fdopendir()&lt;br/&gt;- red_readdir()&lt;br/&gt;- red_rewinddir()&lt;br/&gt;- red_seekdir()&lt;br/&gt;- red_telldir()&lt;br/&gt;- red_closedir()&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance: &lt;/span&gt;If you plan to enumerate the contents of a directory in your application, enable this setting; otherwise, disable it to reduce code size and reduce the amount of memory needed for each file system handle (see Handle Count). red_readdir() is useful for discovering the contents of a directory, and for writing code which parses directories recursively, but many embedded applications will not need it.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          </property>
+                          <property name="text">
+                           <string>readdir</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QHBoxLayout" name="horizontalLayout_22">
+                        <item>
+                         <widget class="QCheckBox" name="cbPosixCwd">
+                          <property name="toolTip">
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether the name based APIs support relative paths based on the current working directory and the . and .. directory entries.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance: &lt;/span&gt;If you plan to use relative paths in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          </property>
+                          <property name="text">
+                           <string>relative paths</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QHBoxLayout" name="horizontalLayout_22b">
+                        <item>
+                         <widget class="QCheckBox" name="cbPosixOwnerPerm">
+                          <property name="toolTip">
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether Reliance Edge will support storing, setting, and reading an owner (UID), group (GID), and permissions for each file and directory. The permissions include the read/write/execute permissions for user/group/other (0777) and additionally the setgid, setuid, and sticky bits (07000). In addition to storing these fields, this setting also enables enforcement of permissions as per POSIX rules; when permission is denied, a RED_EACCES error is returned.&lt;/p&gt;&lt;p&gt;This setting determines whether the following APIs will be available:&lt;/p&gt;&lt;p&gt;- red_open2()&lt;br/&gt;- red_mkdir2()&lt;br/&gt;- red_chmod()&lt;br/&gt;- red_fchmodat()&lt;br/&gt;- red_fchmod()&lt;br/&gt;- red_chown()&lt;br/&gt;- red_fchmodat()&lt;br/&gt;- red_fchown()&lt;/p&gt;&lt;p&gt;This setting also determines whether the mode parameter for red_openat() and red_mkdirat() is honored (when this setting is disabled, the mode is ignored).&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance: &lt;/span&gt;Enabling this setting is only recommended on embedded RTOSes which implement a VFS with POSIX file system interfaces; these tend to be relatively &amp;quot;high end&amp;quot; systems. Many embedded RTOSes have no concept of users or groups, and in such environments, POSIX ownership and permissions are meaningless and this setting should be disabled.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          </property>
+                          <property name="text">
+                           <string>ownership/permissions</string>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QHBoxLayout" name="horizontalLayout_22c">
+                        <item>
+                         <widget class="QCheckBox" name="cbDeleteOpen">
+                          <property name="toolTip">
+                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;Whether to allow an open file or directory to be deleted, with the completion of the deletion deferred until the file or directory is closed. This setting determines whether the red_freeorphans() API will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance: &lt;/span&gt;This can be enabled to support applications which expect this behavior, which is required by POSIX. A common use for this feature is temporary files: the temporary file is deleted while it is open so that it will be freed automatically when it is closed. If the applications do not deliberately delete files and directories which are open, then this feature should be disabled to reduce code size and to prevent accidental deletions of files and directories which are still being used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          </property>
+                          <property name="text">
+                           <string>delete open files</string>
                           </property>
                          </widget>
                         </item>
@@ -378,104 +532,6 @@
                       </item>
                      </layout>
                     </item>
-                    <item>
-                     <layout class="QVBoxLayout" name="verticalLayout_8">
-                      <item>
-                       <widget class="QFrame" name="framePosixRenames">
-                        <layout class="QVBoxLayout" name="vlayPosixRenames">
-                         <property name="leftMargin">
-                          <number>0</number>
-                         </property>
-                         <property name="topMargin">
-                          <number>0</number>
-                         </property>
-                         <property name="rightMargin">
-                          <number>0</number>
-                         </property>
-                         <property name="bottomMargin">
-                          <number>0</number>
-                         </property>
-                         <item>
-                          <layout class="QHBoxLayout" name="horizontalLayout_14">
-                           <item>
-                            <widget class="QCheckBox" name="cbPosixRename">
-                             <property name="toolTip">
-                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether the red_rename() API will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you need to rename files or directories in your application, enable this setting; otherwise, disable it to reduce code size and memory usage. red_rename() substantially increases the minimum number of block buffers (the increase is between 3 and 6 block size buffers, depending on other settings), thereby increasing the amount of RAM needed to use Reliance Edge. Therefore it is recommended to disable this setting unless red_rename() is actually needed.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                             </property>
-                             <property name="text">
-                              <string>rename</string>
-                             </property>
-                            </widget>
-                           </item>
-                          </layout>
-                         </item>
-                         <item>
-                          <layout class="QHBoxLayout" name="horizontalLayout_24">
-                           <property name="spacing">
-                            <number>0</number>
-                           </property>
-                           <property name="leftMargin">
-                            <number>20</number>
-                           </property>
-                           <item>
-                            <widget class="QCheckBox" name="cbPosixAtomicRename">
-                             <property name="toolTip">
-                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether red_rename() will support atomic rename functionality, as described in its documentation.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you want to replace a file with another file, one method is to red_unlink() the original file and red_rename() the new file to have the same name as the original file. But there are several things that could go wrong: it leaves an interval where the file does not exist with its original name, and if another task tries to open it, the open will fail; if another task commits a transaction point, a transacted state could be created where the original file does not exist, which could possibly cause problems if power is lost and the file is missing after reboot; or the rename could fail, and the original file would have been deleted without a replacement. Atomic rename allows red_rename() to rename onto an existing file, removing the need for the red_unlink() and guaranteeing that the file will exist with either its old or new contents. If this sounds like a useful feature for your application, enable this setting; otherwise, disable it to reduce code size and decrease the minimum block buffer count by one.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                             </property>
-                             <property name="text">
-                              <string>atomic rename</string>
-                             </property>
-                            </widget>
-                           </item>
-                          </layout>
-                         </item>
-                        </layout>
-                       </widget>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_17">
-                        <item>
-                         <widget class="QCheckBox" name="cbPosixFtruncate">
-                          <property name="toolTip">
-                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether truncation functionality will be available, namely the red_ftruncate() API and the RED_O_TRUNC flag for red_open().&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to truncate files in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                          </property>
-                          <property name="text">
-                           <string>ftruncate</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_18">
-                        <item>
-                         <widget class="QCheckBox" name="cbPosixDirOps">
-                          <property name="toolTip">
-                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether the red_opendir(), red_readdir(), red_rewinddir(), and red_closedir() APIs will be available.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance: &lt;/span&gt;If you plan to enumerate the contents of a directory in your application, enable this setting; otherwise, disable it to reduce code size and reduce the amount of memory needed for each file system handle (see Handle Count). red_readdir() is useful for discovering the contents of a directory, and for writing code which parses directories recursively, but most embedded applications will not need it.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                          </property>
-                          <property name="text">
-                           <string>readdir</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item>
-                       <layout class="QHBoxLayout" name="horizontalLayout_22">
-                        <item>
-                         <widget class="QCheckBox" name="cbPosixCwd">
-                          <property name="toolTip">
-                           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This setting determines whether the name based APIs support relative paths based on the current working directory and the . and .. directory entries.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance: &lt;/span&gt;If you plan to use relative paths in your application, enable this setting; otherwise, disable it to reduce code size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                          </property>
-                          <property name="text">
-                           <string>relative paths</string>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                     </layout>
-                    </item>
                    </layout>
                   </item>
                   <item>
@@ -502,7 +558,7 @@
                      <item>
                       <widget class="QLabel" name="label_3">
                        <property name="toolTip">
-                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This determines the maximum length for a file or directory name; it is equivalent to the NAME_MAX macro in POSIX.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; For efficient, compact directories, this should be kept as small as possible. Directory entries have a fixed size, so all names consume the same amount of directory space as the maximum-length name. If your application code has already been written, it is reasonable to search your application for the longest file name, and use that; or if you previously used a FAT file system without long file names, you can set this to 12 (sufficient for 8.3 names). Internally, directory entry sizes must be a multiple of four; if the maximum name length is not divisible by four, directory entries will be padded with unused bytes. To avoid this padding, use a name length which is divisible by four. The maximum legal name length is block size minus 4, but using such large names is not recommended.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This determines the maximum length for a file or directory name; it is equivalent to the NAME_MAX macro in POSIX.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; For efficient, compact directories, this should be kept as small as possible. Directory entries have a fixed size, so all names consume the same amount of directory space as the maximum-length name. If your application code has already been written, it is reasonable to search your application for the longest file name, and use that; or if you previously used a FAT file system without long file names, you can set this to 12 (sufficient for 8.3 names). Internally, directory entry sizes must be a multiple of four; if the maximum name length is not divisible by four, directory entries will be padded with unused bytes. To avoid this padding, use a name length which is divisible by four. The maximum legal name length is block size minus 20, but using such large names is not recommended.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                        </property>
                        <property name="text">
                         <string>Maximum file name length:</string>
@@ -706,9 +762,6 @@
                      </property>
                      <item>
                       <widget class="QLabel" name="label_7">
-                       <property name="toolTip">
-                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means: &lt;/span&gt;This determines the number of file system handles that will be available. This total is shared among all file system volumes. A &amp;quot;handle&amp;quot; is a file descriptor (as returned by red_open()) or a directory stream (as returned by red_opendir()). Each allocated handle is available for either purpose (file descriptor or directory stream), but not at the same time.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; The number of handles needs to be sufficient for the needs of your application. For example, if your application never opens more than three handles at once, this can be set to three. There is little harm in having too many handles; the main drawback is wasted memory. Handles are not very big. If the Read Directory APIs is enabled, each handle is about 40–60 bytes (depending on other settings) plus the maximum name length; if that setting is disabled, the handles are about 16 bytes each.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                       </property>
                        <property name="text">
                         <string>Handle count:</string>
                        </property>
@@ -1020,8 +1073,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>444</width>
-             <height>492</height>
+             <width>445</width>
+             <height>650</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_14">
@@ -2096,8 +2149,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>443</width>
-             <height>496</height>
+             <width>445</width>
+             <height>650</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_19">
@@ -2393,7 +2446,7 @@
                  <item>
                   <widget class="QCheckBox" name="cbInodeTimestamps">
                    <property name="toolTip">
-                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether to store timestamps with the inode, namely atime (time of last access), mtime (time of last modification), and ctime (time of last status change). If enabled, these timestamps are accessible in the REDSTAT structure. The values assigned to these timestamps rely on RedOsClockGetTime().&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to use the inode timestamps in your application, or like having them available to support file system analysis, enable this setting; otherwise, disable it to reduce code size and free up space in the inode. If you have not implemented the real-time clock service, there is little point in enabling this setting since the timestamps will always be zero.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This setting determines whether to store timestamps with the inode, namely atime (time of last access), mtime (time of last modification), and ctime (time of last status change). If enabled, these timestamps are accessible in the REDSTAT structure. The values assigned to these timestamps rely on RedOsClockGetTime().&lt;/p&gt;&lt;p&gt;If using the POSIX-like API, this setting determines whether the following APIs will be available:&lt;/p&gt;&lt;p&gt;- red_utimes()&lt;br/&gt;- red_utimesat()&lt;br/&gt;- red_futimes()&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; If you plan to use the inode timestamps in your application, or like having them available to support file system analysis, enable this setting; otherwise, disable it to reduce code size and free up space in the inode. If you have not implemented the real-time clock service, there is little point in enabling this setting since the timestamps will always be zero.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                    </property>
                    <property name="text">
                     <string>Enable inode timestamps</string>
@@ -2672,8 +2725,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>443</width>
-             <height>496</height>
+             <width>445</width>
+             <height>650</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_24">
@@ -3258,8 +3311,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>443</width>
-             <height>496</height>
+             <width>445</width>
+             <height>650</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -3534,8 +3587,8 @@
             <rect>
              <x>0</x>
              <y>0</y>
-             <width>422</width>
-             <height>505</height>
+             <width>445</width>
+             <height>650</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -3605,12 +3658,7 @@
                <item>
                 <widget class="QLabel" name="lFsizeDetails">
                  <property name="text">
-                  <string>  -  Block size
-  -  Block count enabled
-  -  Inode timestamps enabled
-  -  Selected API
-  -  Direct pointer count
-  -  Indirect pointer count</string>
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;- Block size&lt;br/&gt;- POSIX ownership/permissions enabled&lt;br/&gt;- Block count enabled&lt;br/&gt;- Inode timestamps enabled&lt;br/&gt;- Selected API&lt;br/&gt;- Deleting open files enabled&lt;br/&gt;- Direct pointer count&lt;br/&gt;- Indirect pointer count&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
                  <property name="wordWrap">
                   <bool>false</bool>
@@ -3686,7 +3734,7 @@
                <item>
                 <widget class="QLabel" name="label_48">
                  <property name="text">
-                  <string>The maximum volume size is primarily determined by the selected block size. The selected API has a small effect on the maximum volume size as well.</string>
+                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The maximum volume size is primarily determined by the selected block size. The selected API, and (for the POSIX-like API) whether deleting open files is enabled, has a small effect on the maximum volume size as well.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
@@ -3735,7 +3783,7 @@
      <x>0</x>
      <y>0</y>
      <width>451</width>
-     <height>26</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

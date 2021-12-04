@@ -95,6 +95,10 @@ static uint32_t DirOffsetToEntryIndex(uint64_t ullOffset);
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0                   Operation was successful.
+    @retval -RED_EACCES         Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                                enabled and the permissions of @p pPInode do not
+                                allow the current user to create a directory
+                                entry within it.
     @retval -RED_EIO            A disk I/O error occurred.
     @retval -RED_ENOSPC         There is not enough space on the volume to
                                 create the new directory entry; or the directory
@@ -110,7 +114,7 @@ REDSTATUS RedDirEntryCreate(
     const char *pszName,
     uint32_t    ulInode)
 {
-    REDSTATUS   ret;
+    REDSTATUS   ret = 0;
 
     if(!CINODE_IS_DIRTY(pPInode) || (pszName == NULL) || !INODE_IS_VALID(ulInode))
     {
@@ -121,6 +125,15 @@ REDSTATUS RedDirEntryCreate(
         ret = -RED_ENOTDIR;
     }
     else
+    {
+      #if REDCONF_POSIX_OWNER_PERM == 1
+        INODE *pPIno = pPInode->pInodeBuf;
+
+        ret = RedPermCheck(RED_X_OK | RED_W_OK, pPIno->uMode, pPIno->ulUID, pPIno->ulGID);
+      #endif
+    }
+
+    if(ret == 0)
     {
         uint32_t ulNameLen = RedNameLen(pszName);
 
@@ -191,6 +204,10 @@ REDSTATUS RedDirEntryCreate(
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0               Operation was successful.
+    @retval -RED_EACCES     Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                            enabled and the permissions of @p pPInode do not
+                            allow the current user to delete a directory entry
+                            within it.
     @retval -RED_EIO        A disk I/O error occurred.
     @retval -RED_ENOSPC     The file system does not have enough space to modify
                             the parent directory to perform the deletion.
@@ -200,6 +217,7 @@ REDSTATUS RedDirEntryCreate(
 */
 REDSTATUS RedDirEntryDelete(
     CINODE     *pPInode,
+    CINODE     *pInode,
     uint32_t    ulDeleteIdx)
 {
     REDSTATUS   ret = 0;
@@ -212,97 +230,111 @@ REDSTATUS RedDirEntryDelete(
     {
         ret = -RED_ENOTDIR;
     }
-    else if((DirEntryIndexToOffset(ulDeleteIdx) + DIRENT_SIZE) == pPInode->pInodeBuf->ullSize)
-    {
-        /*  Start searching one behind the index to be deleted.
-        */
-        uint32_t ulTruncIdx = ulDeleteIdx - 1U;
-        bool     fDone = false;
-
-        /*  We are deleting the last dirent in the directory, so search
-            backwards to find the last populated dirent, allowing us to truncate
-            the directory to that point.
-        */
-        while((ret == 0) && (ulTruncIdx != UINT32_MAX) && !fDone)
-        {
-            ret = RedInodeDataSeekAndRead(pPInode, ulTruncIdx / DIRENTS_PER_BLOCK);
-
-            if(ret == 0)
-            {
-                const DIRENT *pDirents = DIRENT_PTR(pPInode->pbData);
-                uint32_t      ulBlockIdx = ulTruncIdx % DIRENTS_PER_BLOCK;
-
-                do
-                {
-                    if(pDirents[ulBlockIdx].ulInode != INODE_INVALID)
-                    {
-                        fDone = true;
-                        break;
-                    }
-
-                    ulTruncIdx--;
-                    ulBlockIdx--;
-                } while(ulBlockIdx != UINT32_MAX);
-            }
-            else if(ret == -RED_ENODATA)
-            {
-                ret = 0;
-
-                REDASSERT((ulTruncIdx % DIRENTS_PER_BLOCK) == 0U);
-                ulTruncIdx -= DIRENTS_PER_BLOCK;
-            }
-            else
-            {
-                /*  Unexpected error, loop will terminate; nothing else
-                    to be done.
-                */
-            }
-        }
-
-        /*  Currently ulTruncIdx represents the last valid dirent index, or
-            UINT32_MAX if the directory is now empty.  Increment it so that it
-            represents the first invalid entry, which will be truncated.
-        */
-        ulTruncIdx++;
-
-        /*  Truncate the directory, deleting the requested entry and any empty
-            dirents at the end of the directory.
-        */
-        if(ret == 0)
-        {
-            uint64_t ullNewSize = DirEntryIndexToOffset(ulTruncIdx);
-
-            /*  If the last directory block would have nothing but the header,
-                free the block.
-            */
-            if((gpRedCoreVol->ulVersion >= RED_DISK_LAYOUT_DIRCRC) && ((ulTruncIdx % DIRENTS_PER_BLOCK) == 0U))
-            {
-                REDASSERT((ullNewSize & (REDCONF_BLOCK_SIZE - 1U)) == NODEHEADER_SIZE);
-                ullNewSize -= NODEHEADER_SIZE;
-            }
-
-            /*  In configurations with unusable space at the end of directory
-                blocks, be sure to truncate away the unusable space.  This makes
-                the directory size more accurate and, more importantly, is
-                required in order for this function to recognize when the final
-                dirent in a block is being deleted.
-            */
-            if(    (DIR_BLOCK_UNUSED_SPACE > 0U)
-                && (ullNewSize >= REDCONF_BLOCK_SIZE)
-                && ((ullNewSize & (REDCONF_BLOCK_SIZE - 1U)) == 0U))
-            {
-                ullNewSize -= DIR_BLOCK_UNUSED_SPACE;
-            }
-
-            ret = RedInodeDataTruncate(pPInode, ullNewSize);
-        }
-    }
     else
     {
-        /*  The dirent to delete is not the last entry in the directory, so just
-            zero it.
-        */
-        ret = DirEntryWrite(pPInode, ulDeleteIdx, INODE_INVALID, "", 0U);
+      #if REDCONF_POSIX_OWNER_PERM == 1
+        const INODE *pPIno = pPInode->pInodeBuf;
+
+        ret = RedPermCheckUnlink(pPIno->uMode, pPIno->ulUID, pPIno->ulGID, pInode->pInodeBuf->ulUID);
+      #else
+        (void)pInode;
+      #endif
+    }
+
+    if(ret == 0)
+    {
+        if((DirEntryIndexToOffset(ulDeleteIdx) + DIRENT_SIZE) == pPInode->pInodeBuf->ullSize)
+        {
+            /*  Start searching one behind the index to be deleted.
+            */
+            uint32_t ulTruncIdx = ulDeleteIdx - 1U;
+            bool     fDone = false;
+
+            /*  We are deleting the last dirent in the directory, so search
+                backwards to find the last populated dirent, allowing us to
+                truncate the directory to that point.
+            */
+            while((ret == 0) && (ulTruncIdx != UINT32_MAX) && !fDone)
+            {
+                ret = RedInodeDataSeekAndRead(pPInode, ulTruncIdx / DIRENTS_PER_BLOCK);
+
+                if(ret == 0)
+                {
+                    const DIRENT *pDirents = DIRENT_PTR(pPInode->pbData);
+                    uint32_t      ulBlockIdx = ulTruncIdx % DIRENTS_PER_BLOCK;
+
+                    do
+                    {
+                        if(pDirents[ulBlockIdx].ulInode != INODE_INVALID)
+                        {
+                            fDone = true;
+                            break;
+                        }
+
+                        ulTruncIdx--;
+                        ulBlockIdx--;
+                    } while(ulBlockIdx != UINT32_MAX);
+                }
+                else if(ret == -RED_ENODATA)
+                {
+                    ret = 0;
+
+                    REDASSERT((ulTruncIdx % DIRENTS_PER_BLOCK) == 0U);
+                    ulTruncIdx -= DIRENTS_PER_BLOCK;
+                }
+                else
+                {
+                    /*  Unexpected error, loop will terminate; nothing else to
+                        be done.
+                    */
+                }
+            }
+
+            /*  Currently ulTruncIdx represents the last valid dirent index, or
+                UINT32_MAX if the directory is now empty.  Increment it so that
+                it represents the first invalid entry, which will be truncated.
+            */
+            ulTruncIdx++;
+
+            /*  Truncate the directory, deleting the requested entry and any
+                empty dirents at the end of the directory.
+            */
+            if(ret == 0)
+            {
+                uint64_t ullNewSize = DirEntryIndexToOffset(ulTruncIdx);
+
+                /*  If the last directory block would have nothing but the
+                    header, free the block.
+                */
+                if((gpRedCoreVol->ulVersion >= RED_DISK_LAYOUT_DIRCRC) && ((ulTruncIdx % DIRENTS_PER_BLOCK) == 0U))
+                {
+                    REDASSERT((ullNewSize & (REDCONF_BLOCK_SIZE - 1U)) == NODEHEADER_SIZE);
+                    ullNewSize -= NODEHEADER_SIZE;
+                }
+
+                /*  In configurations with unusable space at the end of
+                    directory blocks, be sure to truncate away the unusable
+                    space.  This makes the directory size more accurate and,
+                    more importantly, is required in order for this function to
+                    recognize when the final dirent in a block is being deleted.
+                */
+                if(    (DIR_BLOCK_UNUSED_SPACE > 0U)
+                    && (ullNewSize >= REDCONF_BLOCK_SIZE)
+                    && ((ullNewSize & (REDCONF_BLOCK_SIZE - 1U)) == 0U))
+                {
+                    ullNewSize -= DIR_BLOCK_UNUSED_SPACE;
+                }
+
+                ret = RedInodeDataTruncate(pPInode, ullNewSize);
+            }
+        }
+        else
+        {
+            /*  The dirent to delete is not the last entry in the directory, so
+                just zero it.
+            */
+            ret = DirEntryWrite(pPInode, ulDeleteIdx, INODE_INVALID, "", 0U);
+        }
     }
 
     return ret;
@@ -332,6 +364,10 @@ REDSTATUS RedDirEntryDelete(
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0                   Operation was successful.
+    @retval -RED_EACCES         Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                                enabled and the permissions of @p pPInode do not
+                                allow the current user to search for a directory
+                                entry within it.
     @retval -RED_EIO            A disk I/O error occurred.
     @retval -RED_ENOENT         @p pszName does not name an existing file or
                                 directory.
@@ -358,6 +394,15 @@ REDSTATUS RedDirEntryLookup(
         ret = -RED_ENOTDIR;
     }
     else
+    {
+      #if REDCONF_POSIX_OWNER_PERM == 1
+        INODE *pPIno = pPInode->pInodeBuf;
+
+        ret = RedPermCheck(RED_X_OK | RED_R_OK, pPIno->uMode, pPIno->ulUID, pPIno->ulGID);
+      #endif
+    }
+
+    if(ret == 0)
     {
         uint32_t ulNameLen = RedNameLen(pszName);
 
@@ -493,7 +538,6 @@ REDSTATUS RedDirEntryLookup(
 }
 
 
-#if (REDCONF_API_POSIX_READDIR == 1) || (REDCONF_API_POSIX_CWD == 1) || (REDCONF_CHECKER == 1)
 /** @brief Read the next entry from a directory, given a starting index.
 
     @param pPInode  A pointer to the cached inode structure of the directory to
@@ -605,7 +649,6 @@ REDSTATUS RedDirEntryRead(
 
     return ret;
 }
-#endif
 
 
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX_RENAME == 1)
@@ -628,6 +671,10 @@ REDSTATUS RedDirEntryRead(
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0                   Operation was successful.
+    @retval -RED_EACCES         Permission denied: #REDCONF_POSIX_OWNER_PERM is
+                                enabled and the permissions of the directory
+                                inodes or directory entry inodes do not allow
+                                the current user to perform the rename.
     @retval -RED_EEXIST         #REDCONF_RENAME_ATOMIC is false and the
                                 destination name exists.
     @retval -RED_EINVAL         @p pSrcPInode is not a mounted dirty cached
@@ -741,20 +788,55 @@ REDSTATUS RedDirEntryRename(
         if(ret == 0)
       #endif
         {
-            ret = RedInodeMount(pSrcInode, FTYPE_EITHER, true);
+            ret = RedInodeMount(pSrcInode, FTYPE_ANY, true);
 
-          #if REDCONF_RENAME_ATOMIC == 1
-            if((ret == 0) && (pDstInode->ulInode != INODE_INVALID))
+          #if REDCONF_POSIX_OWNER_PERM == 1
+            if(ret == 0)
             {
-                /*  Source and destination must be the same type (file/dir).
-                */
-                ret = RedInodeMount(pDstInode, pSrcInode->fDirectory ? FTYPE_DIR : FTYPE_FILE, true);
+                INODE *pPIno = pSrcPInode->pInodeBuf;
 
-                /*  If renaming directories, the destination must be empty.
-                */
-                if((ret == 0) && pDstInode->fDirectory && (pDstInode->pInodeBuf->ullSize > 0U))
+                ret = RedPermCheckUnlink(pPIno->uMode, pPIno->ulUID, pPIno->ulGID, pSrcInode->pInodeBuf->ulUID);
+            }
+          #endif
+
+          #if (REDCONF_RENAME_ATOMIC == 1) || (REDCONF_POSIX_OWNER_PERM == 1)
+            if(ret == 0)
+            {
+              #if REDCONF_RENAME_ATOMIC == 1
+                if(pDstInode->ulInode != INODE_INVALID)
                 {
-                    ret = -RED_ENOTEMPTY;
+                    /*  Source and destination must be the same type (file/dir).
+                    */
+                    ret = RedInodeMount(pDstInode, pSrcInode->fDirectory ? FTYPE_DIR : FTYPE_NOTDIR, true);
+
+                  #if REDCONF_POSIX_OWNER_PERM == 1
+                    if(ret == 0)
+                    {
+                        INODE *pPIno = pDstPInode->pInodeBuf;
+
+                        ret = RedPermCheckUnlink(pPIno->uMode, pPIno->ulUID, pPIno->ulGID, pDstInode->pInodeBuf->ulUID);
+                    }
+                  #endif
+
+                    /*  If renaming directories, the destination must be empty.
+                    */
+                    if((ret == 0) && pDstInode->fDirectory && (pDstInode->pInodeBuf->ullSize > 0U))
+                    {
+                        ret = -RED_ENOTEMPTY;
+                    }
+                }
+                else
+              #endif
+                {
+                  #if REDCONF_POSIX_OWNER_PERM == 1
+                    INODE *pPIno = pDstPInode->pInodeBuf;
+
+                    /*  Need write permission to create a dirent in the
+                        destination directory.  RedDirEntryLookup() already
+                        ensured we had search and read permissions.
+                    */
+                    ret = RedPermCheck(RED_W_OK, pPIno->uMode, pPIno->ulUID, pPIno->ulGID);
+                  #endif
                 }
             }
           #endif
@@ -774,14 +856,14 @@ REDSTATUS RedDirEntryRename(
 
             if(ret == 0)
             {
-                ret = RedDirEntryDelete(pSrcPInode, ulSrcIdx);
+                ret = RedDirEntryDelete(pSrcPInode, pSrcInode, ulSrcIdx);
 
                 if(ret == -RED_ENOSPC)
                 {
                     REDSTATUS ret2;
 
                     /*  If there was not enough space to branch the parent
-                        directory inode and data block containin the source
+                        directory inode and data block containing the source
                         entry, revert destination directory entry to its
                         previous state.
                     */
@@ -793,7 +875,7 @@ REDSTATUS RedDirEntryRename(
                     else
                   #endif
                     {
-                        ret2 = RedDirEntryDelete(pDstPInode, ulDstIdx);
+                        ret2 = RedDirEntryDelete(pDstPInode, pDstInode, ulDstIdx);
                     }
 
                     if(ret2 != 0)
@@ -1034,4 +1116,3 @@ static uint32_t DirOffsetToEntryIndex(
 
 
 #endif /* REDCONF_API_POSIX == 1 */
-

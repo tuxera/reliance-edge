@@ -46,16 +46,20 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     allSettings.rbtnsUsePosix = new RbtnSetting(macroNameUsePosix, true, validateUsePosixApi, ui->rbtnUsePosix, ui->wbtnApiRbtns);
     allSettings.rbtnsUseFse = new RbtnSetting(macroNameUseFse, false, validateUseFseApi, ui->rbtnUseFse, ui->wbtnApiRbtns);
     allSettings.cbsPosixFormat = new CbSetting(macroNamePosixFormat, true, emptyBoolValidator, ui->cbPosixFormat);
+    allSettings.cbsPosixSymlink = new CbSetting(macroNamePosixSymlink, false, emptyBoolValidator, ui->cbPosixSymlink);
     allSettings.cbsPosixLink = new CbSetting(macroNamePosixLink, true, emptyBoolValidator, ui->cbPosixLink);
     allSettings.cbsPosixUnlink = new CbSetting(macroNamePosixUnlink, true, emptyBoolValidator, ui->cbPosixUnlink);
+    allSettings.cbsDeleteOpen = new CbSetting(macroNameDeleteOpen, false, emptyBoolValidator, ui->cbDeleteOpen);
     allSettings.cbsPosixMkdir = new CbSetting(macroNamePosixMkdir, true, emptyBoolValidator, ui->cbPosixMkdir);
     allSettings.cbsPosixRmdir = new CbSetting(macroNamePosixRmdir, true, emptyBoolValidator, ui->cbPosixRmDir);
     allSettings.cbsPosixRename = new CbSetting(macroNamePosixRename, false, emptyBoolValidator, ui->cbPosixRename);
     allSettings.cbsPosixAtomicRename = new CbSetting(macroNamePosixRenameAtomic, false, emptyBoolValidator, ui->cbPosixAtomicRename);
     allSettings.cbsPosixFtruncate = new CbSetting(macroNamePosixFtruncate, true, emptyBoolValidator, ui->cbPosixFtruncate);
+    allSettings.cbsPosixFreserve = new CbSetting(macroNamePosixFreserve, false, emptyBoolValidator, ui->cbPosixFreserve);
     allSettings.cbsPosixDirOps = new CbSetting(macroNamePosixDirOps, true, emptyBoolValidator, ui->cbPosixDirOps);
     allSettings.cbsPosixCwd = new CbSetting(macroNamePosixCwd, false, emptyBoolValidator, ui->cbPosixCwd);
     allSettings.cbsPosixFstrim = new CbSetting(macroNamePosixFstrim, false, validatePosixFstrim, ui->cbPosixFstrim, ui->wbtnFstrim);
+    allSettings.cbsPosixOwnerPerm = new CbSetting(macroNamePosixOwnerPerm, false, emptyBoolValidator, ui->cbPosixOwnerPerm);
     allSettings.sbsMaxNameLen = new SbSetting(macroNameMaxNameLen, 12, validateMaxNameLen, ui->sbFileNameLen, ui->wbtnFileNameLen);
     allSettings.pssPathSepChar = new PathSepSetting(macroNamePathSepChar, "/", validatePathSepChar, ui->cmbPathChar, ui->lePathCharCustom, ui->wbtnPathChar);
     allSettings.cbsFseFormat = new CbSetting(macroNameFseFormat, false, emptyBoolValidator, ui->cbFseFormat);
@@ -320,10 +324,12 @@ void ConfigWindow::cbReadonly_toggled(bool selected)
     ui->cbPosixFormat->setEnabled(!selected);
     ui->cbPosixLink->setEnabled(!selected);
     ui->cbPosixUnlink->setEnabled(!selected);
+    ui->cbDeleteOpen->setEnabled(!selected);
     ui->cbPosixMkdir->setEnabled(!selected);
     ui->cbPosixRmDir->setEnabled(!selected);
     ui->framePosixRenames->setEnabled(!selected);
     ui->cbPosixFtruncate->setEnabled(!selected);
+    ui->cbPosixFreserve->setEnabled(!selected);
     ui->cbPosixFstrim->setEnabled(!selected);
 
     ui->cbFseFormat->setEnabled(!selected);

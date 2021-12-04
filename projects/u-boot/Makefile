@@ -33,8 +33,10 @@ endif
 #include $(P_BASEDIR)/build/reliance.mk
 
 REDPROJOBJ= \
+	red/bdev/bdev.$(B_OBJEXT)				\
 	red/core/driver/blockio.$(B_OBJEXT)			\
 	red/core/driver/buffer.$(B_OBJEXT)			\
+	red/core/driver/buffercmn.$(B_OBJEXT)			\
 	red/core/driver/core.$(B_OBJEXT)			\
 	red/core/driver/dir.$(B_OBJEXT)				\
 	red/core/driver/format.$(B_OBJEXT)			\
@@ -52,12 +54,15 @@ REDPROJOBJ= \
 	red/os/$(P_OS)/services/osoutput.$(B_OBJEXT)		\
 	red/os/$(P_OS)/services/ostask.$(B_OBJEXT)		\
 	red/os/$(P_OS)/services/ostimestamp.$(B_OBJEXT)		\
+	red/os/$(P_OS)/services/osuidgid.$(B_OBJEXT)		\
 	red/posix/path.$(B_OBJEXT)				\
 	red/posix/posix.$(B_OBJEXT)				\
 	red/util/bitmap.$(B_OBJEXT)				\
 	red/util/crc.$(B_OBJEXT)				\
+	red/util/ftype.$(B_OBJEXT)				\
 	red/util/memory.$(B_OBJEXT)				\
 	red/util/namelen.$(B_OBJEXT)				\
+	red/util/perm.$(B_OBJEXT)				\
 	red/util/sign.$(B_OBJEXT)				\
 	red/util/string.$(B_OBJEXT)				\
 	red/projects/u-boot/redconf.$(B_OBJEXT)			\
@@ -68,4 +73,3 @@ REDPROJOBJ= \
 clean:
 	-rm -f $(REDALLOBJ) $(REDPROJOBJ)
 	-rm -f $(P_PROJDIR)/*.$(B_OBJEXT)
-

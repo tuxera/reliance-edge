@@ -744,6 +744,13 @@ static REDSTATUS FileDiskOpen(
             perror("Error getting block device file stats");
             ret = -RED_EIO;
         }
+        else
+        {
+            /*  If the file doesn't exist and we create it, it will be a
+                regular file, not a block device.
+            */
+            stat.st_mode = S_IFREG;
+        }
     }
 
     if(ret == 0)

@@ -33,6 +33,7 @@ endif
 #include $(P_BASEDIR)/build/reliance.mk
 
 REDPROJOBJ= \
+	red/bdev/bdev.$(B_OBJEXT)				\
 	red/core/driver/blockio.$(B_OBJEXT)			\
 	red/core/driver/buffer.$(B_OBJEXT)			\
 	red/core/driver/core.$(B_OBJEXT)			\
@@ -68,4 +69,3 @@ REDPROJOBJ= \
 clean:
 	-rm -f $(REDALLOBJ) $(REDPROJOBJ)
 	-rm -f $(P_PROJDIR)/*.$(B_OBJEXT)
-

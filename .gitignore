@@ -41,6 +41,7 @@
 *.user
 *.atsuo
 *.pro.user
+.vscode
 
 #
 # Ignore Doxygen output directories and artifacts

@@ -38,6 +38,7 @@
 #define MINIMUM_METADATA_BLOCKS (5U)
 
 
+static REDSTATUS InitBlockGeometry(void);
 #if REDCONF_CHECKER == 0
 static REDSTATUS RedVolMountMaster(uint32_t ulFlags);
 static REDSTATUS RedVolMountMetaroot(uint32_t ulFlags);
@@ -68,7 +69,7 @@ static uint32_t U32toStr(char *pcBuffer, uint32_t ulBufferLen, uint32_t ulNum);
 */
 REDSTATUS RedVolInitGeometry(void)
 {
-    REDSTATUS       ret = 0;
+    REDSTATUS       ret;
     const BDEVINFO *pBdevInfo = &gaRedBdevInfo[gbRedVolNum];
 
     if(    (pBdevInfo->ulSectorSize < SECTOR_SIZE_MIN)
@@ -78,8 +79,7 @@ REDSTATUS RedVolInitGeometry(void)
         REDERROR();
         ret = -RED_EINVAL;
     }
-
-    if(ret == 0)
+    else
     {
         gpRedVolume->bBlockSectorShift = 0U;
         while((pBdevInfo->ulSectorSize << gpRedVolume->bBlockSectorShift) < REDCONF_BLOCK_SIZE)
@@ -95,59 +95,77 @@ REDSTATUS RedVolInitGeometry(void)
 
         gpRedVolume->ulBlockCount = (uint32_t)(pBdevInfo->ullSectorCount >> gpRedVolume->bBlockSectorShift);
 
-        if(gpRedVolume->ulBlockCount < MINIMUM_METADATA_BLOCKS)
+        ret = InitBlockGeometry();
+    }
+
+    return ret;
+}
+
+
+/** @brief Populate/validate the volume geometry derived from the block count.
+
+    `gpRedVolume->ulBlockCount` must be initialized by the caller before
+    invoking this function.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL Volume geometry is invalid.
+*/
+static REDSTATUS InitBlockGeometry(void)
+{
+    REDSTATUS ret = 0;
+
+    if(gpRedVolume->ulBlockCount < MINIMUM_METADATA_BLOCKS)
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        /*  To understand the following code, note that the fixed-location
+            metadata is located at the start of the disk, in the following
+            order:
+
+            - Master block (1 block)
+            - Metaroots (2 blocks)
+            - External imap blocks (variable * 2 blocks)
+            - Inode blocks (pVolConf->ulInodeCount * 2 blocks)
+        */
+
+        /*  The imap needs bits for all inode and allocable blocks.  If that
+            bitmap will fit into the metaroot, the inline imap is used and there
+            are no imap nodes on disk.  The minus 3 is there since the imap does
+            not include bits for the master block or metaroots.
+        */
+        gpRedCoreVol->fImapInline = (gpRedVolume->ulBlockCount - 3U) <= METAROOT_ENTRIES;
+
+        if(gpRedCoreVol->fImapInline)
         {
+          #if REDCONF_IMAP_INLINE == 1
+            gpRedCoreVol->ulInodeTableStartBN = 3U;
+          #else
+            REDERROR();
             ret = -RED_EINVAL;
+          #endif
         }
         else
         {
-            /*  To understand the following code, note that the fixed-
-                location metadata is located at the start of the disk, in
-                the following order:
+          #if REDCONF_IMAP_EXTERNAL == 1
+            gpRedCoreVol->ulImapStartBN = 3U;
 
-                - Master block (1 block)
-                - Metaroots (2 blocks)
-                - External imap blocks (variable * 2 blocks)
-                - Inode blocks (pVolConf->ulInodeCount * 2 blocks)
+            /*  The imap does not include bits for itself, so add two to the
+                number of imap entries for the two blocks of each imap node.
+                This allows us to divide up the remaining space, making sure to
+                round up so all data blocks are covered.
             */
+            gpRedCoreVol->ulImapNodeCount =
+                ((gpRedVolume->ulBlockCount - 3U) + ((IMAPNODE_ENTRIES + 2U) - 1U)) / (IMAPNODE_ENTRIES + 2U);
 
-            /*  The imap needs bits for all inode and allocable blocks.  If
-                that bitmap will fit into the metaroot, the inline imap is
-                used and there are no imap nodes on disk.  The minus 3 is
-                there since the imap does not include bits for the master
-                block or metaroots.
-            */
-            gpRedCoreVol->fImapInline = (gpRedVolume->ulBlockCount - 3U) <= METAROOT_ENTRIES;
-
-            if(gpRedCoreVol->fImapInline)
-            {
-              #if REDCONF_IMAP_INLINE == 1
-                gpRedCoreVol->ulInodeTableStartBN = 3U;
-              #else
-                REDERROR();
-                ret = -RED_EINVAL;
-              #endif
-            }
-            else
-            {
-              #if REDCONF_IMAP_EXTERNAL == 1
-                gpRedCoreVol->ulImapStartBN = 3U;
-
-                /*  The imap does not include bits for itself, so add two to
-                    the number of imap entries for the two blocks of each
-                    imap node.  This allows us to divide up the remaining
-                    space, making sure to round up so all data blocks are
-                    covered.
-                */
-                gpRedCoreVol->ulImapNodeCount =
-                    ((gpRedVolume->ulBlockCount - 3U) + ((IMAPNODE_ENTRIES + 2U) - 1U)) / (IMAPNODE_ENTRIES + 2U);
-
-                gpRedCoreVol->ulInodeTableStartBN = gpRedCoreVol->ulImapStartBN + (gpRedCoreVol->ulImapNodeCount * 2U);
-              #else
-                REDERROR();
-                ret = -RED_EINVAL;
-              #endif
-            }
+            gpRedCoreVol->ulInodeTableStartBN = gpRedCoreVol->ulImapStartBN + (gpRedCoreVol->ulImapNodeCount * 2U);
+          #else
+            REDERROR();
+            ret = -RED_EINVAL;
+          #endif
         }
     }
 
@@ -157,8 +175,8 @@ REDSTATUS RedVolInitGeometry(void)
 
         if(gpRedCoreVol->ulFirstAllocableBN > gpRedVolume->ulBlockCount)
         {
-            /*  We can get here if there is not enough space for the number
-                of configured inodes.
+            /*  We can get here if there is not enough space for the number of
+                configured inodes.
             */
             ret = -RED_EINVAL;
         }
@@ -312,7 +330,7 @@ REDSTATUS RedVolMountMaster(
         */
         if(    !RED_DISK_LAYOUT_IS_SUPPORTED(pMB->ulVersion)
             || (pMB->ulInodeCount != gpRedVolConf->ulInodeCount)
-            || (pMB->ulBlockCount != gpRedVolume->ulBlockCount)
+            || (pMB->ulBlockCount > gpRedVolume->ulBlockCount)
             || (pMB->uMaxNameLen != REDCONF_NAME_MAX)
             || (pMB->uDirectPointers != REDCONF_DIRECT_POINTERS)
             || (pMB->uIndirectPointers != REDCONF_INDIRECT_POINTERS)
@@ -354,14 +372,34 @@ REDSTATUS RedVolMountMaster(
             */
             gpRedCoreVol->ulVersion = pMB->ulVersion;
 
-          #if REDCONF_READ_ONLY == 0
-            gpRedVolume->fReadOnly = (ulFlags & RED_MOUNT_READONLY) != 0U;
-
-            /*  Check for feature flags that prevent this driver from writing.
+            /*  gpRedVolume->ulBlockCount is currently the block count derived
+                from the block device sector count but, on a mounted volume, it
+                needs to be the block count of the volume.  These can be
+                different values since we support mounting a volume which is
+                smaller than the block device that it resides on.
             */
-            if(!gpRedVolume->fReadOnly && ((pMB->uFeaturesReadOnly & MBFEATURE_MASK_UNWRITEABLE) != 0U))
+            if(pMB->ulBlockCount < gpRedVolume->ulBlockCount)
             {
-                ret = -RED_EROFS;
+                gpRedVolume->ulBlockCount = pMB->ulBlockCount;
+
+                /*  The values derived from gpRedVolume->ulBlockCount need to be
+                    recomputed.
+                */
+                ret = InitBlockGeometry();
+            }
+
+          #if REDCONF_READ_ONLY == 0
+            if(ret == 0)
+            {
+                gpRedVolume->fReadOnly = (ulFlags & RED_MOUNT_READONLY) != 0U;
+
+                /*  Check for feature flags that prevent this driver from
+                    writing.
+                */
+                if(!gpRedVolume->fReadOnly && ((pMB->uFeaturesReadOnly & MBFEATURE_MASK_UNWRITEABLE) != 0U))
+                {
+                    ret = -RED_EROFS;
+                }
             }
           #endif
         }

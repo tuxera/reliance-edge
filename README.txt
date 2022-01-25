@@ -29,7 +29,7 @@ of using Reliance Edge, including porting, building, configuring, and
 testing. This complete documentation, called the _Developer's Guide_,
 can be obtained for free from here:
 
-http://www.datalight.com/reliance-edge
+https://www.tuxera.com/products/reliance-edge/
 
 In addition to this README, see doc/release_notes.md for a list of
 updates to Reliance Edge and a list of known issues. There is also a
@@ -83,7 +83,8 @@ subdirectory in the os/ directory; see os/stub/ for a blank set of
 functions. Configuring includes creating a project directory (start by
 copying projects/newproj) and creating the two configuration files
 (redconf.h/redconf.c) using the Reliance Edge Configuration Utility
-(which can be downloaded from http://www.datalight.com/reliance-edge).
+(which has source code in the repository and prebuilt binaries available
+from support@tuxera.com).
 
 These topics are covered in much greater detail in the _Developer's
 Guide_, linked above.
@@ -108,7 +109,7 @@ Public License v2 (GPLv2). Businesses and individuals that for
 commercial or other reasons cannot comply with the terms of the GPLv2
 license must obtain a commercial license before incorporating Reliance
 Edge into proprietary software for distribution in any form. Visit
-http://www.datalight.com/reliance-edge for more information. The
+https://www.tuxera.com/products/reliance-edge/ for more information. The
 commercial distribution also includes extra tests and tools not
 distributed with the GPLv2 version.
 

@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                  Copyright (c) 2014-2021 Tuxera US Inc.
+                  Copyright (c) 2014-2022 Tuxera US Inc.
                       All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -17,10 +17,11 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 /*  Businesses and individuals that for commercial or other reasons cannot
-    comply with the terms of the GPLv2 license must obtain a commercial license
-    before incorporating Reliance Edge into proprietary software for
-    distribution in any form.  Visit http://www.datalight.com/reliance-edge for
-    more information.
+    comply with the terms of the GPLv2 license must obtain a commercial
+    license before incorporating Reliance Edge into proprietary software
+    for distribution in any form.
+
+    Visit https://www.tuxera.com/products/reliance-edge/ for more information.
 */
 /** @brief
     @file FreeRTOS block device implementation; see osbdev.c for details.
@@ -35,7 +36,7 @@
     these functions to tell Reliance Edge how it should be opening, closing,
     reading from, and writing to your block device (whatever that may be: SD,
     MMC, eMMC, CF, USB, etc.).  This is discussed in detail in the Reliance Edge
-    Developer's Guide (available at datalight.com/reliance-edge); see the
+    Developer's Guide (available at tuxera.com/products/reliance-edge); see the
     _Porting Guide_ chapter, in particular the "Block Device" section, and the
     _FreeRTOS Integration_ chapter.  This directory contains several examples of
     how the block device can be implemented (these examples are described in the

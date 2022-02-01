@@ -194,7 +194,9 @@ static REDSTATUS InodeUnlinkCheck(uint32_t ulInode);
 static void InodeOrphaned(uint32_t ulInode);
 #endif
 static REDSTATUS DirInodeToPath(uint32_t ulDirInode, char *pszBuffer, uint32_t ulBufferSize);
+#if (REDCONF_API_POSIX_CWD == 1) || (REDCONF_TASK_COUNT > 1U)
 static TASKSLOT *TaskFind(void);
+#endif
 #if REDCONF_TASK_COUNT > 1U
 static TASKSLOT *TaskRegister(void);
 #endif
@@ -6573,7 +6575,7 @@ static REDSTATUS DirInodeToPath(
     return ret;
 }
 
-
+#if (REDCONF_API_POSIX_CWD == 1) || (REDCONF_TASK_COUNT > 1U)
 /** @brief Find the task slot for the calling task.
 
     @return On success, returns a pointer to the ::TASKSLOT for the calling
@@ -6604,6 +6606,7 @@ static TASKSLOT *TaskFind(void)
     return pTask;
   #endif
 }
+#endif /* (REDCONF_API_POSIX_CWD == 1) || (REDCONF_TASK_COUNT > 1U) */
 
 
 #if REDCONF_TASK_COUNT > 1U

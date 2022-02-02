@@ -51,14 +51,14 @@
     types with a similar purpose but different names.  That header could be
     reused to define the types Reliance Edge needs:
 
-    ~~~{.c}
+    @code{.c}
     #include <apptypes.h>
 
     typedef BOOL bool;
     typedef BYTE uint8_t;
     typedef INT8 int8_t;
     // And so on...
-    ~~~
+    @endcode
 
     If there are neither C99 headers nor suitable types in application headers,
     this header should be populated with typedefs that define the required types
@@ -67,7 +67,7 @@
     Below is an example which assumes the target has 8-bit chars, 16-bit shorts,
     32-bit ints, 32-bit pointers, and 64-bit long longs:
 
-    ~~~{.c}
+    @code{.c}
     typedef int bool;
     typedef unsigned char uint8_t;
     typedef signed char int8_t;
@@ -78,7 +78,7 @@
     typedef unsigned long long uint64_t;
     typedef long long int64_t;
     typedef uint32_t uintptr_t;
-    ~~~
+    @endcode
 */
 #ifndef REDTYPES_H
 #define REDTYPES_H

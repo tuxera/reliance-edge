@@ -53,7 +53,7 @@ static REDSTATUS DiskOpen(
     BDEVOPENMODE    mode)
 {
     REDSTATUS       ret = 0;
-    const VOLCONF  *pVolConf = gaRedVolConf[bVolNum];
+    const VOLCONF  *pVolConf = &gaRedVolConf[bVolNum];
 
     (void)mode;
 

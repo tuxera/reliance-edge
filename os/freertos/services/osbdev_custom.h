@@ -36,7 +36,7 @@
     these functions to tell Reliance Edge how it should be opening, closing,
     reading from, and writing to your block device (whatever that may be: SD,
     MMC, eMMC, CF, USB, etc.).  This is discussed in detail in the Reliance Edge
-    Developer's Guide (available at datalight.com/reliance-edge); see the
+    Developer's Guide (available at tuxera.com/products/reliance-edge); see the
     _Porting Guide_ chapter, in particular the "Block Device" section, and the
     _FreeRTOS Integration_ chapter.  This directory contains several examples of
     how the block device can be implemented (these examples are described in the

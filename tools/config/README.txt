@@ -4,11 +4,11 @@ Project
 -------
 
 The Configuration Utility is a Qt project, built in Qt Creator 3 or later, open
-source edition.  The compiled executable for Windows may be downloaded from
-http://www.datalight.com/reliance-edge.  The Visual C++ 2010 runtime libraries
-can be downloaded from Microsoft with the following link.
+source edition.  The compiled executable for Windows can be obtained by emailing
+support@tuxera.com.  The Visual C++ 2010 runtime libraries can be downloaded
+from Microsoft with the following link.
 
-https://www.microsoft.com/en-us/download/details.aspx?id=5555
+https://docs.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist?view=msvc-170
 
 Building
 ========

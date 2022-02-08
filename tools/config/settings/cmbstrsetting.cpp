@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                  Copyright (c) 2014-2021 Tuxera US Inc.
+                  Copyright (c) 2014-2022 Tuxera US Inc.
                       All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify

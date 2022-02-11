@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                  Copyright (c) 2014-2021 Tuxera US Inc.
+                  Copyright (c) 2014-2022 Tuxera US Inc.
                       All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -17,10 +17,11 @@
     51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 /*  Businesses and individuals that for commercial or other reasons cannot
-    comply with the terms of the GPLv2 license must obtain a commercial license
-    before incorporating Reliance Edge into proprietary software for
-    distribution in any form.  Visit http://www.datalight.com/reliance-edge for
-    more information.
+    comply with the terms of the GPLv2 license must obtain a commercial
+    license before incorporating Reliance Edge into proprietary software
+    for distribution in any form.
+
+    Visit https://www.tuxera.com/products/reliance-edge/ for more information.
 */
 /** @file
     @brief Compile-time validity checks for the REDCONF macros.
@@ -81,14 +82,13 @@
   #endif
   #ifndef REDCONF_API_POSIX_FSTRIM
     /*  Reliance Edge v2.3 and below did not have REDCONF_API_POSIX_FSTRIM.  You
-        can fix this error by downloading the latest version of the
-        Configuration Utility (assuming you are using the latest version of
-        Reliance Edge) from http://www.datalight.com/reliance-edge, loading your
-        redconf.c and redconf.h files, and saving them again, replacing the
-        original files.
+        can fix this error by obtaining the latest version of the Configuration
+        Utility (assuming you are using the latest version of Reliance Edge),
+        loading your redconf.c and redconf.h files, and saving them again,
+        replacing the original files.
     */
-  #error "Configuration error: your redconf.h is not compatible. Update your redconf files with a compatible version of the configuration utility."
-#endif
+    #error "Configuration error: your redconf.h is not compatible. Update your redconf files with a compatible version of the configuration utility."
+  #endif
   #ifndef REDCONF_NAME_MAX
     #error "Configuration error: REDCONF_NAME_MAX must be defined."
   #endif
@@ -169,12 +169,11 @@
   #error "Configuration error: REDCONF_VOLUME_COUNT must be defined."
 #endif
 #ifndef REDCONF_DISCARDS
-    /*  Reliance Edge 1.0.5 and below did not have REDCONF_DISCARDS. You can
-        fix this error by downloading the latest version of the Configuration
-        Utility (assuming you are using the latest version of Reliance Edge)
-        from http://www.datalight.com/reliance-edge, loading your redconf.c
-        and redconf.h files, and saving them again, replacing the original
-        files.
+    /*  Reliance Edge 1.0.5 and below did not have REDCONF_DISCARDS.  You can
+        fix this error by obtaining the latest version of the Configuration
+        Utility (assuming you are using the latest version of Reliance Edge),
+        loading your redconf.c and redconf.h files, and saving them again,
+        replacing the original files.
     */
   #error "Configuration error: your redconf.h is not compatible. Update your redconf files with a compatible version of the configuration utility."
 #endif

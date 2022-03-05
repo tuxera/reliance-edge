@@ -590,7 +590,7 @@ REDSTATUS RedInodeFree(
 
         if(ret == 0)
         {
-            if(gpRedMR->ulFreeInodes >= gpRedVolConf->ulInodeCount)
+            if(gpRedMR->ulFreeInodes >= gpRedCoreVol->ulInodeCount)
             {
                 CRITICAL_ERROR();
                 ret = -RED_EFUBAR;
@@ -928,7 +928,7 @@ static REDSTATUS InodeFindFree(
 
         ret = 0;
 
-        for(ulInode = INODE_FIRST_FREE; ulInode < (INODE_FIRST_VALID + gpRedVolConf->ulInodeCount); ulInode++)
+        for(ulInode = INODE_FIRST_FREE; ulInode < (INODE_FIRST_VALID + gpRedCoreVol->ulInodeCount); ulInode++)
         {
             bool fFree;
 
@@ -942,7 +942,7 @@ static REDSTATUS InodeFindFree(
 
         if(ret == 0)
         {
-            if(ulInode < (INODE_FIRST_VALID + gpRedVolConf->ulInodeCount))
+            if(ulInode < (INODE_FIRST_VALID + gpRedCoreVol->ulInodeCount))
             {
                 *pulInode = ulInode;
             }

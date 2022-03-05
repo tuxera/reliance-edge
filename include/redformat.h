@@ -34,6 +34,16 @@
 
 
 #if FORMAT_SUPPORTED
+
+/** @brief Use VOLCONF::ulInodeCount for the volume inode count.
+*/
+#define RED_FORMAT_INODE_COUNT_CONFIG 0U /* Must be zero! */
+
+/** @brief Automatically compute an appropriate inode count.
+*/
+#define RED_FORMAT_INODE_COUNT_AUTO UINT32_MAX
+
+
 /** @brief Configurable format parameters for red_format2().
 
     @note Members may be added to this structure in the future.  Applications
@@ -49,10 +59,21 @@ typedef struct
           additional POSIX features.
         - #RED_DISK_LAYOUT_VERSION: alias for the default on-disk layout.
         - `0`: alternate alias for the default on-disk layout.
+
         In certain compile-time configurations, only a subset of the defined
         versions are supported.
     */
     uint32_t ulVersion;
+
+    /** The number of inodes the volume should contain.  Two special values are
+        supported:
+        - #RED_FORMAT_INODE_COUNT_CONFIG: use the inode count from ::VOLCONF.
+        - #RED_FORMAT_INODE_COUNT_AUTO: automatically compute an appropriate
+          inode count.
+
+        Any other value will be interpreted as a literal inode count.
+    */
+    uint32_t ulInodeCount;
 } REDFMTOPT;
 #endif
 

@@ -234,14 +234,15 @@ void ImgbldParseParams(
         { "no-warn", red_no_argument, NULL, 'W' },
       #endif
         { "version", red_required_argument, NULL, 'V' },
+        { "inodes", red_required_argument, NULL, 'N' },
         { "dev", red_required_argument, NULL, 'D' },
         { "help", red_no_argument, NULL, 'H' },
         { NULL }
     };
   #if REDCONF_API_FSE == 1
-    const char     *pszOptions = "i:m:d:WV:D:H";
+    const char     *pszOptions = "i:m:d:WV:N:D:H";
   #else
-    const char     *pszOptions = "i:V:D:H";
+    const char     *pszOptions = "i:V:N:D:H";
   #endif
 
     /*  If run without parameters, treat as a help request.
@@ -292,6 +293,37 @@ void ImgbldParseParams(
                 }
 
                 pParam->fmtopt.ulVersion = (uint32_t)ulVer;
+                break;
+            }
+            case 'N': /* --inodes */
+            {
+                unsigned long ulInodes;
+
+                if(strcmp(red_optarg, "auto") == 0)
+                {
+                    ulInodes = RED_FORMAT_INODE_COUNT_AUTO;
+                }
+                else
+                {
+                    char *pszEnd;
+
+                    errno = 0;
+                    ulInodes = strtoul(red_optarg, &pszEnd, 10);
+                    if((ulInodes == 0U) || (ulInodes == ULONG_MAX) || (errno != 0) || (*pszEnd != '\0'))
+                    {
+                        fprintf(stderr, "Invalid inode count: %s\n", red_optarg);
+                        goto BadOpt;
+                    }
+                  #if ULONG_MAX > UINT32_MAX
+                    if(ulInodes > UINT32_MAX)
+                    {
+                        fprintf(stderr, "Invalid inode count: %lu\n", ulInodes);
+                        goto BadOpt;
+                    }
+                  #endif
+                }
+
+                pParam->fmtopt.ulInodeCount = (uint32_t)ulInodes;
                 break;
             }
             case 'D': /* --dev */
@@ -383,7 +415,8 @@ static void Usage(
     int         iExitStatus = fError ? 1 : 0;
     FILE       *pOut = fError ? stderr : stdout;
     static const char szUsage[] =
-"usage: %s VolumeID --dev=devname --dir=inputDir [--version=layout_ver] [--help]\n"
+"usage: %s VolumeID --dev=devname --dir=inputDir [--version=layout_ver]\n"
+"                  [--inodes=count] [--help]\n"
 #if REDCONF_API_FSE == 1
 "                  [--map=mappath] [--defines=file] [--no-warn]\n"
 #endif
@@ -412,6 +445,12 @@ static void Usage(
 "      Specify the on-disk layout version to use.  If unspecified, the default\n"
 "      is %u.  With the current file system configuration, supported version(s)\n"
 "      are: %s.\n"
+"  --inodes=count, -N count\n"
+"      Specify the inode count to use.  If unspecified, the inode count in the\n"
+"      volume configuration is used.  A value of \"auto\" may be specified to\n"
+"      automatically compute an appropriate inode count for the volume size.\n"
+"      Note that the \"auto\" option does not ensure that there are enough inodes\n"
+"      for the contents of the input directory.\n"
 "  --dir=inputDir, -i inputDir\n"
 "      A path to a directory that contains all of the files to be copied into\n"
 #if REDCONF_API_POSIX == 1

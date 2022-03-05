@@ -123,15 +123,10 @@ REDSTATUS RedCoreInit(void)
 
     for(bVolNum = 0U; bVolNum < REDCONF_VOLUME_COUNT; bVolNum++)
     {
+      #if REDCONF_API_POSIX == 1
         const VOLCONF  *pVolConf = &gaRedVolConf[bVolNum];
 
-        if(pVolConf->ulInodeCount == 0U)
-        {
-            REDERROR();
-            ret = -RED_EINVAL;
-        }
-      #if REDCONF_API_POSIX == 1
-        else if(pVolConf->pszPathPrefix == NULL)
+        if(pVolConf->pszPathPrefix == NULL)
         {
             REDERROR();
             ret = -RED_EINVAL;
@@ -157,12 +152,12 @@ REDSTATUS RedCoreInit(void)
             }
           #endif
         }
-      #endif /* REDCONF_API_POSIX == 1 */
 
         if(ret != 0)
         {
             break;
         }
+      #endif /* REDCONF_API_POSIX == 1 */
 
       #if REDCONF_READ_ONLY == 0
         gaRedVolume[bVolNum].ulTransMask = REDCONF_TRANSACT_DEFAULT;
@@ -449,7 +444,6 @@ REDSTATUS RedCoreVolRollback(void)
 #endif /* REDCONF_READ_ONLY == 0 */
 
 
-#if REDCONF_API_POSIX == 1
 /** @brief Query file system status information.
 
     @param pStatFS  The buffer to populate with volume information.
@@ -472,15 +466,22 @@ REDSTATUS RedCoreVolStat(
         RedMemSet(pStatFS, 0U, sizeof(*pStatFS));
 
         pStatFS->f_bsize = REDCONF_BLOCK_SIZE;
+      #if REDCONF_API_POSIX == 1
         pStatFS->f_frsize = REDCONF_BLOCK_SIZE;
+      #endif
         pStatFS->f_blocks = gpRedVolume->ulBlockCount;
         pStatFS->f_bfree = RedVolFreeBlockCount();
+      #if REDCONF_API_POSIX == 1
         pStatFS->f_bavail = pStatFS->f_bfree;
-        pStatFS->f_files = gpRedVolConf->ulInodeCount;
+      #endif
+        pStatFS->f_files = gpRedCoreVol->ulInodeCount;
+      #if REDCONF_API_POSIX == 1
         pStatFS->f_ffree = gpRedMR->ulFreeInodes;
         pStatFS->f_favail = gpRedMR->ulFreeInodes;
 
         pStatFS->f_flag = RED_ST_NOSUID;
+      #endif
+
       #if REDCONF_READ_ONLY == 0
         if(gpRedVolume->fReadOnly)
       #endif
@@ -488,7 +489,9 @@ REDSTATUS RedCoreVolStat(
             pStatFS->f_flag |= RED_ST_RDONLY;
         }
 
+      #if REDCONF_API_POSIX == 1
         pStatFS->f_namemax = REDCONF_NAME_MAX;
+      #endif
         pStatFS->f_maxfsize = INODE_SIZE_MAX;
         pStatFS->f_dev = gbRedVolNum;
         pStatFS->f_diskver = gpRedCoreVol->ulVersion;
@@ -498,7 +501,6 @@ REDSTATUS RedCoreVolStat(
 
     return ret;
 }
-#endif /* REDCONF_API_POSIX == 1 */
 
 
 #if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)

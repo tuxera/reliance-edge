@@ -38,7 +38,6 @@
 #define MINIMUM_METADATA_BLOCKS (5U)
 
 
-static REDSTATUS InitBlockGeometry(void);
 #if REDCONF_CHECKER == 0
 static REDSTATUS RedVolMountMaster(uint32_t ulFlags);
 static REDSTATUS RedVolMountMetaroot(uint32_t ulFlags);
@@ -67,9 +66,9 @@ static uint32_t U32toStr(char *pcBuffer, uint32_t ulBufferLen, uint32_t ulNum);
     @retval 0           Operation was successful.
     @retval -RED_EINVAL Volume geometry is invalid.
 */
-REDSTATUS RedVolInitGeometry(void)
+REDSTATUS RedVolInitBlockGeometry(void)
 {
-    REDSTATUS       ret;
+    REDSTATUS       ret = 0;
     const BDEVINFO *pBdevInfo = &gaRedBdevInfo[gbRedVolNum];
 
     if(    (pBdevInfo->ulSectorSize < SECTOR_SIZE_MIN)
@@ -93,26 +92,27 @@ REDSTATUS RedVolInitGeometry(void)
         */
         REDASSERT((pBdevInfo->ulSectorSize << gpRedVolume->bBlockSectorShift) == REDCONF_BLOCK_SIZE);
 
+        /*  Use the device block count initially, until the true volume block
+            count is retrieved from the master block.
+        */
         gpRedVolume->ulBlockCount = (uint32_t)(pBdevInfo->ullSectorCount >> gpRedVolume->bBlockSectorShift);
-
-        ret = InitBlockGeometry();
     }
 
     return ret;
 }
 
 
-/** @brief Populate/validate the volume geometry derived from the block count.
+/** @brief Populate the volume layout derived from the block and inode counts.
 
-    `gpRedVolume->ulBlockCount` must be initialized by the caller before
-    invoking this function.
+    `gpRedVolume->ulBlockCount` and `gpRedCoreVol->ulInodeCount` must be
+    initialized by the caller before invoking this function.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
     @retval -RED_EINVAL Volume geometry is invalid.
 */
-static REDSTATUS InitBlockGeometry(void)
+REDSTATUS RedVolInitBlockLayout(void)
 {
     REDSTATUS ret = 0;
 
@@ -169,9 +169,16 @@ static REDSTATUS InitBlockGeometry(void)
         }
     }
 
+    /*  Check for overflow.
+    */
+    if((ret == 0) && ((((uint64_t)gpRedCoreVol->ulInodeCount * 2U) + gpRedCoreVol->ulInodeTableStartBN) > UINT32_MAX))
+    {
+        ret = -RED_EINVAL;
+    }
+
     if(ret == 0)
     {
-        gpRedCoreVol->ulFirstAllocableBN = gpRedCoreVol->ulInodeTableStartBN + (gpRedVolConf->ulInodeCount * 2U);
+        gpRedCoreVol->ulFirstAllocableBN = gpRedCoreVol->ulInodeTableStartBN + (gpRedCoreVol->ulInodeCount * 2U);
 
         if(gpRedCoreVol->ulFirstAllocableBN > gpRedVolume->ulBlockCount)
         {
@@ -224,7 +231,7 @@ REDSTATUS RedVolMount(
 
         if(ret == 0)
         {
-            ret = RedVolInitGeometry();
+            ret = RedVolInitBlockGeometry();
 
             if(ret == 0)
             {
@@ -329,7 +336,6 @@ REDSTATUS RedVolMountMaster(
             to be reformatted.
         */
         if(    !RED_DISK_LAYOUT_IS_SUPPORTED(pMB->ulVersion)
-            || (pMB->ulInodeCount != gpRedVolConf->ulInodeCount)
             || (pMB->ulBlockCount > gpRedVolume->ulBlockCount)
             || (pMB->uMaxNameLen != REDCONF_NAME_MAX)
             || (pMB->uDirectPointers != REDCONF_DIRECT_POINTERS)
@@ -378,15 +384,14 @@ REDSTATUS RedVolMountMaster(
                 different values since we support mounting a volume which is
                 smaller than the block device that it resides on.
             */
-            if(pMB->ulBlockCount < gpRedVolume->ulBlockCount)
-            {
-                gpRedVolume->ulBlockCount = pMB->ulBlockCount;
+            gpRedVolume->ulBlockCount = pMB->ulBlockCount;
 
-                /*  The values derived from gpRedVolume->ulBlockCount need to be
-                    recomputed.
-                */
-                ret = InitBlockGeometry();
-            }
+            gpRedCoreVol->ulInodeCount = pMB->ulInodeCount;
+
+            /*  With the correct block and inode counts, the layout of the
+                volume can now be computed.
+            */
+            ret = RedVolInitBlockLayout();
 
           #if REDCONF_READ_ONLY == 0
             if(ret == 0)

@@ -33,12 +33,6 @@
 #include <redstat.h>
 
 
-#if REDOSCONF_PERM_OVERRIDE == 1
-REDSTATUS RedOsPermCheck(uint8_t bAccess, uint16_t uMode, uint32_t ulUid, uint32_t ulGid);
-REDSTATUS RedOsPermCheckUnlink(uint16_t uPMode, uint32_t ulPUid, uint32_t ulPGid, uint32_t ulFUid);
-#endif
-
-
 /** @brief Check whether the caller has permission to perform an operation.
 
     @param bAccess  Combination of `RED_*_OK` bits indicating desired access.

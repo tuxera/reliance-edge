@@ -52,4 +52,3 @@ public:
 };
 
 #endif // NOTIFIABLE_H
-

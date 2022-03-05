@@ -53,27 +53,26 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     allSettings.cbsDeleteOpen = new CbSetting(macroNameDeleteOpen, false, emptyBoolValidator, ui->cbDeleteOpen);
     allSettings.cbsPosixMkdir = new CbSetting(macroNamePosixMkdir, true, emptyBoolValidator, ui->cbPosixMkdir);
     allSettings.cbsPosixRmdir = new CbSetting(macroNamePosixRmdir, true, emptyBoolValidator, ui->cbPosixRmDir);
-    allSettings.cbsPosixRename = new CbSetting(macroNamePosixRename, false, emptyBoolValidator, ui->cbPosixRename);
-    allSettings.cbsPosixAtomicRename = new CbSetting(macroNamePosixRenameAtomic, false, emptyBoolValidator, ui->cbPosixAtomicRename);
+    allSettings.cbsPosixRename = new CbSetting(macroNamePosixRename, true, emptyBoolValidator, ui->cbPosixRename);
+    allSettings.cbsPosixAtomicRename = new CbSetting(macroNamePosixRenameAtomic, true, emptyBoolValidator, ui->cbPosixAtomicRename);
     allSettings.cbsPosixFtruncate = new CbSetting(macroNamePosixFtruncate, true, emptyBoolValidator, ui->cbPosixFtruncate);
     allSettings.cbsPosixFreserve = new CbSetting(macroNamePosixFreserve, false, emptyBoolValidator, ui->cbPosixFreserve);
     allSettings.cbsPosixDirOps = new CbSetting(macroNamePosixDirOps, true, emptyBoolValidator, ui->cbPosixDirOps);
-    allSettings.cbsPosixCwd = new CbSetting(macroNamePosixCwd, false, emptyBoolValidator, ui->cbPosixCwd);
+    allSettings.cbsPosixCwd = new CbSetting(macroNamePosixCwd, true, emptyBoolValidator, ui->cbPosixCwd);
     allSettings.cbsPosixFstrim = new CbSetting(macroNamePosixFstrim, false, validatePosixFstrim, ui->cbPosixFstrim, ui->wbtnFstrim);
     allSettings.cbsPosixOwnerPerm = new CbSetting(macroNamePosixOwnerPerm, false, emptyBoolValidator, ui->cbPosixOwnerPerm);
     allSettings.sbsMaxNameLen = new SbSetting(macroNameMaxNameLen, 12, validateMaxNameLen, ui->sbFileNameLen, ui->wbtnFileNameLen);
     allSettings.pssPathSepChar = new PathSepSetting(macroNamePathSepChar, "/", validatePathSepChar, ui->cmbPathChar, ui->lePathCharCustom, ui->wbtnPathChar);
-    allSettings.cbsFseFormat = new CbSetting(macroNameFseFormat, false, emptyBoolValidator, ui->cbFseFormat);
+    allSettings.cbsFseFormat = new CbSetting(macroNameFseFormat, true, emptyBoolValidator, ui->cbFseFormat);
     allSettings.cbsFseTruncate = new CbSetting(macroNameFseTruncate, true, emptyBoolValidator, ui->cbFseTruncate);
     allSettings.cbsFseGetMask = new CbSetting(macroNameFseGetMask, true, emptyBoolValidator, ui->cbFseGetMask);
     allSettings.cbsFseSetMask = new CbSetting(macroNameFseSetMask, true, emptyBoolValidator, ui->cbFseSetMask);
     allSettings.sbsTaskCount = new SbSetting(macroNameTaskCount, 10, validateTaskCount, ui->sbTaskCount, ui->wbtnTaskCount);
     allSettings.sbsHandleCount = new SbSetting(macroNameHandleCount, 10, validateHandleCount, ui->sbHandleCount, ui->wbtnHandleCount);
-    allSettings.cbsDebugEnableOutput = new CbSetting(macroNameDebugEnableOutput, false, emptyBoolValidator, ui->cbEnableOutput);
+    allSettings.cbsDebugEnableOutput = new CbSetting(macroNameDebugEnableOutput, true, emptyBoolValidator, ui->cbEnableOutput);
     allSettings.cbsDebugProcesAsserts = new CbSetting(macroNameDebugProcesAsserts, false, emptyBoolValidator, ui->cbProcessAsserts);
 
-    // "Volumes" tab (Note: most settings handled
-    // by VolumeSettings
+    // "Volumes" tab (note: most settings handled by VolumeSettings)
     allSettings.cmisBlockSize = new CmbIntSetting(macroNameBlockSize, 512, validateBlockSize, ui->cmbBlockSize, ui->wbtnBlockSize);
 
     // "Data Storage" tab
@@ -145,8 +144,7 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     allSettings.cbsAutomaticDiscards->notifyList.append(allSettings.cbsPosixFstrim);
     allSettings.cbsPosixFstrim->notifyList.append(allSettings.cbsPosixFstrim);
 
-    // Simulate toggling to init which transaction flags
-    // are available
+    // Simulate toggling to init which transaction flags are available
     rbtnUsePosix_toggled(allSettings.rbtnsUsePosix->GetValue());
     ui->cbPosixAtomicRename->setEnabled(allSettings.cbsPosixRename->GetValue());
 
@@ -160,6 +158,7 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
                                         ui->sbVolOff,
                                         ui->labelVolOffBytes,
                                         ui->sbInodeCount,
+                                        ui->cbInodeCountAuto,
                                         ui->cmbAtomicWrite,
                                         ui->cmbDiscardsSupported,
                                         ui->cbEnableRetries,
@@ -487,4 +486,3 @@ void ConfigWindow::actionAbout_clicked()
                 );
     aboutBox.exec();
 }
-

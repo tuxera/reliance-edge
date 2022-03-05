@@ -53,4 +53,3 @@ void RbtnSetting::radioButton_toggled(bool input)
 {
     ProcessInput(input);
 }
-

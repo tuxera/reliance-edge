@@ -57,6 +57,13 @@ typedef struct
     */
     uint32_t    ulInodeTableStartBN;
 
+    /** This is the maximum number of inodes (files and directories).  This
+        number includes the root directory inode (inode 2; created during
+        format), but does not include inodes 0 or 1, which do not exist on
+        disk.  The number of inodes cannot be less than 1.
+    */
+    uint32_t    ulInodeCount;
+
     /** First block number that can be allocated.
     */
     uint32_t    ulFirstAllocableBN;

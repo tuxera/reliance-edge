@@ -46,7 +46,6 @@ ErrorDialog::ErrorDialog(QWidget *parent) :
 ErrorDialog::~ErrorDialog()
 {
     delete ui;
-
 }
 
 void ErrorDialog::SetErrorText(const QString &text)

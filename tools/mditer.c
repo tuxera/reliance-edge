@@ -97,6 +97,10 @@ typedef struct
     */
     uint32_t    ulInodeImapNodes;
   #endif
+
+    /** This is the maximum number of inodes (files and directories).
+    */
+    uint32_t    ulInodeCount;
 } MDICTX;
 
 
@@ -201,10 +205,10 @@ REDSTATUS RedMetadataIterate(
 
     /*  Volume geometry needs to be initialized to parse the volume.
     */
-    ret = RedVolInitGeometry();
+    ret = RedVolInitBlockGeometry();
     if(ret != 0)
     {
-        fprintf(stderr, "Unexpected error %d from RedVolInitGeometry()\n", (int)ret);
+        fprintf(stderr, "Unexpected error %d from RedVolInitBlockGeometry()\n", (int)ret);
         goto Close;
     }
 
@@ -262,7 +266,7 @@ static REDSTATUS MDIter(
             RAM so we can parse the inodes without rereading the imap blocks.
             Note that each inode has two bits in the imap.
         */
-        ctx.ulInodeImapNodes = ((gpRedVolConf->ulInodeCount * 2U) + (IMAPNODE_ENTRIES - 1U)) / IMAPNODE_ENTRIES;
+        ctx.ulInodeImapNodes = ((ctx.ulInodeCount * 2U) + (IMAPNODE_ENTRIES - 1U)) / IMAPNODE_ENTRIES;
         ctx.pbInodeImap = malloc((size_t)ctx.ulInodeImapNodes * IMAPNODE_ENTRY_BYTES);
         if(ctx.pbInodeImap == NULL)
         {
@@ -348,16 +352,20 @@ static REDSTATUS MDIterMB(
         pCtx->ullSeqMax = hdr.ullSequence;
     }
 
-    /*  Save the on-disk layout number so we know how to interpret the other
-        metadata.
+    /*  Save the on-disk layout number, block count, and inode count so we know
+        how to interpret the other metadata.
     */
     if(pMB->hdr.ulSignature == SWAP32(META_SIG_MASTER))
     {
         pCtx->ulVersion = SWAP32(pMB->ulVersion);
+        pCtx->ulInodeCount = SWAP32(pMB->ulInodeCount);
+        gpRedVolume->ulBlockCount = SWAP32(pMB->ulBlockCount);
     }
     else
     {
         pCtx->ulVersion = pMB->ulVersion;
+        pCtx->ulInodeCount = pMB->ulInodeCount;
+        gpRedVolume->ulBlockCount = pMB->ulBlockCount;
     }
 
     /*  If the version is junk, assume the default.
@@ -367,7 +375,18 @@ static REDSTATUS MDIterMB(
         pCtx->ulVersion = RED_DISK_LAYOUT_VERSION;
     }
 
-    ret = pCtx->pParam->pfnCallback(pCtx->pParam->pContext, MDTYPE_MASTER, 0U, pMB);
+    gpRedCoreVol->ulInodeCount = pCtx->ulInodeCount;
+
+    ret = RedVolInitBlockLayout();
+
+    if(ret != 0)
+    {
+        fprintf(stderr, "Unexpected error %d from RedVolInitBlockLayout()\n", (int)ret);
+    }
+    else
+    {
+        ret = pCtx->pParam->pfnCallback(pCtx->pParam->pContext, MDTYPE_MASTER, 0U, pMB);
+    }
 
   Out:
 
@@ -604,7 +623,7 @@ static REDSTATUS MDIterInodes(
         goto Out;
     }
 
-    for(ulInode = INODE_FIRST_VALID; ulInode < (INODE_FIRST_VALID + gpRedVolConf->ulInodeCount); ulInode++)
+    for(ulInode = INODE_FIRST_VALID; ulInode < (INODE_FIRST_VALID + pCtx->ulInodeCount); ulInode++)
     {
         uint32_t    ulBlock = InodeBlock(pCtx, ulInode);
         uint32_t    i;

@@ -193,7 +193,7 @@ static REDSTATUS InodeUnlinkCheck(uint32_t ulInode);
 #if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
 static void InodeOrphaned(uint32_t ulInode);
 #endif
-static REDSTATUS DirInodeToPath(uint32_t ulDirInode, char *pszBuffer, uint32_t ulBufferSize);
+static REDSTATUS DirInodeToPath(uint32_t ulDirInode, char *pszBuffer, uint32_t ulBufferSize, uint32_t ulFlags);
 #if (REDCONF_API_POSIX_CWD == 1) || (REDCONF_TASK_COUNT > 1U)
 static TASKSLOT *TaskFind(void);
 #endif
@@ -720,8 +720,9 @@ int32_t red_format(
 /** @brief Format a file system volume with options.
 
     This function is the same as red_format(), except that it accepts an options
-    parameter which can change the on-disk layout version and which, in the
-    future, may allow other aspects of the metadata to be specified at run-time.
+    parameter which can change the on-disk layout version and inode count.  In
+    the future, it may allow additional aspects of the metadata to be specified
+    at run-time.
 
     Since new members may be added to ::REDFMTOPT, applications should
     zero-initialize the structure to ensure forward compatibility.  For example:
@@ -730,6 +731,7 @@ int32_t red_format(
     REDFMTOPT fmtopt = {0U};
 
     fmtopt.ulVersion = RED_DISK_LAYOUT_ORIGINAL;
+    fmtopt.ulInodeCount = RED_FORMAT_INODE_COUNT_AUTO;
     ret = red_format2("VOL0:", &fmtopt);
     @endcode
 
@@ -4778,7 +4780,7 @@ char *red_getcwd(
                     */
                     REDASSERT(gpRedVolume->fMounted || (pTask->pCwd->ulInode == INODE_ROOTDIR));
 
-                    ret = DirInodeToPath(pTask->pCwd->ulInode, pszBuffer, ulBufferSize);
+                    ret = DirInodeToPath(pTask->pCwd->ulInode, pszBuffer, ulBufferSize, 0U);
                 }
             }
 
@@ -4816,13 +4818,17 @@ char *red_getcwd(
                         whose path is to be retrieved.
     @param pszBuffer    The buffer to populate with the path.
     @param ulBufferSize The size in bytes of @p pszBuffer.
+    @param ulFlags      The only flag value is #RED_GETDIRPATH_NOVOLUME, which
+                        means to exclude the volume path prefix for the path put
+                        into @p pszBuffer.
 
     @return On success, @p pszBuffer is returned.  On error, `NULL` is returned
             and #red_errno is set appropriately.
 
     <b>Errno values</b>
     - #RED_EBADF: The @p iFildes argument is not a valid file descriptor.
-    - #RED_EINVAL: @p pszBuffer is `NULL`; or @p ulBufferSize is zero.
+    - #RED_EINVAL: @p pszBuffer is `NULL`; or @p ulBufferSize is zero; or
+      @p ulFlags is invalid.
     - #RED_EIO: A disk I/O error occurred.
     - #RED_ENOENT: #REDCONF_DELETE_OPEN is true and @p iFildes is an open file
       descriptor for an unlinked directory.
@@ -4835,12 +4841,13 @@ char *red_getcwd(
 char *red_getdirpath(
     int32_t     iFildes,
     char       *pszBuffer,
-    uint32_t    ulBufferSize)
+    uint32_t    ulBufferSize,
+    uint32_t    ulFlags)
 {
     REDSTATUS   ret;
     char       *pszReturn;
 
-    if((pszBuffer == NULL) || (ulBufferSize == 0U))
+    if((pszBuffer == NULL) || (ulBufferSize == 0U) || ((ulFlags & ~RED_GETDIRPATH_NOVOLUME) != 0U))
     {
         ret = -RED_EINVAL;
     }
@@ -4862,7 +4869,7 @@ char *red_getdirpath(
 
             if(ret == 0)
             {
-                ret = DirInodeToPath(pHandle->pOpenIno->ulInode, pszBuffer, ulBufferSize);
+                ret = DirInodeToPath(pHandle->pOpenIno->ulInode, pszBuffer, ulBufferSize, ulFlags);
             }
 
             PosixLeave();
@@ -6433,11 +6440,15 @@ static void InodeOrphaned(
     @param ulDirInode   The inode number.
     @param pszBuffer    The buffer to populate with the path.
     @param ulBufferSize The size in bytes of @p pszBuffer.
+    @param ulFlags      The only flag value is #RED_GETDIRPATH_NOVOLUME, which
+                        means to exclude the volume path prefix for the path put
+                        into @p pszBuffer.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
-    @retval -RED_EINVAL @p pszBuffer is `NULL`; or @p ulBufferSize is zero.
+    @retval -RED_EINVAL @p pszBuffer is `NULL`; or @p ulBufferSize is zero; or
+                        @p ulFlags is invalid.
     @retval -RED_EIO    A disk I/O error occurred.
     @retval -RED_ENOENT #REDCONF_DELETE_OPEN is true and @p ulDirInode refers to
                         a directory that has been removed.
@@ -6447,14 +6458,15 @@ static void InodeOrphaned(
 static REDSTATUS DirInodeToPath(
     uint32_t    ulDirInode,
     char       *pszBuffer,
-    uint32_t    ulBufferSize)
+    uint32_t    ulBufferSize,
+    uint32_t    ulFlags)
 {
     uint32_t    ulInode = ulDirInode;
     uint32_t    ulPInode;
     uint32_t    ulPathLen; /* Length includes terminating NUL */
     REDSTATUS   ret = 0;
 
-    if((pszBuffer == NULL) || (ulBufferSize == 0U))
+    if((pszBuffer == NULL) || (ulBufferSize == 0U) || ((ulFlags & ~RED_GETDIRPATH_NOVOLUME) != 0U))
     {
         ret = -RED_EINVAL;
     }
@@ -6556,8 +6568,15 @@ static REDSTATUS DirInodeToPath(
     */
     if(ret == 0)
     {
-        uint32_t ulVolPrefixLen = RedStrLen(gpRedVolConf->pszPathPrefix);
+        const char *pszVolume = gpRedVolConf->pszPathPrefix;
+        uint32_t    ulVolPrefixLen;
 
+        if((ulFlags & RED_GETDIRPATH_NOVOLUME) != 0U)
+        {
+            pszVolume = "";
+        }
+
+        ulVolPrefixLen = RedStrLen(pszVolume);
         if((ulPathLen + ulVolPrefixLen + 1U) > ulBufferSize)
         {
             /*  The path buffer provided by the caller is too small.
@@ -6574,6 +6593,7 @@ static REDSTATUS DirInodeToPath(
 
     return ret;
 }
+
 
 #if (REDCONF_API_POSIX_CWD == 1) || (REDCONF_TASK_COUNT > 1U)
 /** @brief Find the task slot for the calling task.

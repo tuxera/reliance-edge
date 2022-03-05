@@ -51,5 +51,3 @@ void LeSetting::lineEdit_textChanged(const QString & text)
 {
     ProcessInput(text);
 }
-
-

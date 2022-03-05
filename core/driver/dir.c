@@ -947,7 +947,7 @@ static REDSTATUS DirCyclicRenameCheck(
         while(     (NextParent.ulInode != ulSrcInode)
                 && (NextParent.ulInode != INODE_ROOTDIR)
                 && (NextParent.ulInode != INODE_INVALID)
-                && (ulIteration < gpRedVolConf->ulInodeCount))
+                && (ulIteration < gpRedCoreVol->ulInodeCount))
         {
             ret = RedInodeMount(&NextParent, FTYPE_DIR, false);
             if(ret != 0)
@@ -962,7 +962,7 @@ static REDSTATUS DirCyclicRenameCheck(
             ulIteration++;
         }
 
-        if((ret == 0) && (ulIteration == gpRedVolConf->ulInodeCount))
+        if((ret == 0) && (ulIteration == gpRedCoreVol->ulInodeCount))
         {
             CRITICAL_ERROR();
             ret = -RED_EFUBAR;

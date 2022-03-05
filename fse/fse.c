@@ -271,6 +271,57 @@ REDSTATUS RedFseFormat(
 #endif
 
 
+/** @brief Retrieve information about a file system volume.
+
+    @param bVolNum  The volume number of the volume to query.
+    @param pStatvfs The buffer to populate with volume information.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL @p bVolNum is an invalid volume number or not mounted;
+                        or @p pStatvfs is `NULL`; or the driver is
+                        uninitialized.
+*/
+REDSTATUS RedFseStatfs(
+    uint8_t         bVolNum,
+    REDFSESTATFS   *pStatvfs)
+{
+    REDSTATUS       ret;
+
+    if(pStatvfs == NULL)
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        ret = FseEnter(bVolNum);
+    }
+
+    if(ret == 0)
+    {
+        REDSTATFS redStatfs;
+
+        ret = RedCoreVolStat(&redStatfs);
+
+        if(ret == 0)
+        {
+            pStatvfs->ulBlockSize = redStatfs.f_bsize;
+            pStatvfs->ulBlockCount = redStatfs.f_blocks;
+            pStatvfs->ulBlocksFree = redStatfs.f_bfree;
+            pStatvfs->ulFileCount = redStatfs.f_files;
+            pStatvfs->fReadOnly = (redStatfs.f_flag & RED_ST_RDONLY) != 0U;
+            pStatvfs->ullMaxFileSize = redStatfs.f_maxfsize;
+            pStatvfs->ulLayoutVer = redStatfs.f_diskver;
+        }
+
+        FseLeave();
+    }
+
+    return ret;
+}
+
+
 /** @brief Read from a file.
 
     Data which has not yet been written, but which is before the end-of-file

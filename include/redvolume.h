@@ -42,6 +42,11 @@
 #define SECTOR_COUNT_AUTO   0U
 
 
+/** Indicates that the inode count should be automatically computed.
+*/
+#define INODE_COUNT_AUTO    0U
+
+
 /** @brief Per-volume configuration structure.
 
     Contains the configuration values that may differ between volumes.  Must be
@@ -77,10 +82,14 @@ typedef struct
     */
     bool        fAtomicSectorWrite;
 
-    /** This is the maximum number of inodes (files and directories).  This
-        number includes the root directory inode (inode 2; created during
-        format), but does not include inodes 0 or 1, which do not exist on
-        disk.  The number of inodes cannot be less than 1.
+    /** This is the default number of inodes for which the formatter will
+        reserve space.  The inode count for a volume is the maximum number of
+        files and directories that can exist on the volume.  This count includes
+        the root directory inode (inode 2; created during format), but does not
+        include inodes 0 or 1, which do not exist on disk.  A value of
+        #INODE_COUNT_AUTO (0) tells the formatter to pick an inode count which
+        is reasonable for the volume size.  The value specified here can be
+        overridden at run-time via format options.
     */
     uint32_t    ulInodeCount;
 

@@ -192,6 +192,11 @@ extern "C" {
 #define RED_AT_SYMLINK_FOLLOW 0x4U
 
 
+/** @brief Tell red_getdirpath() to exclude the volume name from the path.
+*/
+#define RED_GETDIRPATH_NOVOLUME 0x1U
+
+
 /** @brief Last file system error (errno).
 
     Under normal circumstances, each task using the file system has an
@@ -354,7 +359,7 @@ int32_t red_closedir(REDDIR *pDirStream);
 int32_t red_chdir(const char *pszPath);
 char *red_getcwd(char *pszBuffer, uint32_t ulBufferSize);
 #endif
-char *red_getdirpath(int32_t iFildes, char *pszBuffer, uint32_t ulBufferSize);
+char *red_getdirpath(int32_t iFildes, char *pszBuffer, uint32_t ulBufferSize, uint32_t ulFlags);
 REDSTATUS *red_errnoptr(void);
 
 #endif /* REDCONF_API_POSIX */

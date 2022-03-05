@@ -44,6 +44,7 @@ enum Validity {
 #define SECTOR_SIZE_AUTO    (0U)
 #define SECTOR_COUNT_AUTO   (0U)
 
+#define INODE_COUNT_AUTO    (0U)
+
 
 #endif // VALIDITY_H
-

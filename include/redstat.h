@@ -168,16 +168,24 @@ typedef struct
 typedef struct
 {
     uint32_t    f_bsize;    /**< File system block size. */
+  #if REDCONF_API_POSIX == 1
     uint32_t    f_frsize;   /**< Fundamental file system block size. */
+  #endif
     uint32_t    f_blocks;   /**< Total number of blocks on file system in units of f_frsize. */
     uint32_t    f_bfree;    /**< Total number of free blocks. */
+  #if REDCONF_API_POSIX == 1
     uint32_t    f_bavail;   /**< Number of free blocks available to non-privileged process. */
+  #endif
     uint32_t    f_files;    /**< Total number of file serial numbers. */
+  #if REDCONF_API_POSIX == 1
     uint32_t    f_ffree;    /**< Total number of free file serial numbers. */
     uint32_t    f_favail;   /**< Number of file serial numbers available to non-privileged process. */
     uint32_t    f_fsid;     /**< File system ID (useless, populated with zero). */
+  #endif
     uint32_t    f_flag;     /**< Bit mask of f_flag values.  Includes read-only file system flag. */
+  #if REDCONF_API_POSIX == 1
     uint32_t    f_namemax;  /**< Maximum filename length. */
+  #endif
     uint64_t    f_maxfsize; /**< Maximum file size (POSIX extension). */
     uint32_t    f_dev;      /**< Volume number (POSIX extension). */
     uint32_t    f_diskver;  /**< On-disk layout verison (POSIX extension).  Values defined in redver.h. */

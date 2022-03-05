@@ -262,7 +262,8 @@ REDSTATUS RedDirEntryRename(CINODE *pSrcPInode, const char *pszSrcName, CINODE *
 #endif
 #endif
 
-REDSTATUS RedVolInitGeometry(void);
+REDSTATUS RedVolInitBlockGeometry(void);
+REDSTATUS RedVolInitBlockLayout(void);
 REDSTATUS RedVolMount(uint32_t ulFlags);
 #if REDCONF_CHECKER == 1
 REDSTATUS RedVolMountMaster(uint32_t ulFlags);

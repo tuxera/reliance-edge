@@ -77,4 +77,3 @@ void DindirReporter::Notify()
         label->setText(QString::number(dindirPtrs));
     }
 }
-

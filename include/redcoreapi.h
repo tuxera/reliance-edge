@@ -54,9 +54,7 @@ REDSTATUS RedCoreVolUnmount(void);
 REDSTATUS RedCoreVolTransact(void);
 REDSTATUS RedCoreVolRollback(void);
 #endif
-#if REDCONF_API_POSIX == 1
 REDSTATUS RedCoreVolStat(REDSTATFS *pStatFS);
-#endif
 #if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
 REDSTATUS RedCoreVolFreeOrphans(uint32_t ulCount);
 #endif

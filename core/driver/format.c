@@ -31,7 +31,10 @@
 #include <redcore.h>
 #include <redbdev.h>
 
+
 #if FORMAT_SUPPORTED
+
+static uint32_t ComputeInodeCount(void);
 
 
 /** @brief Format a file system volume.
@@ -91,7 +94,34 @@ REDSTATUS RedVolFormat(
 
     if(ret == 0)
     {
+        ret = RedVolInitBlockGeometry();
+        fGeoInited = (ret == 0);
+    }
+
+    if(ret == 0)
+    {
+        uint32_t ulInodeCount;
+
+        if(opts.ulInodeCount == RED_FORMAT_INODE_COUNT_CONFIG)
+        {
+            ulInodeCount = gpRedVolConf->ulInodeCount;
+        }
+        else if(opts.ulInodeCount == RED_FORMAT_INODE_COUNT_AUTO)
+        {
+            ulInodeCount = INODE_COUNT_AUTO;
+        }
+        else
+        {
+            ulInodeCount = opts.ulInodeCount;
+        }
+
+        if(ulInodeCount == INODE_COUNT_AUTO)
+        {
+            ulInodeCount = ComputeInodeCount();
+        }
+
         gpRedCoreVol->ulVersion = opts.ulVersion;
+        gpRedCoreVol->ulInodeCount = ulInodeCount;
 
         /*  fReadOnly might still be true from the last time the volume was
             mounted (or from the checker).  Clear it now to avoid assertions in
@@ -99,8 +129,7 @@ REDSTATUS RedVolFormat(
         */
         gpRedVolume->fReadOnly = false;
 
-        ret = RedVolInitGeometry();
-        fGeoInited = (ret == 0);
+        ret = RedVolInitBlockLayout();
     }
 
     if(ret == 0)
@@ -160,7 +189,7 @@ REDSTATUS RedVolFormat(
 
         gpRedMR->ulFreeBlocks = gpRedVolume->ulBlocksAllocable;
       #if REDCONF_API_POSIX == 1
-        gpRedMR->ulFreeInodes = gpRedVolConf->ulInodeCount;
+        gpRedMR->ulFreeInodes = gpRedCoreVol->ulInodeCount;
       #endif
         gpRedMR->ulAllocNextBlock = gpRedCoreVol->ulFirstAllocableBN;
 
@@ -198,7 +227,7 @@ REDSTATUS RedVolFormat(
     {
         uint32_t ulInodeIdx;
 
-        for(ulInodeIdx = 0U; ulInodeIdx < gpRedVolConf->ulInodeCount; ulInodeIdx++)
+        for(ulInodeIdx = 0U; ulInodeIdx < gpRedCoreVol->ulInodeCount; ulInodeIdx++)
         {
             CINODE ino;
 
@@ -232,7 +261,7 @@ REDSTATUS RedVolFormat(
             pMB->ulVersion = opts.ulVersion;
             RedStrNCpy(pMB->acBuildNum, RED_BUILD_NUMBER, sizeof(pMB->acBuildNum));
             pMB->ulFormatTime = RedOsClockGetTime();
-            pMB->ulInodeCount = gpRedVolConf->ulInodeCount;
+            pMB->ulInodeCount = gpRedCoreVol->ulInodeCount;
             pMB->ulBlockCount = gpRedVolume->ulBlockCount;
             pMB->uMaxNameLen = REDCONF_NAME_MAX;
             pMB->uDirectPointers = REDCONF_DIRECT_POINTERS;
@@ -308,6 +337,39 @@ REDSTATUS RedVolFormat(
     return ret;
 }
 
+
+/** @brief Compute a reasonable number of inodes for the current volume.
+
+    @return The computed inode count.
+*/
+static uint32_t ComputeInodeCount(void)
+{
+    uint32_t ulInodeBlocksMax;
+    uint32_t ulInodeBlocks;
+    uint32_t ulInodeCountMin;
+    uint32_t ulInodeCount;
+
+    /*  Compute the maximum number of blocks that an inode can consume.
+    */
+    ulInodeBlocksMax = (uint32_t)REDMIN(UINT32_MAX, UINT64_SUFFIX(2) + INODE_DATA_BLOCKS + REDCONF_INDIRECT_POINTERS + (DINDIR_POINTERS * INDIR_ENTRIES));
+
+    /*  Compute an absolute minimum, such that there are enough inodes to
+        conceivably consume all allocable blocks.
+    */
+    ulInodeCountMin = gpRedVolume->ulBlockCount / ulInodeBlocksMax;
+
+    if((gpRedVolume->ulBlockCount % ulInodeBlocksMax) != 0U)
+    {
+        ulInodeCountMin++;
+    }
+
+    /*  Allow 16 allocable blocks for each inode, plus the two inode blocks.
+    */
+    ulInodeBlocks = 16U + 2U;
+    ulInodeCount = gpRedVolume->ulBlockCount / ulInodeBlocks;
+
+    return REDMAX(ulInodeCountMin, ulInodeCount);
+}
 
 #endif /* FORMAT_SUPPORTED */
 

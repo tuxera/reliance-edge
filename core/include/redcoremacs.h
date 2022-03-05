@@ -81,7 +81,7 @@
 
 /** @brief Determine if an inode number is valid.
 */
-#define INODE_IS_VALID(INODENUM)    (((INODENUM) >= INODE_FIRST_VALID) && ((INODENUM) < (INODE_FIRST_VALID + gpRedVolConf->ulInodeCount)))
+#define INODE_IS_VALID(INODENUM)    (((INODENUM) >= INODE_FIRST_VALID) && ((INODENUM) < (INODE_FIRST_VALID + gpRedCoreVol->ulInodeCount)))
 
 
 /*  The number of blocks reserved to allow a truncate or delete operation to

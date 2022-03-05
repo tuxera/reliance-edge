@@ -63,6 +63,22 @@ Other APIs which were implemented for this release:
     buffer with the absolute path to that directory. Similar to
     red_getcwd() but works for any directory, not just the CWD.
 
+This release also implements another new feature: specifying the inode
+count during format. Previously, the inode count could only be specified
+at compile time, in the VOLCONF:ulInodeCount field in redconf.c. This
+was not flexible enough when the volume size was based on an
+auto-detected sector count which was known to be widely variable. With
+v2.7, VOLCONF:ulInodeCount has now been redefined as the _default_ inode
+count, used by the formatter only when the inode count is unspecified.
+The POSIX-like API red_format2(), the host tools (redfmt and redimgbld),
+and some OS-specific interfaces, optionally support specifying an inode
+count for format. In addition to an explicit numerical count, the
+formatter also supports an "auto" option which means to automatically
+pick an inode count which is reasonable for the inode size. The "auto"
+option can also be specified in VOLCONF:ulInodeCount via
+INODE_COUNT_AUTO; in the Configuration Utility, this is the "Auto"
+checkbox in front of the inode count spinbox.
+
 Upgrading from Reliance Edge v2.6
 
 The following four macros must be added to redconf.h with a value of
@@ -92,7 +108,7 @@ os/stub/services/osbdev.c. The redosconf.h header file must be created:
 in most cases, os/stub/include/redostypes.h can be copied and used
 without changes.
 
-Reliance Edge v2.6, December 2021
+Reliance Edge v2.6, January 2022
 
 Common Code Changes
 

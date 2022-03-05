@@ -156,4 +156,3 @@ Validity CheckedSbSetting::checkValue(unsigned long value, QString &msg)
         return Valid;
     }
 }
-

@@ -64,6 +64,7 @@ int main(
     const REDOPTION aLongopts[] =
     {
         { "version", red_required_argument, NULL, 'V' },
+        { "inodes", red_required_argument, NULL, 'N' },
         { "dev", red_required_argument, NULL, 'D' },
         { "help", red_no_argument, NULL, 'H' },
         { NULL }
@@ -78,7 +79,7 @@ int main(
         goto Help;
     }
 
-    while((c = RedGetoptLong(argc, argv, "V:D:H", aLongopts, NULL)) != -1)
+    while((c = RedGetoptLong(argc, argv, "V:N:D:H", aLongopts, NULL)) != -1)
     {
         switch(c)
         {
@@ -101,6 +102,37 @@ int main(
                 }
 
                 fo.ulVersion = (uint32_t)ulVer;
+                break;
+            }
+            case 'N': /* --inodes */
+            {
+                unsigned long ulInodes;
+
+                if(strcmp(red_optarg, "auto") == 0)
+                {
+                    ulInodes = RED_FORMAT_INODE_COUNT_AUTO;
+                }
+                else
+                {
+                    char *pszEnd;
+
+                    errno = 0;
+                    ulInodes = strtoul(red_optarg, &pszEnd, 10);
+                    if((ulInodes == 0U) || (ulInodes == ULONG_MAX) || (errno != 0) || (*pszEnd != '\0'))
+                    {
+                        fprintf(stderr, "Invalid inode count: %s\n", red_optarg);
+                        goto BadOpt;
+                    }
+                  #if ULONG_MAX > UINT32_MAX
+                    if(ulInodes > UINT32_MAX)
+                    {
+                        fprintf(stderr, "Invalid inode count: %lu\n", ulInodes);
+                        goto BadOpt;
+                    }
+                  #endif
+                }
+
+                fo.ulInodeCount = (uint32_t)ulInodes;
                 break;
             }
             case 'D': /* --dev */
@@ -211,7 +243,7 @@ static void Usage(
     int         iExitStatus = fError ? 1 : 0;
     FILE       *pOut = fError ? stderr : stdout;
     static const char szUsage[] =
-"usage: %s VolumeID --dev=devname [--version=layout_ver] [--help]\n"
+"usage: %s VolumeID --dev=devname [--version=layout_ver] [--inodes=count] [--help]\n"
 "Format a Reliance Edge file system volume.\n"
 "\n"
 "Where:\n"
@@ -232,6 +264,10 @@ static void Usage(
 "      Specify the on-disk layout version to use.  If unspecified, the default\n"
 "      is %u.  With the current file system configuration, supported version(s)\n"
 "      are: %s.\n"
+"  --inodes=count, -N count\n"
+"      Specify the inode count to use.  If unspecified, the inode count in the\n"
+"      volume configuration is used.  A value of \"auto\" may be specified to\n"
+"      automatically compute an appropriate inode count for the volume size.\n"
 "  --help, -H\n"
 "      Prints this usage text and exits.\n\n";
 

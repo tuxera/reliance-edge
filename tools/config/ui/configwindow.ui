@@ -69,7 +69,7 @@
              <x>0</x>
              <y>0</y>
              <width>431</width>
-             <height>902</height>
+             <height>846</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_11">
@@ -1074,7 +1074,7 @@
              <x>0</x>
              <y>0</y>
              <width>445</width>
-             <height>650</height>
+             <height>654</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_14">
@@ -1830,10 +1830,20 @@
                      <item>
                       <widget class="QLabel" name="label_14">
                        <property name="toolTip">
-                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; Every time a file or directory is created, one inode is consumed; when a file or directory is deleted, the inode is freed and available for reuse. Also, when using the POSIX-like API, one inode is consumed by the root directory. So the inode count dictates the maximum number of files and directories that can reside on the volume.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; The number of inodes will depend on how many files and directories will be created on the file system either by your application or during image creation by the Image Builder. Some applications have very fixed use cases (for example, using exactly twelve files with well-defined purposes) which makes it easy to determine this value; use cases where the File System Essentials API is appropriate generally fall into this category. If you have a root file system, you can set the inode count to the number of files and directories in that root file system (including the root directory) plus the number of files and directories created at run-time. You can configure Reliance Edge with more inodes than are actually needed; the only downside is that each inode consumes two blocks of space which cannot be used for anything else.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; This is the default inode count which will be used when the volume is formatted. Every time a file or directory is created, one &lt;span style=&quot; font-style:italic;&quot;&gt;inode&lt;/span&gt; is consumed; when a file or directory is deleted, the inode is freed and available for reuse. Also, when using the POSIX-like API, one inode is consumed by the root directory. So the inode count dictates the maximum number of files and directories that can reside on the volume.  The default inode count can be overridden by explicitly specifying an inode count when formatting.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; The number of inodes will depend on how many files and directories will be created on the file system either by your application or during image creation by the Image Builder. Some applications have very fixed use cases (for example, using exactly twelve files with well-defined purposes) which makes it easy to determine this value; use cases where the File System Essentials API is appropriate generally fall into this category. If you have a root file system, you can set the inode count to the number of files and directories in that root file system (including the root directory) plus the number of files and directories created at run-time. You can configure Reliance Edge with more inodes than are actually needed; the only downside is that each inode consumes two blocks of space which cannot be used for anything else.&lt;/p&gt;&lt;p&gt;If the &amp;quot;Auto&amp;quot; option is selected, the redconf.c will have a placeholder value (INODE_COUNT_AUTO) as its inode count for the volume, and the formatter will select an inode count which is reasonable for the volume size (unless an explicit count is provided in the format options). Selecting &amp;quot;Auto&amp;quot; here is likely the correct choice if the volume size is not known in advance, as is the case when &amp;quot;Auto&amp;quot; has been selected for the volume size.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                        </property>
                        <property name="text">
                         <string>Inode count:</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="cbInodeCountAuto">
+                       <property name="text">
+                        <string>Auto</string>
+                       </property>
+                       <property name="checked">
+                        <bool>false</bool>
                        </property>
                       </widget>
                      </item>
@@ -2150,7 +2160,7 @@
              <x>0</x>
              <y>0</y>
              <width>445</width>
-             <height>650</height>
+             <height>654</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_19">
@@ -2726,7 +2736,7 @@
              <x>0</x>
              <y>0</y>
              <width>445</width>
-             <height>650</height>
+             <height>654</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_24">
@@ -3312,7 +3322,7 @@
              <x>0</x>
              <y>0</y>
              <width>445</width>
-             <height>650</height>
+             <height>654</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -3588,7 +3598,7 @@
              <x>0</x>
              <y>0</y>
              <width>445</width>
-             <height>650</height>
+             <height>654</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -3783,7 +3793,7 @@
      <x>0</x>
      <y>0</y>
      <width>451</width>
-     <height>21</height>
+     <height>19</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

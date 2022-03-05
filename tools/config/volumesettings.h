@@ -84,20 +84,23 @@ public:
         bool NeedsInternalImap();
         bool IsAutoSectorSize();
         bool IsAutoSectorCount();
+        bool IsAutoInodeCount();
         void SetAutoSectorSize(bool);
         void SetAutoSectorCount(bool);
+        void SetAutoInodeCount(bool);
 
     private:
         StrSetting stName;
+        IntSetting stSectorSize;
         IntSetting stSectorCount;
         IntSetting stSectorOff;
-        IntSetting stInodeCount;
-        IntSetting stSectorSize;
         StrSetting stAtomicWrite;
         StrSetting stDiscardSupport;
+        IntSetting stInodeCount;
         IntSetting stBlockIoRetries;
-        bool fAutoSectorSize = false;
-        bool fAutoSectorCount = false;
+        bool fAutoSectorSize = true;
+        bool fAutoSectorCount = true;
+        bool fAutoInodeCount = true;
     };
 
     ///
@@ -114,6 +117,7 @@ public:
                    QSpinBox *volOffBox,
                    QLabel *volOffLabel,
                    QSpinBox *inodeCountBox,
+                   QCheckBox *inodeCountAuto,
                    QComboBox *atomicWriteBox,
                    QComboBox *discardSupportBox,
                    QCheckBox *enableRetriesCheck,
@@ -272,6 +276,7 @@ private:
     QSpinBox *sbVolSize;
     QSpinBox *sbVolOff;
     QSpinBox *sbInodeCount;
+    QCheckBox *cbInodeCountAuto;
     QCheckBox *cbVolSizeAuto;
     QCheckBox *cbSectorSizeAuto;
     QLabel *labelVolSizeBytes;
@@ -304,6 +309,7 @@ private slots:
     void sbVolSize_valueChanged(const QString &value);
     void sbVolOff_valueChanged(const QString &value);
     void sbInodeCount_valueChanged(const QString &value);
+    void cbInodeCountAuto_stateChanged(int state);
     void cmbAtomicWrite_currentIndexChanged(int index);
     void cmbDiscardSupport_currentIndexChanged(int index);
     void cbEnableRetries_stateChanged(int state);

@@ -421,6 +421,13 @@ Validity validateVolName(QString value, QString &msg)
 ///
 Validity validateVolSectorSize(unsigned long value, QString &msg)
 {
+    VolumeSettings::Volume *currVolume = volumeSettings->GetVolumes()->at(volumeSettings->GetCurrentIndex());
+
+    if(currVolume->IsAutoSectorSize())
+    {
+        return Valid;
+    }
+
     Q_ASSERT(allSettings.cmisBlockSize != NULL);
     if(!isPowerOfTwo(value)
             || value < 128
@@ -449,7 +456,13 @@ Validity validateVolSectorSize(unsigned long value, QString &msg)
 Validity validateVolSectorCount(unsigned long value, QString &msg)
 {
     VolumeSettings::Volume *currVolume = volumeSettings->GetVolumes()->at(volumeSettings->GetCurrentIndex());
-	bool isAutoSize = currVolume->IsAutoSectorSize();
+
+    if(currVolume->IsAutoSectorCount())
+    {
+        return Valid;
+    }
+
+    bool isAutoSize = currVolume->IsAutoSectorSize();
     unsigned long sectorSize = currVolume->GetStSectorSize()->GetValue();
     unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
 
@@ -500,7 +513,7 @@ Validity validateVolSectorOff(unsigned long value, QString &msg)
 {
     (void)value;
     VolumeSettings::Volume *currVolume = volumeSettings->GetVolumes()->at(volumeSettings->GetCurrentIndex());
-	bool isAutoSize = currVolume->IsAutoSectorSize();
+    bool isAutoSize = currVolume->IsAutoSectorSize();
     unsigned long sectorSize = currVolume->GetStSectorSize()->GetValue();
     unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
 
@@ -510,10 +523,10 @@ Validity validateVolSectorOff(unsigned long value, QString &msg)
         msg = "Invalid block or sector size; cannot validate volume offset.";
         return Warning;
     }
-	else
-	{
-		return Valid;
-	}
+    else
+    {
+        return Valid;
+    }
 }
 
 ///
@@ -525,15 +538,21 @@ Validity validateVolSectorOff(unsigned long value, QString &msg)
 ///
 Validity validateVolInodeCount(unsigned long value, QString &msg)
 {
+    VolumeSettings::Volume *currVolume = volumeSettings->GetVolumes()->at(volumeSettings->GetCurrentIndex());
+
+    if(currVolume->IsAutoInodeCount())
+    {
+        return Valid;
+    }
+
     if(value < 1)
     {
         msg = "Inode count must be 1 or above.";
         return Invalid;
     }
 
-    VolumeSettings::Volume *currVolume = volumeSettings->GetVolumes()->at(volumeSettings->GetCurrentIndex());
-	bool isAutoSize = currVolume->IsAutoSectorSize();
-	bool isAutoCount = currVolume->IsAutoSectorCount();
+    bool isAutoSize = currVolume->IsAutoSectorSize();
+    bool isAutoCount = currVolume->IsAutoSectorCount();
 
     bool imapExternal = currVolume->NeedsExternalImap();
     unsigned long sectorSize = currVolume->GetStSectorSize()->GetValue();
@@ -890,9 +909,9 @@ Validity validateBufferAlignment(unsigned long value, QString &msg)
 
     if(value > blockSize)
     {
-		msg = QString("Alignment should not exceed block size. Current maximum based on block size: ")
-				+ QString::number(blockSize)
-				+ QString(".");
+        msg = QString("Alignment should not exceed block size. Current maximum based on block size: ")
+                + QString::number(blockSize)
+                + QString(".");
         return Invalid;
     }
 
@@ -902,13 +921,13 @@ Validity validateBufferAlignment(unsigned long value, QString &msg)
         return Invalid;
     }
 
-	if(value & (value - 1))
-	{
+    if(value & (value - 1))
+    {
         msg = QString("Alignment must be a power of 2.");
         return Invalid;
-	}
+    }
 
-	return Valid;
+    return Valid;
 }
 
 ///
@@ -918,48 +937,48 @@ Validity validateBufferAlignment(unsigned long value, QString &msg)
 ///
 Validity validateBufferWriteGather(unsigned long value, QString &msg)
 {
-	unsigned long maximum4GB = 4194304UL;
+    unsigned long maximum4GB = 4194304UL;
     unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
-	unsigned long bufferCount = allSettings.sbsAllocatedBuffers->GetValue();
-	unsigned long long maximumBufferLimit = ((unsigned long long )blockSize * bufferCount) / 1024;
+    unsigned long bufferCount = allSettings.sbsAllocatedBuffers->GetValue();
+    unsigned long long maximumBufferLimit = ((unsigned long long )blockSize * bufferCount) / 1024;
 
     if(value > maximum4GB)
     {
-		msg = QString("Write-gather size exceeds the 4GB maximum of ")
-				+ QString::number(maximum4GB)
-				+ QString(".");
+        msg = QString("Write-gather size exceeds the 4GB maximum of ")
+                + QString::number(maximum4GB)
+                + QString(".");
         return Invalid;
     }
 
     if(value > maximumBufferLimit)
     {
-		msg = QString("Write-gather size exceeds the total buffers maximum of ")
-				+ QString::number(maximumBufferLimit)
-				+ QString(".");
+        msg = QString("Write-gather size exceeds the total buffers maximum of ")
+                + QString::number(maximumBufferLimit)
+                + QString(".");
         return Invalid;
     }
 
-	if(value)
-	{
-		unsigned long long bigValue = (unsigned long long )value * 1024;
-		unsigned long minimumBlockSizeLimit = blockSize * 2;
+    if(value)
+    {
+        unsigned long long bigValue = (unsigned long long )value * 1024;
+        unsigned long minimumBlockSizeLimit = blockSize * 2;
 
-	    if(bigValue < minimumBlockSizeLimit)
-	    {
-			msg = QString("Write-gather size doesn't meet the block size minimum of ")
-					+ QString::number(minimumBlockSizeLimit)
-					+ QString(".");
-	        return Invalid;
-	    }
+        if(bigValue < minimumBlockSizeLimit)
+        {
+            msg = QString("Write-gather size doesn't meet the block size minimum of ")
+                    + QString::number(minimumBlockSizeLimit)
+                    + QString(".");
+            return Invalid;
+        }
 
-	    if(bigValue % blockSize != 0)
-	    {
-			msg = QString("Write-gather isn't a multiple of block size.");
-	        return Invalid;
-	    }
-	}
+        if(bigValue % blockSize != 0)
+        {
+            msg = QString("Write-gather isn't a multiple of block size.");
+            return Invalid;
+        }
+    }
 
-	return Valid;
+    return Valid;
 }
 
 ///

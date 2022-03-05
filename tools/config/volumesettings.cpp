@@ -43,11 +43,11 @@ VolumeSettings::Volume::Volume(QString name,
                                WarningBtn *wbtnBlockIoRetries)
     : stName("", name, validateVolName, wbtnPathPrefix),
       stSectorSize("", 512, validateVolSectorSize, wbtnSectorSize),
-      stSectorOff("", 0, validateVolSectorOff, wbtnVolOff),
-      stInodeCount("", 100, validateVolInodeCount, wbtnInodeCount),
       stSectorCount("", 1024, validateVolSectorCount, wbtnVolSize),
+      stSectorOff("", 0, validateVolSectorOff, wbtnVolOff),
       stAtomicWrite("", gpszUnsupported, validateSupportedUnsupported, wbtnAtomicWrite),
       stDiscardSupport("", gpszUnsupported, validateDiscardSupport, wbtnDiscardSupport),
+      stInodeCount("", 100, validateVolInodeCount, wbtnInodeCount),
       stBlockIoRetries("", 0, validateVolIoRetries, wbtnBlockIoRetries)
 {
     Q_ASSERT(allSettings.sbsAllocatedBuffers != NULL);
@@ -191,22 +191,42 @@ bool VolumeSettings::Volume::NeedsInternalImap()
 
 bool VolumeSettings::Volume::IsAutoSectorSize()
 {
-	return fAutoSectorSize;
+    return fAutoSectorSize;
 }
 
 bool VolumeSettings::Volume::IsAutoSectorCount()
 {
-	return fAutoSectorCount;
+    return fAutoSectorCount;
+}
+
+bool VolumeSettings::Volume::IsAutoInodeCount()
+{
+    return fAutoInodeCount;
 }
 
 void VolumeSettings::Volume::SetAutoSectorSize(bool value)
 {
-	fAutoSectorSize = value;
+    fAutoSectorSize = value;
+
+    // Notify to update error/warning buttons.
+    stSectorSize.Notify();
 }
 
 void VolumeSettings::Volume::SetAutoSectorCount(bool value)
 {
-	fAutoSectorCount = value;
+    fAutoSectorCount = value;
+
+    // Notify to update error/warning buttons.
+    stSectorCount.Notify();
+    stInodeCount.Notify();
+}
+
+void VolumeSettings::Volume::SetAutoInodeCount(bool value)
+{
+    fAutoInodeCount = value;
+
+    // Notify to update error/warning buttons.
+    stInodeCount.Notify();
 }
 
 VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
@@ -218,6 +238,7 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
                                QSpinBox *volOffBox,
                                QLabel *volOffLabel,
                                QSpinBox *inodeCountBox,
+                               QCheckBox *inodeCountAuto,
                                QComboBox *atomicWriteBox,
                                QComboBox *discardSupportBox,
                                QCheckBox *enableRetriesCheck,
@@ -241,6 +262,7 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
       sbVolSize(volSizeBox),
       sbVolOff(volOffBox),
       sbInodeCount(inodeCountBox),
+      cbInodeCountAuto(inodeCountAuto),
       cbVolSizeAuto(volSizeAuto),
       cbSectorSizeAuto(sectorSizeAuto),
       labelVolSizeBytes(volSizeLabel),
@@ -280,6 +302,8 @@ VolumeSettings::VolumeSettings(QLineEdit *pathPrefixBox,
             this, SLOT(sbVolOff_valueChanged(QString)));
     connect(sbInodeCount, SIGNAL(valueChanged(QString)),
             this, SLOT(sbInodeCount_valueChanged(QString)));
+    connect(cbInodeCountAuto, SIGNAL(stateChanged(int)),
+            this, SLOT(cbInodeCountAuto_stateChanged(int)));
     connect(cmbSectorSize, SIGNAL(currentIndexChanged(int)),
             this, SLOT(cmbSectorSize_currentIndexChanged(int)));
     connect(cbSectorSizeAuto, SIGNAL(stateChanged(int)),
@@ -375,21 +399,35 @@ void VolumeSettings::SetActiveVolume(int index)
 
     lePathPrefix->setText(volumes[index]->GetStName()->GetValue());
 
-	//  Update the auto sector count check box
-	if(volumes[index]->IsAutoSectorCount())
-	{
-		cbVolSizeAuto->setCheckState(Qt::CheckState::Checked);
-	}
-	else
-	{
-		cbVolSizeAuto->setCheckState(Qt::CheckState::Unchecked);
-	}
+    // Update the auto sector count check box
+    if(volumes[index]->IsAutoSectorCount())
+    {
+        cbVolSizeAuto->setCheckState(Qt::CheckState::Checked);
+        sbVolSize->setEnabled(false);
+    }
+    else
+    {
+        cbVolSizeAuto->setCheckState(Qt::CheckState::Unchecked);
+        sbVolSize->setEnabled(true);
+    }
 
-	//  Update the volume size spin box
+    // Update the volume size spin box
     sbVolSize->setValue(volumes[index]->GetStSectorCount()->GetValue());
 
-	//  Update the volume offset spin box
+    // Update the volume offset spin box
     sbVolOff->setValue(volumes[index]->GetStSectorOff()->GetValue());
+
+    // Update the auto inode count check box
+    if(volumes[index]->IsAutoInodeCount())
+    {
+        cbInodeCountAuto->setCheckState(Qt::CheckState::Checked);
+        sbInodeCount->setEnabled(false);
+    }
+    else
+    {
+        cbInodeCountAuto->setCheckState(Qt::CheckState::Unchecked);
+        sbInodeCount->setEnabled(true);
+    }
 
     sbInodeCount->setValue(volumes[index]->GetStInodeCount()->GetValue());
 
@@ -399,19 +437,21 @@ void VolumeSettings::SetActiveVolume(int index)
     // Use QLocale to add comma separators
     QLocale l(QLocale::English, QLocale::UnitedStates);
 
-	//  Update the auto sector size check box
-	if(volumes[index]->IsAutoSectorSize())
-	{
-		cbSectorSizeAuto->setCheckState(Qt::CheckState::Checked);
-	}
-	else
-	{
-		cbSectorSizeAuto->setCheckState(Qt::CheckState::Unchecked);
-	}
+    // Update the auto sector size check box
+    if(volumes[index]->IsAutoSectorSize())
+    {
+        cbSectorSizeAuto->setCheckState(Qt::CheckState::Checked);
+        cmbSectorSize->setEnabled(false);
+    }
+    else
+    {
+        cbSectorSizeAuto->setCheckState(Qt::CheckState::Unchecked);
+        cmbSectorSize->setEnabled(true);
+    }
 
-	//  Update the sector size combo box
-	cmbSectorSize->setCurrentText(l.toString(
-			static_cast<qlonglong>(volumes[index]->GetStSectorSize()->GetValue())));
+    // Update the sector size combo box
+    cmbSectorSize->setCurrentText(l.toString(
+            static_cast<qlonglong>(volumes[index]->GetStSectorSize()->GetValue())));
 
     cmbAtomicWrite->setCurrentText(volumes[index]->GetStAtomicWrite()->GetValue());
 
@@ -569,39 +609,47 @@ const VOLCONF gaRedVolConf[REDCONF_VOLUME_COUNT] =\n\
 
     for(int i = 0; i < volumes.count(); i++)
     {
-		QString sectorSize;
-		QString sectorCount;
+        QString sectorSize;
+        QString sectorCount;
+        QString inodeCount;
 
-		if(volumes[i]->IsAutoSectorSize())
-		{
-			sectorSize = QString("SECTOR_SIZE_AUTO");
-		}
-		else
-		{
-			sectorSize = QString::number(volumes[i]->GetStSectorSize()->GetValue()) + QString("U");
-		}
-		if(volumes[i]->IsAutoSectorCount())
-		{
-			sectorCount = QString("SECTOR_COUNT_AUTO");
-		}
-		else
-		{
-			sectorCount = QString::number(volumes[i]->GetStSectorCount()->GetValue()) + QString("U");
-		}
+        if(volumes[i]->IsAutoSectorSize())
+        {
+            sectorSize = QString("SECTOR_SIZE_AUTO");
+        }
+        else
+        {
+            sectorSize = QString::number(volumes[i]->GetStSectorSize()->GetValue()) + QString("U");
+        }
+        if(volumes[i]->IsAutoSectorCount())
+        {
+            sectorCount = QString("SECTOR_COUNT_AUTO");
+        }
+        else
+        {
+            sectorCount = QString::number(volumes[i]->GetStSectorCount()->GetValue()) + QString("U");
+        }
+        if(volumes[i]->IsAutoInodeCount())
+        {
+            inodeCount = QString("INODE_COUNT_AUTO");
+        }
+        else
+        {
+            inodeCount = QString::number(volumes[i]->GetStInodeCount()->GetValue()) + QString("U");
+        }
 
         toReturn += QString("    { ")
                 + sectorSize
                 + QString(", ")
                 + sectorCount
                 + QString(", ")
-				+ QString::number(volumes[i]->GetStSectorOff()->GetValue())
-				+ QString("U, ")
+                + QString::number(volumes[i]->GetStSectorOff()->GetValue())
+                + QString("U, ")
                 + (QString::compare(volumes[i]->GetStAtomicWrite()->GetValue(),
                                     gpszSupported, Qt::CaseInsensitive) == 0
                    ? QString("true") : QString("false"))
                 + QString(", ")
-                + QString::number(volumes[i]->GetStInodeCount()->GetValue())
-                + QString("U")
+                + inodeCount
                 + QString(", ")
                 + QString::number(volumes[i]->GetStBlockIoRetries()->GetValue())
                 + QString("U");
@@ -742,28 +790,30 @@ void VolumeSettings::ParseCodefile(const QString &text,
                                      wbtnDiscardSupport,
                                      wbtnIoRetries);
 
-		if((QString::compare(strValues[0], "SECTOR_SIZE_AUTO") == 0) ||
-			(QString::compare(strValues[0], "0U") == 0) ||
-			(QString::compare(strValues[0], "0") == 0))
-		{
-			newVol->SetAutoSectorSize(true);
-		}
-		else
-		{
-			parseAndSet(newVol->GetStSectorSize(), strValues[0], notParsed,
-					pathPrefix + QString(" sector size"));
-		}
+        if((QString::compare(strValues[0], "SECTOR_SIZE_AUTO") == 0) ||
+            (QString::compare(strValues[0], "0U") == 0) ||
+            (QString::compare(strValues[0], "0") == 0))
+        {
+            newVol->SetAutoSectorSize(true);
+        }
+        else
+        {
+            newVol->SetAutoSectorSize(false);
+            parseAndSet(newVol->GetStSectorSize(), strValues[0], notParsed,
+                    pathPrefix + QString(" sector size"));
+        }
         if((QString::compare(strValues[1], "SECTOR_COUNT_AUTO") == 0) ||
             (QString::compare(strValues[1], "0U") == 0) ||
             (QString::compare(strValues[1], "0") == 0))
-		{
-			newVol->SetAutoSectorCount(true);
-		}
-		else
-		{
-			parseAndSet(newVol->GetStSectorCount(), strValues[1], notParsed,
-					pathPrefix + QString(" sector count"));
-		}
+        {
+            newVol->SetAutoSectorCount(true);
+        }
+        else
+        {
+            newVol->SetAutoSectorCount(false);
+            parseAndSet(newVol->GetStSectorCount(), strValues[1], notParsed,
+                    pathPrefix + QString(" sector count"));
+        }
         parseAndSet(newVol->GetStSectorOff(), strValues[2], notParsed,
                 pathPrefix + QString(" sector offset"));
 
@@ -781,8 +831,18 @@ void VolumeSettings::ParseCodefile(const QString &text,
             notParsed += pathPrefix + QString(" atomic write supported");
         }
 
-        parseAndSet(newVol->GetStInodeCount(), strValues[4], notParsed,
-                pathPrefix + QString(" inode count"));
+        if((QString::compare(strValues[4], "INODE_COUNT_AUTO") == 0) ||
+            (QString::compare(strValues[4], "0U") == 0) ||
+            (QString::compare(strValues[4], "0") == 0))
+        {
+            newVol->SetAutoInodeCount(true);
+        }
+        else
+        {
+            newVol->SetAutoInodeCount(false);
+            parseAndSet(newVol->GetStInodeCount(), strValues[4], notParsed,
+                    pathPrefix + QString(" inode count"));
+        }
 
         // Don't complain if I/O retries setting isn't found (see
         // comments above).
@@ -1060,7 +1120,7 @@ void VolumeSettings::lePathPrefix_textChanged(const QString &text)
 
 void VolumeSettings::cbSectorSizeAuto_stateChanged(int state)
 {
-	volumes[activeIndex]->SetAutoSectorSize(state == Qt::Checked);
+    volumes[activeIndex]->SetAutoSectorSize(state == Qt::Checked);
     cmbSectorSize->setEnabled(state == Qt::Unchecked);
 
     updateVolSizeBytes();
@@ -1081,7 +1141,7 @@ void VolumeSettings::cmbSectorSize_currentIndexChanged(int index)
 
 void VolumeSettings::cbVolSizeAuto_stateChanged(int state)
 {
-	volumes[activeIndex]->SetAutoSectorCount(state == Qt::Checked);
+    volumes[activeIndex]->SetAutoSectorCount(state == Qt::Checked);
     sbVolSize->setEnabled(state == Qt::Unchecked);
 
     updateVolSizeBytes();
@@ -1139,6 +1199,12 @@ void VolumeSettings::sbInodeCount_valueChanged(const QString &value)
     }
 }
 
+void VolumeSettings::cbInodeCountAuto_stateChanged(int state)
+{
+    volumes[activeIndex]->SetAutoInodeCount(state == Qt::Checked);
+    sbInodeCount->setEnabled(state == Qt::Unchecked);
+}
+
 void VolumeSettings::cmbAtomicWrite_currentIndexChanged(int index)
 {
     // Asserts that the vol index is ok
@@ -1146,7 +1212,6 @@ void VolumeSettings::cmbAtomicWrite_currentIndexChanged(int index)
 
     volumes[activeIndex]->GetStAtomicWrite()
             ->ProcessInput(cmbAtomicWrite->itemText(index));
-
 }
 
 void VolumeSettings::cmbDiscardSupport_currentIndexChanged(int index)
@@ -1156,7 +1221,6 @@ void VolumeSettings::cmbDiscardSupport_currentIndexChanged(int index)
 
     volumes[activeIndex]->GetStDiscardSupport()
             ->ProcessInput(cmbDiscardSupport->itemText(index));
-
 }
 
 void VolumeSettings::cbEnableRetries_stateChanged(int state)

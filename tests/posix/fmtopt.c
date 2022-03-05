@@ -92,6 +92,7 @@ int32_t RedTestFmtOptionsGet(
                 reformatting.
             */
             pFmtOpt->ulVersion = fsinfo.f_diskver;
+            pFmtOpt->ulInodeCount = fsinfo.f_files;
         }
 
         if(fUnmount)

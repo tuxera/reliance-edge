@@ -100,7 +100,7 @@ void PathSepSetting::setUi()
     {
         // Set lineEdit text before setting comboBox index so as to avoid resetting
         // value in comboBox_currentIndexChanged
-        lineEdit->setText(value); 
+        lineEdit->setText(value);
         comboBox->setCurrentIndex(optionCustomIndex);
         lineEdit->setVisible(true);
     }
@@ -110,4 +110,3 @@ void PathSepSetting::lineEdit_textChanged(const QString &text)
 {
     ProcessInput(text);
 }
-

@@ -74,7 +74,7 @@ The POSIX-like API red_format2(), the host tools (redfmt and redimgbld),
 and some OS-specific interfaces, optionally support specifying an inode
 count for format. In addition to an explicit numerical count, the
 formatter also supports an "auto" option which means to automatically
-pick an inode count which is reasonable for the inode size. The "auto"
+pick an inode count which is reasonable for the volume size. The "auto"
 option can also be specified in VOLCONF:ulInodeCount via
 INODE_COUNT_AUTO; in the Configuration Utility, this is the "Auto"
 checkbox in front of the inode count spinbox.

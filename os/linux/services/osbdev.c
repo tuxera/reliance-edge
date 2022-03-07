@@ -59,13 +59,14 @@ typedef enum
 
 typedef struct
 {
-    bool            fOpen;      /* The block device is open. */
-    BDEVOPENMODE    mode;       /* Access mode. */
-    BDEVTYPE        type;       /* Disk type: ram disk or file disk. */
-    uint8_t        *pbRamDisk;  /* Buffer for RAM disks. */
-    const char     *pszSpec;    /* Path for file and raw disks. */
-    int             fd;         /* File descriptor for file disks. */
-    bool            fIsBDev;    /* Whether file disk is a block device. */
+    bool            fOpen;          /* The block device is open. */
+    BDEVOPENMODE    mode;           /* Access mode. */
+    BDEVTYPE        type;           /* Disk type: ram disk or file disk. */
+    uint8_t        *pbRamDisk;      /* Buffer for RAM disks. */
+    const char     *pszSpec;        /* Path for file and raw disks. */
+    int             fd;             /* File descriptor for file disks. */
+    bool            fIsBDev;        /* Whether file disk is a block device. */
+    bool            fFsyncError;    /* Whether fsync() failed with an error. */
 } LINUXBDEV;
 
 
@@ -793,6 +794,7 @@ static REDSTATUS FileDiskOpen(
         }
 
         pDisk->fIsBDev = S_ISBLK(stat.st_mode);
+        pDisk->fFsyncError = false;
     }
 
     /*  If the file disk is a regular file, make sure that it's big enough that
@@ -1098,9 +1100,24 @@ static REDSTATUS FileDiskFlush(
     */
     if(pDisk->fIsBDev)
     {
-        if(fsync(pDisk->fd) != 0)
+        if(pDisk->fFsyncError)
+        {
+            /*  Don't fsync() again after an error, just keep returning EIO.
+                On Linux, fsync() is only guaranteed to return an error once;
+                subsequent calls may succeed even though the data hasn't been
+                synced.
+            */
+            ret = -RED_EIO;
+        }
+        else if(fsync(pDisk->fd) != 0)
         {
             ret = -RED_EIO;
+            pDisk->fFsyncError = true;
+        }
+        else
+        {
+            /*  fsync() successful.
+            */
         }
     }
 

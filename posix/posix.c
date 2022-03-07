@@ -1476,7 +1476,7 @@ int32_t red_openat(
 
     if(ret != 0)
     {
-        iFildes = PosixReturn(ret);;
+        iFildes = PosixReturn(ret);
     }
 
     return iFildes;

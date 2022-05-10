@@ -39,6 +39,7 @@ REDPROJOBJ= \
 	red/core/driver/buffercmn.$(B_OBJEXT)			\
 	red/core/driver/core.$(B_OBJEXT)			\
 	red/core/driver/dir.$(B_OBJEXT)				\
+	red/core/driver/discard.$(B_OBJEXT)			\
 	red/core/driver/format.$(B_OBJEXT)			\
 	red/core/driver/imap.$(B_OBJEXT)			\
 	red/core/driver/imapextern.$(B_OBJEXT)			\

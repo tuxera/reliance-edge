@@ -50,7 +50,7 @@ typedef uint64_t REDTIMESTAMP;
     compiled with the host operating systems (e.g., Windows or Linux), this is
     assumed to be a string (`const char *`).
 */
-typedef void *REDBDEVCTX;
+typedef const struct UBOOT_DEV *REDBDEVCTX; /* In most places, this is an opaque structure pointer. */
 
 
 #endif

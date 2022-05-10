@@ -1,0 +1,264 @@
+diff -urN u-boot-2021.01-rc1/Makefile ../u-boot-2021.01-rc1/Makefile
+--- u-boot-2021.01-rc1/Makefile	2020-10-28 16:30:06.000000000 -0400
++++ ../u-boot-2021.01-rc1/Makefile	2022-04-04 20:05:36.446007100 -0400
+@@ -1849,6 +1849,8 @@
+ define filechk_version.h
+ 	(echo \#define PLAIN_VERSION \"$(UBOOTRELEASE)\"; \
+ 	echo \#define U_BOOT_VERSION \"U-Boot \" PLAIN_VERSION; \
++	echo \#define U_BOOT_VERSION_NUM $(VERSION); \
++	echo \#define U_BOOT_VERSION_NUM_PATCH $$(echo $(PATCHLEVEL) | sed -e "s/^0*//"); \
+ 	echo \#define CC_VERSION_STRING \"$$(LC_ALL=C $(CC) --version | head -n 1)\"; \
+ 	echo \#define LD_VERSION_STRING \"$$(LC_ALL=C $(LD) --version | head -n 1)\"; )
+ endef
+diff -urN u-boot-2021.01-rc1/cmd/Makefile ../u-boot-2021.01-rc1/cmd/Makefile
+--- u-boot-2021.01-rc1/cmd/Makefile	2020-10-28 16:30:06.000000000 -0400
++++ ../u-boot-2021.01-rc1/cmd/Makefile	2022-03-22 12:19:37.458534100 -0400
+@@ -123,6 +123,7 @@
+ obj-$(CONFIG_CMD_WOL) += wol.o
+ obj-$(CONFIG_CMD_QFW) += qfw.o
+ obj-$(CONFIG_CMD_READ) += read.o
++obj-y += redfs.o
+ obj-$(CONFIG_CMD_REGINFO) += reginfo.o
+ obj-$(CONFIG_CMD_REISER) += reiser.o
+ obj-$(CONFIG_CMD_REMOTEPROC) += remoteproc.o
+diff -urN u-boot-2021.01-rc1/cmd/redfs.c ../u-boot-2021.01-rc1/cmd/redfs.c
+--- u-boot-2021.01-rc1/cmd/redfs.c	1969-12-31 19:00:00.000000000 -0500
++++ ../u-boot-2021.01-rc1/cmd/redfs.c	2022-04-04 23:47:27.196007100 -0400
+@@ -0,0 +1,96 @@
++/*
++ * Boot support
++ */
++#include <command.h>
++#include <mapmem.h>
++#include <redfs_uboot.h>
++#include <fs.h>
++#include <part.h>
++
++int do_redfs_size(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
++{
++	return do_size(cmdtp, flag, argc, argv, FS_TYPE_REDFS);
++}
++
++U_BOOT_CMD(
++	redfssize,	4,	0,	do_redfs_size,
++	"determine a file's size",
++	"<interface> <dev[:part]> <filename>\n"
++	"    - Find file 'filename' from 'dev' on 'interface'\n"
++	"      and determine its size."
++);
++
++int do_redfs_fsload(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
++{
++	return do_load(cmdtp, flag, argc, argv, FS_TYPE_REDFS);
++}
++
++
++U_BOOT_CMD(
++	redfsload,	7,	0,	do_redfs_fsload,
++	"load binary file from a dos filesystem",
++	"<interface> [<dev[:part]> [<addr> [<filename> [bytes [pos]]]]]\n"
++	"    - Load binary file 'filename' from 'dev' on 'interface'\n"
++	"      to address 'addr' from dos filesystem.\n"
++	"      'pos' gives the file position to start loading from.\n"
++	"      If 'pos' is omitted, 0 is used. 'pos' requires 'bytes'.\n"
++	"      'bytes' gives the size to load. If 'bytes' is 0 or omitted,\n"
++	"      the load stops on end of file.\n"
++	"      If either 'pos' or 'bytes' are not aligned to\n"
++	"      ARCH_DMA_MINALIGN then a misaligned buffer warning will\n"
++	"      be printed and performance will suffer for the load."
++);
++
++static int do_redfs_ls(struct cmd_tbl *cmdtp, int flag, int argc,
++		     char *const argv[])
++{
++	return do_ls(cmdtp, flag, argc, argv, FS_TYPE_REDFS);
++}
++
++U_BOOT_CMD(
++	redfsls,	4,	1,	do_redfs_ls,
++	"list files in a directory (default /)",
++	"<interface> [<dev[:part]>] [directory] (we make it here)\n"
++	"    - list files from 'dev' on 'interface' in a 'directory'"
++);
++
++static int do_redfs_write(struct cmd_tbl *cmdtp, int flag, int argc,
++			  char *const argv[])
++{
++	return do_save(cmdtp, flag, argc, argv, FS_TYPE_REDFS);
++}
++
++U_BOOT_CMD(
++	redfswrite,	7,	0,	do_redfs_write,
++	"write file into a dos filesystem",
++	"<interface> <dev[:part]> <addr> <filename> [<bytes> [<offset>]]\n"
++	"    - write file 'filename' from the address 'addr' in RAM\n"
++	"      to 'dev' on 'interface'"
++);
++
++static int do_redfs_rm(struct cmd_tbl *cmdtp, int flag, int argc,
++		     char *const argv[])
++{
++	return do_rm(cmdtp, flag, argc, argv, FS_TYPE_REDFS);
++}
++
++U_BOOT_CMD(
++	redfsrm,	4,	1,	do_redfs_rm,
++	"delete a file",
++	"<interface> [<dev[:part]>] <filename>\n"
++	"    - delete a file from 'dev' on 'interface'"
++);
++
++static int do_redfs_mkdir(struct cmd_tbl *cmdtp, int flag, int argc,
++			char *const argv[])
++{
++	return do_mkdir(cmdtp, flag, argc, argv, FS_TYPE_REDFS);
++}
++
++U_BOOT_CMD(
++	redfsmkdir,	4,	1,	do_redfs_mkdir,
++	"create a directory",
++	"<interface> [<dev[:part]>] <directory>\n"
++	"    - create a directory in 'dev' on 'interface'"
++);
++
+diff -urN u-boot-2021.01-rc1/fs/Makefile ../u-boot-2021.01-rc1/fs/Makefile
+--- u-boot-2021.01-rc1/fs/Makefile	2020-10-28 16:30:06.000000000 -0400
++++ ../u-boot-2021.01-rc1/fs/Makefile	2022-02-24 15:51:36.893924800 -0500
+@@ -26,4 +26,5 @@
+ obj-$(CONFIG_CMD_ZFS) += zfs/
+ obj-$(CONFIG_FS_SQUASHFS) += squashfs/
+ endif
++obj-y += redfs/
+ obj-y += fs_internal.o
+diff -urN u-boot-2021.01-rc1/fs/fs.c ../u-boot-2021.01-rc1/fs/fs.c
+--- u-boot-2021.01-rc1/fs/fs.c	2020-10-28 16:30:06.000000000 -0400
++++ ../u-boot-2021.01-rc1/fs/fs.c	2022-04-05 00:07:52.546007100 -0400
+@@ -17,6 +17,7 @@
+ #include <ext4fs.h>
+ #include <fat.h>
+ #include <fs.h>
++#include <redfs_uboot.h>
+ #include <sandboxfs.h>
+ #include <ubifs_uboot.h>
+ #include <btrfs.h>
+@@ -201,7 +202,6 @@
+ 		.ln = fs_ln_unsupported,
+ 	},
+ #endif
+-
+ #if CONFIG_IS_ENABLED(FS_EXT4)
+ 	{
+ 		.fstype = FS_TYPE_EXT,
+@@ -298,21 +298,23 @@
+ 	},
+ #endif
+ 	{
+-		.fstype = FS_TYPE_ANY,
+-		.name = "unsupported",
+-		.null_dev_desc_ok = true,
+-		.probe = fs_probe_unsupported,
+-		.close = fs_close_unsupported,
+-		.ls = fs_ls_unsupported,
+-		.exists = fs_exists_unsupported,
+-		.size = fs_size_unsupported,
+-		.read = fs_read_unsupported,
+-		.write = fs_write_unsupported,
++		.fstype = FS_TYPE_REDFS, 
++		.name = "redfs",
++		.null_dev_desc_ok = false,
++		.probe = redfs_probe,
++		.close = redfs_close, 
++		.ls = redfs_ls,
++		.readdir = redfs_readdir,
++		.closedir = redfs_closedir,
++		.exists = redfs_exists,
++		.size = redfs_size,
++		.read = redfs_read_file,
++		.write = redfs_write_file,
+ 		.uuid = fs_uuid_unsupported,
+-		.opendir = fs_opendir_unsupported,
+-		.unlink = fs_unlink_unsupported,
+-		.mkdir = fs_mkdir_unsupported,
+-		.ln = fs_ln_unsupported,
++		.opendir = redfs_opendir,
++		.unlink = redfs_unlink,
++		.mkdir = redfs_mkdir,
++		.ln = redfs_symlink,
+ 	},
+ };
+ 
+@@ -654,7 +656,7 @@
+ {
+ 	struct fstype_info *info = fs_get_info(fs_type);
+ 	int ret;
+-
++	
+ 	ret = info->ln(fname, target);
+ 
+ 	if (ret < 0) {
+@@ -860,7 +862,7 @@
+ 
+ 	if (argc < 3 || argc > 4)
+ 		return CMD_RET_USAGE;
+-
++	
+ 	if (fs_set_blk_dev(argv[1], argv[2], FS_TYPE_ANY))
+ 		return 1;
+ 
+diff -urN u-boot-2021.01-rc1/fs/redfs/Makefile ../u-boot-2021.01-rc1/fs/redfs/Makefile
+--- u-boot-2021.01-rc1/fs/redfs/Makefile	1969-12-31 19:00:00.000000000 -0500
++++ ../u-boot-2021.01-rc1/fs/redfs/Makefile	2022-02-24 15:51:36.893924800 -0500
+@@ -0,0 +1,6 @@
++#
++
++include fs/redfs/red/projects/u-boot/Makefile
++
++obj-y	:= $(REDPROJOBJ)
++
+diff -urN u-boot-2021.01-rc1/include/fs.h ../u-boot-2021.01-rc1/include/fs.h
+--- u-boot-2021.01-rc1/include/fs.h	2020-10-28 16:30:06.000000000 -0400
++++ ../u-boot-2021.01-rc1/include/fs.h	2022-03-02 13:31:17.969842200 -0500
+@@ -16,6 +16,7 @@
+ #define FS_TYPE_UBIFS	4
+ #define FS_TYPE_BTRFS	5
+ #define FS_TYPE_SQUASHFS 6
++#define FS_TYPE_REDFS	777
+ 
+ struct blk_desc;
+ 
+diff -urN u-boot-2021.01-rc1/include/redfs_uboot.h ../u-boot-2021.01-rc1/include/redfs_uboot.h
+--- u-boot-2021.01-rc1/include/redfs_uboot.h	1969-12-31 19:00:00.000000000 -0500
++++ ../u-boot-2021.01-rc1/include/redfs_uboot.h	2022-04-04 20:22:13.696007100 -0400
+@@ -0,0 +1,32 @@
++
++#ifndef REDFS_UBOOT_H
++#define REDFS_UBOOT_H
++
++#include <part.h>
++#include <fs.h>
++#include <version.h> /* Needed for version number */
++
++int redfs_probe(struct blk_desc * fs_dev_desc, struct disk_partition * fs_partition);
++void redfs_close(void);
++int redfs_ls(const char * pszPath);
++int redfs_exists(const char * pszPath);
++int redfs_size(const char * pszPath, loff_t * pSize);
++int redfs_read_file(const char * pszPath, void * pBuffer, loff_t offset, loff_t len, loff_t * pActual);
++int redfs_write_file(const char * pszPath, void * pBuffer, loff_t offset, loff_t len, loff_t * pActual);
++int redfs_mkdir(const char * pszPath);
++
++#if ((U_BOOT_VERSION_NUM > 2017) || (U_BOOT_VERSION_NUM == 2017) && (U_BOOT_VERSION_NUM_PATCH >= 11))
++int redfs_opendir(const char * pszPath, struct fs_dir_stream ** dirsp);
++int redfs_readdir(struct fs_dir_stream * dirs, struct fs_dirent **dentp);
++void redfs_closedir(struct fs_dir_stream * dirs);
++#endif
++
++#if ((U_BOOT_VERSION_NUM > 2018) || (U_BOOT_VERSION_NUM == 2018) && (U_BOOT_VERSION_NUM_PATCH >= 11))
++int redfs_unlink(const char * pszPath);
++#endif
++
++#if ((U_BOOT_VERSION_NUM > 2019) || (U_BOOT_VERSION_NUM == 2019) && (U_BOOT_VERSION_NUM_PATCH >= 7))
++int redfs_symlink(const char * pszPath, const char * pszSymLink);
++#endif
++
++#endif /* #ifndef REDFS_UBOOT_H */

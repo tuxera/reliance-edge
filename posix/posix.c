@@ -1596,29 +1596,29 @@ int32_t red_symlink(
 #if REDCONF_API_POSIX_SYMLINK == 1
 /** @brief Read the contents of a symbolic link.
 
-    @note On success, @p pszBuffer will only have been null-terminated by this
-          function if it was large enough for the symbolic link target plus an
-          extra byte for the null-terminator.
+    @note On success, @p pszBuffer will be null-terminated by this function if
+          @p ulBufferSize exceeded the length of the target path stored for
+          @p pszSymlink.  This differs from the readlink() implementations in
+          most POSIX-like systems (such as Linux and the *BSDs), which _never_
+          include the null-terminator.  If @p ulBufferSize is less than or equal
+          to the length of the target path, the @p pszBuffer will _not_ be
+          null-terminated by this function.
 
-    The caller must check for and handle the case where the symbolic link target
-    was too large to fit into the buffer.  One possible idiom for this is given
-    in the below example:
+    The caller must handle the case where the symbolic link target was too large
+    to fit into the buffer.  This can be done by looking for a return value
+    which is equal to @p ulBufferSize.  For example:
 
     @code{.c}
     char szBuffer[256];
-    REDSTATUS err;
+    int32_t len;
 
-    // Zero final byte to detect if symlink target was too long.
-    szBuffer[sizeof(szBuffer) - 1U] = '\0';
-
-    err = (red_readlink(pszSymlink, szBuffer, sizeof(szBuffer)) == 0) ? 0 : red_errno;
-    if(err == 0)
+    len = red_readlink(pszSymlink, szBuffer, sizeof(szBuffer));
+    if(len == (int32_t)sizeof(szBuffer))
     {
-        // Check whether the buffer was too small.
-        if(szBuffer[sizeof(szBuffer) - 1U] != '\0')
-        {
-            err = RED_ENAMETOOLONG;
-        }
+        // Optionally return an error
+        err = RED_ENAMETOOLONG;
+        // Optionally null-terminate the buffer to use the truncated target path
+        szBuffer[sizeof(szBuffer) - 1U] = '\0';
     }
     @endcode
 
@@ -1630,17 +1630,18 @@ int32_t red_symlink(
                         value, then the target string is truncated and no null
                         terminator is written to @p pszBuffer.
 
-    @return On success, zero is returned.  On error, -1 is returned and
-            #red_errno is set appropriately.
+    @return On success, returns the length of the symlink target (not including
+            any null-terminator) or @p ulBufferSize, whichever is smaller.  On
+            error, -1 is returned and #red_errno is set appropriately.
 
     <b>Errno values</b>
     - #RED_EACCES: #REDCONF_POSIX_OWNER_PERM is enabled and POSIX permissions
       prohibit the current user from performing the operation: no search
       permission for a component of the prefix in @p pszSymlink.
-    - #RED_EINVAL: @p pszSymlink is `NULL`; or @p pszBuffer is `NULL`; or
-      @p ulBufferSize is greater than `INT32_MAX`; or the volume containing the
-      @p pszSymlink path is not mounted; or @p pszSymlink exists but is not a
-      symbolic link.
+    - #RED_EINVAL: @p pszSymlink is `NULL`; or @p pszBuffer is `NULL`; or the
+      volume containing the @p pszSymlink path is not mounted; or @p pszSymlink
+      exists but is not a symbolic link; or @p ulBufferSize is larger than
+      `INT32_MAX`.
     - #RED_EIO: A disk I/O error occurred.
     - #RED_ELOOP: #REDOSCONF_SYMLINK_FOLLOW is enabled and @p pszSymlink cannot
       be resolved because it either contains a symbolic link loop or nested
@@ -1661,48 +1662,130 @@ int32_t red_readlink(
     char       *pszBuffer,
     uint32_t    ulBufferSize)
 {
+    uint32_t    ulLenRead = 0U;
     REDSTATUS   ret;
 
     ret = PosixEnter();
     if(ret == 0)
     {
-        uint32_t    ulDirInode;
-        const char *pszLocalPath;
-
-        ret = PathStartingPoint(RED_AT_FDNONE, pszSymlink, NULL, &ulDirInode, &pszLocalPath);
-        if(ret == 0)
+        if(ulBufferSize > (uint32_t)INT32_MAX)
         {
-            uint32_t ulInode;
+            ret = -RED_EINVAL;
+        }
+        else
+        {
+            uint32_t    ulDirInode;
+            const char *pszLocalPath;
 
-            ret = RedPathLookup(ulDirInode, pszLocalPath, RED_AT_SYMLINK_NOFOLLOW, &ulInode);
-
+            ret = PathStartingPoint(RED_AT_FDNONE, pszSymlink, NULL, &ulDirInode, &pszLocalPath);
             if(ret == 0)
             {
-                REDSTAT sb;
+                uint32_t ulInode;
 
-                ret = RedCoreStat(ulInode, &sb);
+                ret = RedPathLookup(ulDirInode, pszLocalPath, RED_AT_SYMLINK_NOFOLLOW, &ulInode);
+
                 if(ret == 0)
                 {
-                    ret = RedModeTypeCheck(sb.st_mode, FTYPE_SYMLINK);
-                    if(ret == -RED_ENOLINK)
+                    REDSTAT sb;
+
+                    ret = RedCoreStat(ulInode, &sb);
+                    if(ret == 0)
                     {
-                        ret = -RED_EINVAL;
+                        ret = RedModeTypeCheck(sb.st_mode, FTYPE_SYMLINK);
+                        if(ret == -RED_ENOLINK)
+                        {
+                            ret = -RED_EINVAL;
+                        }
                     }
                 }
-            }
 
-            if(ret == 0)
-            {
-                uint32_t ulLenRead = ulBufferSize;
+                if(ret == 0)
+                {
+                    ulLenRead = ulBufferSize;
+                    ret = RedCoreFileRead(ulInode, 0U, &ulLenRead, pszBuffer);
+                }
 
-                ret = RedCoreFileRead(ulInode, 0U, &ulLenRead, pszBuffer);
+                /*  The POSIX readlink() specification is somewhat vague, but
+                    most implementations (including Linux and the *BSDs) do
+                    the following: read the contents of the symlink (_not_
+                    including the NUL terminator) into the buffer and return
+                    the number of bytes copied into the buffer.  The buffer
+                    is *never* NUL terminated, even if there is room for a NUL.
+                    This is a poor API, since in most cases the callers will
+                    need to NUL-terminate the string to use it, and failure to
+                    do so could lead to subtle bugs.
+
+                    red_symlink() (unlike most implementations) will write
+                    the NUL terminator to disk as part of the file data for
+                    the symlink.  However, we can't assume that the symlink
+                    is NUL terminated.  Reliance Edge has the RED_O_SYMLINK
+                    extension which allows symlinks to be opened as file
+                    descriptors and to have arbitrary contents written into
+                    them.  This means that the symlinks might not end with a
+                    NUL, or it might have a NUL character before the EOF.
+
+                    So -- as a compromise between POSIX compliance, convenience,
+                    and Reliance Edge's extensions -- we do the following:
+                */
+                if(ret == 0)
+                {
+                    uint32_t i;
+
+                    /*  Add a NUL terminator if there's room for it and it's not
+                        already there.  In most cases, it'll already be there in
+                        symlink file data, but we can't assume that, due to
+                        RED_O_SYMLINK.
+
+                        The typical readlink() implementation never writes the
+                        NUL, whether or not there's room for it, but we are
+                        deliberately deviating from that.
+                    */
+                    if(    (ulLenRead < ulBufferSize)
+                        && ((ulLenRead == 0U) || (pszBuffer[ulLenRead - 1U] != '\0')))
+                    {
+                        pszBuffer[ulLenRead] = '\0';
+                    }
+
+                    /*  If the symlink contains a NUL terminator _before_ the
+                        EOF, the length is reduced so that the NUL terminator is
+                        treated as the "end" of the symlink.  This means that
+                        bytes after &pszBuffer[<return value>] are potentially
+                        modified by this function.  This is allowed by POSIX,
+                        which says: "If the number of bytes in the symbolic link
+                        is less than bufsize, the contents of the remainder of
+                        buf are unspecified."
+
+                        As a side effect, the NUL terminator (whether or not
+                        it exists on disk) is _not_ included in the returned
+                        length.  This makes the red_readlink() return value
+                        compatible with the return value of other readlink()
+                        implementations.
+                    */
+                    for(i = 0U; i < ulLenRead; i++)
+                    {
+                        if(pszBuffer[i] == '\0')
+                        {
+                            ulLenRead = i;
+                            break;
+                        }
+                    }
+                }
             }
         }
 
         PosixLeave();
     }
 
-    return PosixReturn(ret);
+    if(ret == 0)
+    {
+        ret = (int32_t)ulLenRead;
+    }
+    else
+    {
+        ret = PosixReturn(ret);
+    }
+
+    return ret;
 }
 #endif /* REDCONF_API_POSIX_SYMLINK == 1 */
 

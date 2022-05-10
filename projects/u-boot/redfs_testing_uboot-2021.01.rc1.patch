@@ -1,0 +1,420 @@
+diff -urN --strip-trailing-cr patch/u-boot-2021.01-rc1/cmd/Makefile u-boot-2021.01-rc1/cmd/Makefile
+--- patch/u-boot-2021.01-rc1/cmd/Makefile	2022-04-20 15:00:06.346007100 -0400
++++ u-boot-2021.01-rc1/cmd/Makefile	2022-04-08 16:40:08.286007100 -0400
+@@ -124,6 +124,7 @@
+ obj-$(CONFIG_CMD_QFW) += qfw.o
+ obj-$(CONFIG_CMD_READ) += read.o
+ obj-y += redfs.o
++obj-y += redfs_test.o
+ obj-$(CONFIG_CMD_REGINFO) += reginfo.o
+ obj-$(CONFIG_CMD_REISER) += reiser.o
+ obj-$(CONFIG_CMD_REMOTEPROC) += remoteproc.o
+diff -urN --strip-trailing-cr patch/u-boot-2021.01-rc1/cmd/redfs_test.c u-boot-2021.01-rc1/cmd/redfs_test.c
+--- patch/u-boot-2021.01-rc1/cmd/redfs_test.c	1969-12-31 19:00:00.000000000 -0500
++++ u-boot-2021.01-rc1/cmd/redfs_test.c	2022-04-20 13:46:32.106007100 -0400
+@@ -0,0 +1,405 @@
++/*
++ * Boot support
++*/
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++
++#include <command.h>
++#include <mapmem.h>
++#include <redfs_uboot.h>
++#include <fs.h>
++#include <part.h>
++
++/*  Structure to hold the completion of the tests conducted on redfs functions
++*/
++typedef struct {
++    uint8_t     tot;
++    uint8_t     completed;
++    uint8_t     failed;
++    char        pLast[11];
++} COMSTAT;
++
++static struct blk_desc *fs_dev_desc;
++static int fs_dev_part;
++static struct disk_partition fs_partition;
++
++static COMSTAT comStat;
++
++void redfs_basicTest(struct cmd_tbl * cmdtp, int flag, int argc, char * const argv [ ], int fstype);
++int testLs(const char * pszPath);
++int testExists(const char * pszPath);
++int testSize(const char * pszPath, loff_t * size);
++int testWriteFile(const char * pszPath, void * pBuffer, loff_t offset, loff_t len, loff_t * pActual);
++int testReadFile(const char * pszPath, void * pBuffer, loff_t offset, loff_t len, loff_t * pActual);
++int testMkdir(const char * pszPath);
++int testSymlink(const char * pszPath, const char * pszSymlink);
++int testUnlink(const char * pszPath);
++
++
++static int do_redfs_test(
++        struct cmd_tbl *cmdtp,
++        int flag,
++        int argc,
++		char *const argv[])
++{
++
++    memset(&comStat, 0, sizeof(COMSTAT));
++    redfs_basicTest(cmdtp, flag, argc, argv, FS_TYPE_REDFS);
++    if(comStat.failed != 0)
++    {
++            printf("\n\n** Issue with the basic functions **\n");
++            printf("** Last test ran was %s, number failed: %d **\n",comStat.pLast, comStat.failed);
++            return CMD_RET_FAILURE;
++    }
++    #if 0
++    else
++    {
++        redfs_moreTests(cmdtp, flag, argc, argv, FS_TYPE_REDFS);
++    }
++    #endif
++
++    return CMD_RET_SUCCESS;
++}
++
++U_BOOT_CMD(
++	redfstest,	4,	1,	do_redfs_test,
++	"run redfs testing scripts to test functions in U-Boot",
++	"<interface> [<dev[:part]>]"
++	"    - run tests on all redfs supported functions in U-Boot"
++);
++
++
++/*  Basic Testing of each function with hardcoded values, will need to add a
++    more rigorous test
++
++    Notes:
++    You will need 1 .txt file already on the image to test writing and reading
++    above is wrong need to add capability to create .txt files
++
++*/
++void redfs_basicTest(
++        struct cmd_tbl * cmdtp,
++        int flag,
++        int argc,
++        char *const argv[],
++        int fstype)
++{
++    struct fs_dir_stream   *dirs = NULL;
++    struct fs_dirent       *dentp = NULL;
++    int                     part;
++    int                     x;
++    loff_t                  fileSize;
++    loff_t                  pActual;
++    char                   *pcBuffer = NULL;
++
++    strcpy(comStat.pLast, "malloc");
++    pcBuffer = (char *)malloc( 0x7F );
++    if(pcBuffer == NULL)
++    {
++        printf("** Unable to set the write buffer, skipping write and read tests **\n");
++        return ;
++    }
++    else
++    {
++        memset(pcBuffer, 0x7A, 0x7F);
++    }
++
++    part = blk_get_device_part_str(argv[1], (argc >= 3) ? argv[2] : NULL, &fs_dev_desc, &fs_partition, 1);
++    if(part < 0)
++    {
++        printf("** Partition DNE it is set to: %d **\n",part);
++        return ;
++    }
++
++
++    printf("** Starting redfs testing... **\n");
++
++    printf("** Testing redfs_probe **\n");
++    strcpy(comStat.pLast, "probe");
++    if(!redfs_probe(fs_dev_desc, &fs_partition))
++    {
++        fs_dev_part = part;
++        comStat.completed += 1;
++        comStat.tot += 1;
++    }
++    else
++    {
++        comStat.failed += 1;
++        comStat.tot += 1;
++        return ;
++    }
++
++    printf("** Testing redfs_ls **\n");
++    strcpy(comStat.pLast, "ls");
++    x = testLs("/");
++    if(x)
++        return;
++
++    printf("** Testing redfs_exists **\n");
++    strcpy(comStat.pLast, "exists");
++    x = testExists("/");
++    if(x)
++        return;
++
++    printf("** Testing redfs_size **\n");
++    strcpy(comStat.pLast, "size");
++    x = testSize("/", &fileSize);
++    if(x && (fileSize > 0))
++        return;
++
++    printf("** Testing redfs_write_file **\n");
++    strcpy(comStat.pLast, "write_file");
++    x = testWriteFile("/newtxt.txt", pcBuffer, 0, 0x7F, &pActual);
++    if(x && (pActual != 0x7F))
++    {
++        return;
++    }
++
++
++    printf("** Testing redfs_read_file **\n");
++    strcpy(comStat.pLast, "read_file");
++    x = testReadFile("/newtxt.txt", pcBuffer, 0, 0x7F, &pActual);
++    if(x && (pActual != 0x7F))
++        return;
++
++    printf("** Testing redfs_mkdir **\n");
++    strcpy(comStat.pLast, "mkdir");
++    x = testMkdir("/newDir");
++    if(x)
++        return;
++
++  #if((U_BOOT_VERISON_NUM > 2017) || (U_BOOT_VERISON_NUM == 2017) &&(U_BOOT_VERSION_NUM_PATCH >= 11))
++    printf("** Testing redfs_opendir **\n");
++    strcpy(comStat.pLast, "opendir");
++    x = testOpenDir("/newDir", &dirs);
++    if(x)
++        return;
++
++    printf("** Testing redfs_readdir **\n");
++    strcpy(comStat.pLast, "readdir");
++    x = testReadDir(&dirs, &dentp);
++    if(x)
++        return;
++
++    printf("** Testing redfs_closedir **\n");
++    strcpy(comStat.pLast, "opendir");
++    x = testCloseDir(&dirs);
++    if(x)
++        return;
++  #endif /* ((U_BOOT_VERISON_NUM > 2017) || (U_BOOT_VERISON_NUM == 2017) &&(U_BOOT_VERSION_NUM_PATCH >= 11)) */
++
++  #if((U_BOOT_VERSION_NUM > 2019) || (U_BOOT_VERSION_NUM == 2019) && (U_BOOT_VERSION_NUM >= 7))
++    printf("** Testing redfs_symlink **\n");
++    strcpy(comStat.pLast, "symlink");
++    x = testSymlink("/newtxt.txt", "/newLnk");
++    if(x)
++        return;
++
++    printf("** Testing redfs_unlink **\n");
++    strcpy(comStat.pLast, "unlink");
++    x = testUnlink("/newLnk");
++    x = testUnlink("/newDir");
++    x = testUnlink("/newtxt.txt");
++  #endif /* ((U_BOOT_VERSION_NUM > 2019) || (U_BOOT_VERSION_NUM == 2019) && (U_BOOT_VERSION_NUM >= 7)) */
++
++    printf("** Testing redfs_close **\n");
++    strcpy(comStat.pLast, "close");
++    redfs_close();
++
++}
++
++/*  The functions below allow the different redfs functions to be called and
++    update the comStat structure to reflect the total number of tests and
++    whether a test has passed or failed
++
++*/
++int testLs(const char *pszPath)
++{
++    if(!redfs_ls(pszPath))
++    {
++        comStat.completed += 1;
++        comStat.tot += 1;
++        return 0;
++    }
++    else
++    {
++        comStat.failed += 1;
++        comStat.tot += 1;
++        return 1;
++    }
++
++}
++
++int testExists(const char *pszPath)
++{
++    if(!redfs_exists(pszPath))
++    {
++        comStat.completed += 1;
++        comStat.tot += 1;
++        return 0;
++    }
++    else
++    {
++        comStat.failed += 1;
++        comStat.tot += 1;
++        return 1;
++    }
++}
++
++int testSize(const char *pszPath, loff_t *size)
++{
++    if(!redfs_size(pszPath, size))
++    {
++        comStat.completed += 1;
++        comStat.tot += 1;
++        return 0;
++    }
++    else
++    {
++        comStat.failed += 1;
++        comStat.tot += 1;
++        return 1;
++    }
++}
++
++int testWriteFile(const char *pszPath, void *pBuffer, loff_t offset, loff_t len, loff_t *pActual)
++{
++    if(!redfs_write_file(pszPath, pBuffer, offset, len, pActual))
++    {
++        comStat.completed += 1;
++        comStat.tot += 1;
++        return 0;
++    }
++    else
++    {
++        comStat.failed += 1;
++        comStat.tot += 1;
++        return 1;
++    }
++
++}
++
++int testReadFile(const char *pszPath, void *pBuffer, loff_t offset, loff_t len, loff_t *pActual)
++{
++    if(!redfs_read_file(pszPath, pBuffer, offset, len, pActual))
++    {
++        comStat.completed += 1;
++        comStat.tot += 1;
++        return 0;
++    }
++    else
++    {
++        comStat.failed += 1;
++        comStat.tot += 1;
++        return 1;
++    }
++
++}
++
++int testMkdir(const char *pszPath)
++{
++    if(!redfs_mkdir(pszPath))
++    {
++        comStat.completed += 1;
++        comStat.tot += 1;
++        return 0;
++    }
++    else
++    {
++        comStat.failed += 1;
++        comStat.tot += 1;
++        return 1;
++    }
++
++}
++
++#if((U_BOOT_VERISON_NUM > 2017) || (U_BOOT_VERISON_NUM == 2017) &&(U_BOOT_VERSION_NUM_PATCH >= 11))
++int testOpenDir(const char *pszPath, struct fs_dir_stream **dirs)
++{
++    if(!redfs_opendir(pszPath, dirs))
++    {
++        comStat.completed += 1;
++        comStat.tot += 1;
++        return 0;
++    }
++    else
++    {
++        comStat.failed += 1;
++        comStat.tot += 1;
++        return 1;
++    }
++
++}
++
++int testReadDir(struct fs_dir_stream *dirs, struct fs_dirent **dentp)
++{
++    if(!redfs_readdir(dirs, dentp))
++    {
++        comStat.completed += 1;
++        comStat.tot += 1;
++        return 0;
++    }
++    else
++    {
++        comStat.failed += 1;
++        comStat.tot += 1;
++        return 1;
++    }
++
++}
++
++int testCloseDir(struct fs_dir_stream *dirs)
++{
++    if(!redfs_closedir(dirs))
++    {
++        comStat.completed += 1;
++        comStat.tot += 1;
++        return 0;
++    }
++    else
++    {
++        comStat.failed += 1;
++        comStat.tot += 1;
++        return 1;
++    }
++
++}
++#endif /* ((U_BOOT_VERISON_NUM > 2017) || (U_BOOT_VERISON_NUM == 2017) &&(U_BOOT_VERSION_NUM_PATCH >= 11)) */
++
++
++#if((U_BOOT_VERSION_NUM > 2019) || (U_BOOT_VERSION_NUM == 2019) && (U_BOOT_VERSION_NUM >= 7))
++int testSymlink(const char *pszPath, const char *pszSymlink)
++{
++    if(!redfs_symlink(pszPath, pszSymlink))
++    {
++        comStat.completed += 1;
++        comStat.tot += 1;
++        return 0;
++    }
++    else
++    {
++        comStat.failed += 1;
++        comStat.tot += 1;
++        return 1;
++    }
++
++}
++
++int testUnlink(const char *pszPath)
++{
++    if(!redfs_unlink(pszPath))
++    {
++        comStat.completed += 1;
++        comStat.tot += 1;
++        return 0;
++    }
++    else
++    {
++        comStat.failed += 1;
++        comStat.tot += 1;
++        return 1;
++    }
++
++}
++#endif /* ((U_BOOT_VERSION_NUM > 2019) || (U_BOOT_VERSION_NUM == 2019) && (U_BOOT_VERSION_NUM >= 7)) */

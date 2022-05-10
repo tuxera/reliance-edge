@@ -38,52 +38,46 @@
 #include <redosbdev.h>
 
 
-/*  This array holds the block device handles and partition information for
-    the various redfs volumes.
-*/
-typedef struct {
-    struct blk_desc * block_dev;
-    disk_partition_t * fs_partition;
-} UBOOT_DEV;
 static UBOOT_DEV gaDisk[REDCONF_VOLUME_COUNT];
 
 
 /** @brief Configure a block device.
 
-    @note   This is a non-standard block device API!  The standard block device
-            APIs are designed for implementations running on targets with block
-            devices that are known in advance and can be statically defined by
-            the implementation.  However, that model does not work well for
-            u-boot, so we implement this API to allow the name of the block
-            device to be specified at run-time.
+    In some operating environments, block devices need to be configured with
+    run-time context information that is only available at higher layers.
+    For example, a block device might need to be associated with a block
+    device handle or a device string.  This API allows that OS-specific
+    context information to be passed down from the higher layer (e.g., a
+    VFS implementation) to the block device OS service, which can save it
+    for later use.
 
-    @param bVolNum      The volume number of the volume to configure.
-    @param pszBDevSpec  Drive or file to associate with the volume.
+    Not all OS ports will call RedOsBDevConfig().  If called, it will be called
+    while the block device is closed, prior to calling RedOsBDevOpen().
+
+    @param bVolNum  The volume number of the volume to configure.
+    @param context  OS-specific block device context information.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
-    @retval -RED_EINVAL @p bVolNum is not a valid volume number; or
-                        @p pszBDevSpec is `NULL` or an empty string.
+    @retval -RED_EINVAL @p bVolNum is not a valid volume number; or @p context
+                        is `NULL`.
 */
-REDSTATUS RedOsBDevConfig2(
-    uint8_t bVolNum,
-    struct blk_desc * block_dev,
-    disk_partition_t * fs_partition)
+REDSTATUS RedOsBDevConfig(
+    uint8_t         bVolNum,
+    REDBDEVCTX      context)
 {
-    REDSTATUS ret = 0;
+    REDSTATUS           ret = 0;
+    const UBOOT_DEV    *pDisk = context;
 
-
-    if(bVolNum >= REDCONF_VOLUME_COUNT)
+    if((bVolNum >= REDCONF_VOLUME_COUNT) || (pDisk == NULL))
     {
-        ret = RED_EINVAL;
+        ret = -RED_EINVAL;
     }
     else
     {
-        gaDisk[bVolNum].block_dev = block_dev;
-        gaDisk[bVolNum].fs_partition = fs_partition;
+        gaDisk[bVolNum] = *pDisk;
     }
-
 
     return ret;
 }
@@ -107,15 +101,26 @@ REDSTATUS RedOsBDevConfig2(
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
-    @retval -RED_EINVAL @p bVolNum is an invalid volume number; or the block
-                        device is already open.
-    @retval -RED_EIO    A disk I/O error occurred.
+    @retval -RED_EINVAL @p bVolNum is an invalid volume number.
 */
 REDSTATUS RedOsBDevOpen(
     uint8_t         bVolNum,
     BDEVOPENMODE    mode)
 {
-    return 0;
+    REDSTATUS   ret;
+
+    (void)mode;
+
+    if(bVolNum >= REDCONF_VOLUME_COUNT)
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        ret = 0;
+    }
+
+    return ret;
 }
 
 
@@ -137,13 +142,23 @@ REDSTATUS RedOsBDevOpen(
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0           Operation was successful.
-    @retval -RED_EINVAL @p bVolNum is an invalid volume number; or the block
-                        device is already open.
+    @retval -RED_EINVAL @p bVolNum is an invalid volume number.
 */
 REDSTATUS RedOsBDevClose(
     uint8_t     bVolNum)
 {
-    return 0;
+    REDSTATUS   ret;
+
+    if(bVolNum >= REDCONF_VOLUME_COUNT)
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        ret = 0;
+    }
+
+    return ret;
 }
 
 
@@ -175,6 +190,8 @@ REDSTATUS RedOsBDevGetGeometry(
     }
     else
     {
+        /*  TODO: Implement this so SECTOR_{COUNT,SIZE}_AUTO can be used in redconf.c
+        */
         ret = -RED_ENOTSUPP;
     }
 
@@ -207,16 +224,24 @@ REDSTATUS RedOsBDevRead(
     uint32_t    ulSectorCount,
     void       *pBuffer)
 {
-    ulong count;
     REDSTATUS ret = 0;
 
-
-    count = blk_dread(gaDisk[bVolNum].block_dev, ullSectorStart, ulSectorCount, pBuffer);
-    if(count != ulSectorCount)
+    if(    (bVolNum >= REDCONF_VOLUME_COUNT)
+        || !VOLUME_SECTOR_RANGE_IS_VALID(bVolNum, ullSectorStart, ulSectorCount)
+        || (pBuffer == NULL))
     {
-        ret = -RED_EIO;
+        ret = -RED_EINVAL;
     }
+    else
+    {
+        ulong count;
 
+        count = blk_dread(gaDisk[bVolNum].block_dev, ullSectorStart, ulSectorCount, pBuffer);
+        if(count != ulSectorCount)
+        {
+            ret = -RED_EIO;
+        }
+    }
 
     return ret;
 }
@@ -248,7 +273,26 @@ REDSTATUS RedOsBDevWrite(
     uint32_t    ulSectorCount,
     const void *pBuffer)
 {
-    return -RED_EINVAL;
+    REDSTATUS ret = 0;
+
+    if(    (bVolNum >= REDCONF_VOLUME_COUNT)
+        || !VOLUME_SECTOR_RANGE_IS_VALID(bVolNum, ullSectorStart, ulSectorCount)
+        || (pBuffer == NULL))
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        ulong count;
+
+        count = blk_dwrite(gaDisk[bVolNum].block_dev, ullSectorStart, ulSectorCount, pBuffer);
+        if(count != ulSectorCount)
+        {
+            ret = -RED_EIO;
+        }
+    }
+
+    return ret;
 }
 
 
@@ -276,8 +320,22 @@ REDSTATUS RedOsBDevWrite(
 REDSTATUS RedOsBDevFlush(
     uint8_t     bVolNum)
 {
-    return -RED_EINVAL;
+    REDSTATUS   ret;
+
+    if(bVolNum >= REDCONF_VOLUME_COUNT)
+    {
+        ret = -RED_EINVAL;
+    }
+    else
+    {
+        /*  U-Boot does not define a method to flush the block device.  This
+            means that on power loss it is possible for data corruption to
+            occur, if the storage device has a cache which can reorder write
+            operations.
+        */
+        ret = 0;
+    }
+
+    return ret;
 }
 #endif /* REDCONF_READ_ONLY == 0 */
-
-

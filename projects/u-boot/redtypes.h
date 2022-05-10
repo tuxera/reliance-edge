@@ -83,9 +83,10 @@
 #ifndef REDTYPES_H
 #define REDTYPES_H
 
-/*  Necessary for the bool and uintptr_t types
+/*  Defines bool type.
 */
-#include <common.h>
+#include <stdbool.h>
+
 
 typedef unsigned char uint8_t;
 typedef signed char int8_t;
@@ -95,6 +96,7 @@ typedef unsigned int uint32_t;
 typedef int int32_t;
 typedef unsigned long long uint64_t;
 typedef long long int64_t;
+typedef unsigned long uintptr_t;
 
 
 #endif

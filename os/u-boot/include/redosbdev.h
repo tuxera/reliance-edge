@@ -24,14 +24,20 @@
     Visit https://www.tuxera.com/products/reliance-edge/ for more information.
 */
 /** @file
-    @brief Defines OS-specific types for use in common code.
+    @brief Defines U-Boot block types.
 */
 #ifndef REDOSBDEV_H
 #define REDOSBDEV_H
 
 
-REDSTATUS RedOsBDevConfig2(uint8_t bVolNum, struct blk_desc * block_dev, disk_partition_t * fs_partition);
+/*  This array holds the block device handles and partition information for
+    the various redfs volumes.
+*/
+typedef struct UBOOT_DEV {
+    struct blk_desc        *block_dev;   /* U-Boot native structure */
+    struct disk_partition  *fs_partition;  /* U-Boot native structure */
+} UBOOT_DEV;
 
 
-#endif /* #ifndef REDOSBDEV_H */
+#endif /* REDOSBDEV_H */
 

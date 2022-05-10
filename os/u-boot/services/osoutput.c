@@ -30,6 +30,8 @@
 
 #if REDCONF_OUTPUT == 1
 
+#include <stdio.h>  /* Needed for printf */
+
 
 /** @brief Write a string to a user-visible output location.
 

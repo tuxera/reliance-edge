@@ -2378,9 +2378,9 @@ int32_t red_fchownat(
                     ret = RedCoreChown(ulInode, ulUID, ulGID);
                 }
             }
-
-            PosixLeave();
         }
+
+        PosixLeave();
     }
 
     return PosixReturn(ret);

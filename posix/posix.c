@@ -1003,6 +1003,71 @@ int32_t red_gettransmask(
 }
 
 
+#if REDCONF_READ_ONLY == 0
+/** @brief Write dirty buffers, _without_ committing a transaction point.
+
+    Write all dirty buffers in the block buffer cache to disk.  A transaction
+    point is _not_ committed, so the changes which dirtied these buffers
+    are still in the working state until another API is used to commit a
+    transaction point.  For example, if an application uses red_write()
+    to modify a file, then calls red_writeback(), and then power is lost,
+    the write to the file will be lost, since it was never transacted.  This
+    function has only one (potential) effect: it can make the next transaction
+    point faster, since there may be fewer dirty buffers that need to be
+    written to disk because they were written earlier.  Calling red_writeback()
+    on a regular basis can be used to reduce latency from transaction points
+    without the undesired side effect of committing a transaction point at
+    an inopportune time.  For example, a database application which is aware
+    of Reliance Edge may wish to use transaction points to implement database
+    semantics; such an application would only want transactions to occur for
+    database transactions, but, to avoid the high latency of writing all the
+    dirty buffers during the transaction point itself, the application could
+    call red_writeback() in-between transaction points.
+
+    The scenarios where this API is useful are somewhat niche; most use cases
+    are better served by red_transact(), which will write all the dirty buffers
+    _and_ commit a transaction point,
+
+    @param pszVolume    A path prefix identifying the volume whose dirty buffers
+                        are to be written to disk.
+
+    @return On success, zero is returned.  On error, -1 is returned and
+            #red_errno is set appropriately.
+
+    <b>Errno values</b>
+    - #RED_EINVAL: Volume is not mounted; or @p pszVolume is `NULL`.
+    - #RED_EIO: I/O error while writing dirty buffers.
+    - #RED_ENOENT: @p pszVolume is not a valid volume path prefix.
+    - #RED_EUSERS: Cannot become a file system user: too many users.
+    - #RED_EROFS: The file system volume is read-only.
+
+    @sa
+    - red_transact()
+    - red_sync()
+    - red_fsync()
+*/
+int32_t red_writeback(
+    const char *pszVolume)
+{
+    REDSTATUS   ret;
+
+    ret = PosixEnter();
+    if(ret == 0)
+    {
+        ret = RedPathVolumeLookup(pszVolume, NULL);
+        if(ret == 0)
+        {
+            ret = RedCoreVolWriteback();
+        }
+
+        PosixLeave();
+    }
+
+    return PosixReturn(ret);
+}
+#endif /* REDCONF_READ_ONLY == 0 */
+
+
 /** @brief Query file system status information.
 
     @p pszVolume should name a valid volume prefix or a valid root directory;

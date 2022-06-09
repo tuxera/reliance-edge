@@ -145,6 +145,7 @@ struct AllSettings
     SbSetting *sbsAllocatedBuffers;
     CmbIntSetting *cmisBufferAlignment;
     CheckedSbSetting *sbsBufferWriteGatherKb;
+    CheckedSbSetting *sbsMaxDirtyBuffers;
     LeSetting *lesMemcpy;
     LeSetting *lesMemmov;
     LeSetting *lesMemset;
@@ -223,6 +224,7 @@ extern const QString macroNameExternalImap;
 extern const QString macroNameAllocatedBuffers;
 extern const QString macroNameBufferAlignment;
 extern const QString macroNameBufferGatherSize;
+extern const QString macroNameMaxDirtyBuffers;
 extern const QString macroNameMemcpy;
 extern const QString macroNameMemmov;
 extern const QString macroNameMemset;

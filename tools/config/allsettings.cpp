@@ -223,6 +223,7 @@ QString AllSettings::FormatHeaderOutput()
     addIntSetting(toReturn, allSettings.sbsAllocatedBuffers);
     addIntSetting(toReturn, allSettings.cmisBufferAlignment);
     addIntSetting(toReturn, allSettings.sbsBufferWriteGatherKb);
+    addIntSetting(toReturn, allSettings.sbsMaxDirtyBuffers);
 
     toReturn += outputIfNotBlank(macroNameMemcpy, allSettings.lesMemcpy->GetValue());
     toReturn += outputIfNotBlank(macroNameMemmov, allSettings.lesMemmov->GetValue());
@@ -404,6 +405,7 @@ void AllSettings::GetErrors(QStringList &errors, QStringList &warnings)
     AllSettings::CheckError(allSettings.sbsAllocatedBuffers, errors, warnings);
     AllSettings::CheckError(allSettings.cmisBufferAlignment, errors, warnings);
     AllSettings::CheckError(allSettings.sbsBufferWriteGatherKb, errors, warnings);
+    AllSettings::CheckError(allSettings.sbsMaxDirtyBuffers, errors, warnings);
     AllSettings::CheckError(allSettings.lesMemcpy, errors, warnings);
     AllSettings::CheckError(allSettings.lesMemmov, errors, warnings);
     AllSettings::CheckError(allSettings.lesMemset, errors, warnings);
@@ -568,6 +570,7 @@ void AllSettings::ParseHeaderToSettings(const QString &text,
     parseToSetting(text, allSettings.sbsAllocatedBuffers, notFound, notParsed);
     parseToSetting(text, allSettings.cmisBufferAlignment, notFound, notParsed);
     parseToSetting(text, allSettings.sbsBufferWriteGatherKb, notFound, notParsed);
+    parseToSetting(text, allSettings.sbsMaxDirtyBuffers, notFound, notParsed);
 
     // Don't warn on these if not found; they will not be found
     // if use Reliance memory mngmnt fns was selected.
@@ -790,6 +793,7 @@ void AllSettings::DeleteAll()
     deleteAndNullify(&allSettings.sbsAllocatedBuffers);
     deleteAndNullify(&allSettings.cmisBufferAlignment);
     deleteAndNullify(&allSettings.sbsBufferWriteGatherKb);
+    deleteAndNullify(&allSettings.sbsMaxDirtyBuffers);
     deleteAndNullify(&allSettings.lesMemcpy);
     deleteAndNullify(&allSettings.lesMemmov);
     deleteAndNullify(&allSettings.lesMemset);
@@ -869,6 +873,7 @@ const QString macroNameExternalImap = "REDCONF_IMAP_EXTERNAL";
 const QString macroNameAllocatedBuffers = "REDCONF_BUFFER_COUNT";
 const QString macroNameBufferAlignment = "REDCONF_BUFFER_ALIGNMENT";
 const QString macroNameBufferGatherSize = "REDCONF_BUFFER_WRITE_GATHER_SIZE_KB";
+const QString macroNameMaxDirtyBuffers = "REDCONF_BUFFER_MAX_DIRTY";
 const QString macroNameMemcpy = "RedMemCpyUnchecked";
 const QString macroNameMemmov = "RedMemMoveUnchecked";
 const QString macroNameMemset = "RedMemSetUnchecked";

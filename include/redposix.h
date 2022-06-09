@@ -268,11 +268,12 @@ int32_t red_format2(const char *pszVolume, const REDFMTOPT *pOptions);
 #if REDCONF_READ_ONLY == 0
 int32_t red_transact(const char *pszVolume);
 int32_t red_rollback(const char *pszVolume);
-#endif
-#if REDCONF_READ_ONLY == 0
 int32_t red_settransmask(const char *pszVolume, uint32_t ulEventMask);
 #endif
 int32_t red_gettransmask(const char *pszVolume, uint32_t *pulEventMask);
+#if REDCONF_READ_ONLY == 0
+int32_t red_writeback(const char *pszVolume);
+#endif
 int32_t red_statvfs(const char *pszVolume, REDSTATFS *pStatvfs);
 #if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
 int32_t red_freeorphans(const char *pszVolume, uint32_t ulMaxDeletions);

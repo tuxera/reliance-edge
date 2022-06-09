@@ -73,6 +73,7 @@ Validity validateIndirectPointers(unsigned long value, QString &msg);
 Validity validateAllocatedBuffers(unsigned long value, QString &msg);
 Validity validateBufferAlignment(unsigned long value, QString &msg);
 Validity validateBufferWriteGather(unsigned long value, QString &msg);
+Validity validateMaxDirtyBuffers(unsigned long value, QString &msg);
 
 Validity validateMemInclude(QString value, QString &msg);
 

@@ -101,8 +101,8 @@ REDSTATUS RedBufferGet(uint32_t ulBlock, uint16_t uFlags, void **ppBuffer);
 void RedBufferPut(const void *pBuffer);
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedBufferFlushRange(uint32_t ulBlockStart, uint32_t ulBlockCount);
-void RedBufferDirty(const void *pBuffer);
-void RedBufferBranch(const void *pBuffer, uint32_t ulBlockNew);
+REDSTATUS RedBufferDirty(const void *pBuffer);
+REDSTATUS RedBufferBranch(const void *pBuffer, uint32_t ulBlockNew);
 #if (REDCONF_API_POSIX == 1) || FORMAT_SUPPORTED
 void RedBufferDiscard(const void *pBuffer);
 #endif
@@ -272,6 +272,7 @@ REDSTATUS RedVolMountMetaroot(uint32_t ulFlags);
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedVolTransact(void);
 REDSTATUS RedVolRollback(void);
+REDSTATUS RedVolWriteback(void);
 #endif
 uint32_t RedVolFreeBlockCount(void);
 #if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)

@@ -53,6 +53,7 @@ REDSTATUS RedCoreVolUnmount(void);
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedCoreVolTransact(void);
 REDSTATUS RedCoreVolRollback(void);
+REDSTATUS RedCoreVolWriteback(void);
 #endif
 REDSTATUS RedCoreVolStat(REDSTATFS *pStatFS);
 #if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)

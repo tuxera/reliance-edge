@@ -30,7 +30,7 @@
 #
 # Ignore temporary backup files, lock files, autosave files
 #
-~*
+*~
 .#*
 \#*\#
 

@@ -79,6 +79,32 @@ option can also be specified in VOLCONF:ulInodeCount via
 INODE_COUNT_AUTO; in the Configuration Utility, this is the "Auto"
 checkbox in front of the inode count spinbox.
 
+INTEGRITY Port Changes
+
+Most of the added features in v2.7 are supported by Reliance Edge on
+INTEGRITY:
+
+-   Symbolic links: readlink() and symlink().
+-   Permissions: chmod(), lchmod(), fchmod(), access(); and the mode
+    arguments to open() and mkdir(). Permissions are enforced, with
+    EPERM or EACCES erorrs when permission is denied.
+-   Ownership: chown(), lchown(), fchown().
+-   Setting timestamps: utimes(), lutimes(), and futimes().
+-   Specifying an inode count during format: supported by newfs_redfs.
+
+Additionally, the following changes were made:
+
+-   Opening a directory, with open() or opendir(), no longer uses two of
+    Reliance Edge's handles: only one handle is used.
+-   Improve the efficiency of pread() and stat() using new POSIX-like
+    APIs.
+-   Numerous bug fixes in the porttest test suite.
+-   projects/integrity/simarm and projects/integrity/rcar-h3sk have been
+    updated to use a private copy of net_server_module.gpj.
+-   Add a new project, projects/integrity/simarm-posixsys, for
+    demonstrating and testing support for POSIX ownership and
+    permissions.
+
 Upgrading from Reliance Edge v2.6
 
 The following four macros must be added to redconf.h with a value of

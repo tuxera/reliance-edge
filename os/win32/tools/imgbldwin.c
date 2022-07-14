@@ -489,7 +489,7 @@ int IbStat(
         pStat->ulGid = RedOsGroupId();
       #endif
 
-        pStat->ullSize = (findData.nFileSizeHigh * (MAXDWORD + 1U)) + findData.nFileSizeLow;
+        pStat->ullSize = (findData.nFileSizeHigh * ((uint64_t)MAXDWORD + 1U)) + findData.nFileSizeLow;
 
         pStat->ulATime = WinFileTimeToUnixTime(findData.ftLastAccessTime);
         pStat->ulMTime = WinFileTimeToUnixTime(findData.ftLastWriteTime);

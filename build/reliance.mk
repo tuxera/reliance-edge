@@ -29,12 +29,6 @@ REDDRIVINC=\
 REDTESTINC=\
 	$(B_CINCCMD) $(P_BASEDIR)/tests/testfw \
 	$(B_CINCCMD) $(P_BASEDIR)/tests/stochposix
-ifeq ($(P_OS),win32)
-# For wintlcmn.h.  Only the test front-ends need this as an include directory,
-# since the Win32 tools themselves are in os/win32/tools and can include
-# wintlcmn.h with quotation marks.
-REDTESTINC += $(B_CINCCMD) $(P_BASEDIR)/os/$(P_OS)/tools
-endif
 
 REDALLINC=$(REDDRIVINC) $(REDTESTINC)
 
@@ -195,16 +189,7 @@ $(P_PROJDIR)/redconf.$(B_OBJEXT):				$(P_PROJDIR)/redconf.c $(REDHDR)
 # These are not included in REDALLOBJ but are used by some test projects.
 ##
 
-ifeq ($(P_OS),win32)
-REDTOOLCMNOBJ=$(P_BASEDIR)/os/$(P_OS)/tools/wintlcmn.$(B_OBJEXT)
-REDTOOLCMNHDR=$(P_BASEDIR)/os/$(P_OS)/tools/wintlcmn.h
-$(REDTOOLCMNOBJ): $(P_BASEDIR)/os/$(P_OS)/tools/wintlcmn.c $(REDHDR) $(REDTOOLCMNHDR)
-else
-REDTOOLCMNOBJ=
-REDTOOLCMNHDR=
-endif
-
-$(P_BASEDIR)/tools/mditer.$(B_OBJEXT): $(P_BASEDIR)/tools/mditer.c $(REDHDR) $(P_BASEDIR)/include/redmditer.h $(REDTOOLCMNHDR)
+$(P_BASEDIR)/tools/mditer.$(B_OBJEXT): $(P_BASEDIR)/tools/mditer.c $(REDHDR) $(P_BASEDIR)/include/redmditer.h
 
 # OS name prefix used by the checker and formatter.
 ifeq ($(P_OS),win32)
@@ -218,5 +203,5 @@ endif
 # Only host tools needed by test projects are here.  Rules for the other host
 # tools are in os/$(P_OS)/build/host.mk
 ifneq ($(REDTOOLPREFIX),)
-$(P_BASEDIR)/os/$(P_OS)/tools/$(REDTOOLPREFIX)fmt.$(B_OBJEXT): $(P_BASEDIR)/os/$(P_OS)/tools/$(REDTOOLPREFIX)fmt.c $(REDHDR) $(REDTOOLCMNHDR)
+$(P_BASEDIR)/os/$(P_OS)/tools/$(REDTOOLPREFIX)fmt.$(B_OBJEXT): $(P_BASEDIR)/os/$(P_OS)/tools/$(REDTOOLPREFIX)fmt.c $(REDHDR)
 endif

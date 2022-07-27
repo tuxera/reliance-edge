@@ -39,7 +39,6 @@
 #include <redgetopt.h>
 #include <redtoolcmn.h>
 #include <redcoreapi.h>
-#include "wintlcmn.h"
 
 
 static void Usage(const char *pszProgramName, bool fError);
@@ -191,7 +190,6 @@ int main(
         exit(ret);
     }
 
-    pszDrive = MassageDriveName(pszDrive);
     ret = RedOsBDevConfig(bVolNum, pszDrive);
     if(ret != 0)
     {

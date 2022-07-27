@@ -21,15 +21,13 @@ include $(P_BASEDIR)/build/reliance.mk
 INCLUDES=$(REDDRIVINC)
 
 TOOLHDR=\
-	$(P_BASEDIR)/include/redtools.h \
-	$(REDTOOLCMNHDR)
+	$(P_BASEDIR)/include/redtools.h
 IMGBLDOBJ=\
 	$(P_BASEDIR)/tools/imgbld/ibfse.$(B_OBJEXT) \
 	$(P_BASEDIR)/tools/imgbld/ibposix.$(B_OBJEXT) \
 	$(P_BASEDIR)/tools/imgbld/imgbld.$(B_OBJEXT) \
 	$(P_BASEDIR)/os/$(P_OS)/tools/imgbldwin.$(B_OBJEXT) \
-	$(P_BASEDIR)/os/$(P_OS)/tools/imgbld_main.$(B_OBJEXT) \
-	$(REDTOOLCMNOBJ)
+	$(P_BASEDIR)/os/$(P_OS)/tools/imgbld_main.$(B_OBJEXT)
 REDPROJOBJ=\
 	$(IMGBLDOBJ) \
 	$(P_BASEDIR)/os/$(P_OS)/tools/$(REDTOOLPREFIX)chk.$(B_OBJEXT) \
@@ -48,7 +46,7 @@ $(P_BASEDIR)/os/$(P_OS)/tools/imgbld_main.$(B_OBJEXT):	$(P_BASEDIR)/os/$(P_OS)/t
 $(P_PROJDIR)/redconf.$(B_OBJEXT):	$(P_CONFDIR)/redconf.c
 
 
-redfmt: $(P_BASEDIR)/os/$(P_OS)/tools/$(REDTOOLPREFIX)fmt.$(B_OBJEXT) $(REDTOOLCMNOBJ) $(REDDRIVOBJ) $(REDTOOLOBJ)
+redfmt: $(P_BASEDIR)/os/$(P_OS)/tools/$(REDTOOLPREFIX)fmt.$(B_OBJEXT) $(REDDRIVOBJ) $(REDTOOLOBJ)
 	$(LD) $(LDFLAGS) /OUT:$@.exe $^
 
 redimgbld: $(IMGBLDOBJ) $(REDDRIVOBJ) $(REDTOOLOBJ)

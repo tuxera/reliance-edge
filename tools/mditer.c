@@ -51,10 +51,6 @@
 #include <redvolume.h>
 #include <redcoreapi.h>
 #include <redcore.h>
-#ifdef _WIN32
-#include <wintlcmn.h>
-#endif
-
 #include <redmditer.h>
 
 
@@ -169,9 +165,6 @@ REDSTATUS RedMetadataIterate(
     {
         const char *pszDrive = pParam->pszDevice;
 
-      #ifdef _WIN32
-        pszDrive = MassageDriveName(pszDrive);
-      #endif
         ret = RedOsBDevConfig(pParam->bVolNum, pszDrive);
         if(ret != 0)
         {

@@ -34,7 +34,6 @@
 #if REDCONF_IMAGE_BUILDER == 1
 
 #include <redtools.h>
-#include "wintlcmn.h"
 
 
 /** @brief Entry point for the Reliance Edge image builder utility.
@@ -51,8 +50,6 @@ int main(
     IMGBLDPARAM param;
 
     ImgbldParseParams(argc, argv, &param);
-
-    param.pszOutputFile = MassageDriveName(param.pszOutputFile);
 
     return ImgbldStart(&param);
 }

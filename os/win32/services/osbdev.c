@@ -46,15 +46,17 @@ typedef enum
 
 typedef struct
 {
-    bool            fOpen;      /* The block device is open. */
-    BDEVOPENMODE    mode;       /* Access mode. */
-    BDEVTYPE        type;       /* Disk type: ram disk, file disk, raw disk. */
-    uint8_t        *pbRamDisk;  /* Buffer for RAM disks. */
-    const char     *pszSpec;    /* Path for file and raw disks. */
-    HANDLE          hDevice;    /* Handle for file and raw disks. */
+    bool            fOpen;          /* The block device is open. */
+    BDEVOPENMODE    mode;           /* Access mode. */
+    BDEVTYPE        type;           /* Disk type: ram disk, file disk, raw disk. */
+    uint8_t        *pbRamDisk;      /* Buffer for RAM disks. */
+    const char     *pszSpec;        /* Path for file and raw disks. */
+    char            szSpecBuf[8U];  /* Buffer for massaged drive names; big enough for "\\.\X:" */
+    HANDLE          hDevice;        /* Handle for file and raw disks. */
 } WINBDEV;
 
 
+static const char *MassageDriveName(uint8_t bVolNum, const char *pszDrive);
 static bool IsDriveSpec(const char *pszPathSpec);
 static REDSTATUS RamDiskOpen(uint8_t bVolNum, BDEVOPENMODE mode);
 static REDSTATUS RamDiskClose(uint8_t bVolNum);
@@ -120,23 +122,64 @@ REDSTATUS RedOsBDevConfig(
     }
     else
     {
-        RedMemSet(&gaDisk[bVolNum], 0U, sizeof(gaDisk[bVolNum]));
+        WINBDEV *pDisk = &gaDisk[bVolNum];
 
-        gaDisk[bVolNum].pszSpec = pszBDevSpec;
+        RedMemSet(pDisk, 0U, sizeof(*pDisk));
 
-        if(IsDriveSpec(pszBDevSpec))
+        pDisk->pszSpec = MassageDriveName(bVolNum, pszBDevSpec);
+
+        if(IsDriveSpec(pDisk->pszSpec))
         {
-            gaDisk[bVolNum].type = BDEVTYPE_RAW_DISK;
+            pDisk->type = BDEVTYPE_RAW_DISK;
         }
         else
         {
-            gaDisk[bVolNum].type = BDEVTYPE_FILE_DISK;
+            pDisk->type = BDEVTYPE_FILE_DISK;
         }
 
         ret = 0;
     }
 
     return ret;
+}
+
+
+/** @brief Massage a drive name into a standardized format.
+
+    @param bVolNum      The volume number.
+    @param pszDrive     The drive name to massage.
+
+    @return Pointer to the massaged drive name.
+*/
+static const char *MassageDriveName(
+    uint8_t     bVolNum,
+    const char *pszDrive)
+{
+    const char *pszRet;
+
+    /*  If it looks like a drive letter followed by nothing else...
+    */
+    if(    (    ((pszDrive[0U] >= 'A') && (pszDrive[0U] <= 'Z'))
+             || ((pszDrive[0U] >= 'a') && (pszDrive[0U] <= 'z')))
+        && (pszDrive[1U] == ':')
+        && (    (pszDrive[2U] == '\0')
+             || ((pszDrive[2U] == '\\') && (pszDrive[3U] == '\0'))))
+    {
+        char *pszBuffer = gaDisk[bVolNum].szSpecBuf; /* Big enough for "\\.\X:" */
+
+        /*  Drives of the form "X:" or "X:\" are converted to "\\.\X:".
+        */
+        (void)strcpy(pszBuffer, "\\\\.\\?:");
+        pszBuffer[4U] = pszDrive[0U];
+
+        pszRet = pszBuffer;
+    }
+    else
+    {
+        pszRet = pszDrive;
+    }
+
+    return pszRet;
 }
 
 
@@ -1436,4 +1479,3 @@ static REDSTATUS RawDiskFlush(
     return 0;
 }
 #endif /* REDCONF_READ_ONLY == 0 */
-

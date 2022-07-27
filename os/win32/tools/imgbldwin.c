@@ -403,20 +403,39 @@ int IbSetRelativePath(
 #endif /* REDCONF_API_FSE == 1 */
 
 
-/** @brief Checks whether the given path appears NOT to name a volume.
+/** @brief Determine whether a path names a regular file (_not_ a volume).
 
-    Expects the path to be in massaged "//./diskname" format if it names a
-    volume.
+    @param pszPath  The path to examine.
+
+    @return Whether the given path appears to name a regular file.
 */
 bool IsRegularFile(
     const char *pszPath)
 {
-    return !((pszPath[0U] == '\\')
-          && (pszPath[1U] == '\\')
-          && (pszPath[2U] == '.')
-          && (pszPath[3U] == '\\')
-          && (strchr(&pszPath[4U], '\\') == NULL)
-          && (strchr(&pszPath[4U], '/') == NULL));
+    bool        fRet = true;
+
+    if(    (strncmp(pszPath, "\\\\.\\", 4U) == 0)
+        && (strchr(&pszPath[4U], '\\') == NULL)
+        && (strchr(&pszPath[4U], '/') == NULL))
+    {
+        /*  DOS device paths (which start with "\\.\") are assumed to name
+            a device like "\\.\PhysicalDrive4" if there are no further path
+            separator characters after the initial "\\.\".
+        */
+        fRet = false;
+    }
+    else if(    (    ((pszPath[0U] >= 'A') && (pszPath[0U] <= 'Z'))
+                  || ((pszPath[0U] >= 'a') && (pszPath[0U] <= 'z')))
+             && (pszPath[1U] == ':')
+             && (    (pszPath[2U] == '\0')
+                  || ((pszPath[2U] == '\\') && (pszPath[3U] == '\0'))))
+    {
+        /*  A device letter is not a regular file.
+        */
+        fRet = false;
+    }
+
+    return fRet;
 }
 
 

@@ -11,14 +11,13 @@ include $(P_BASEDIR)/build/reliance.mk
 
 INCLUDES=$(REDALLINC)
 
-REDPROJOBJ=\
-	$(REDTOOLCMNOBJ)
+REDPROJOBJ=
 REDPROJOBJ += \
 	$(P_PROJDIR)/fsstress_main.$(B_OBJEXT)
 
-$(P_PROJDIR)/fsstress_main.$(B_OBJEXT):		$(P_PROJDIR)/fsstress_main.c $(REDHDR) $(REDTOOLCMNHDR)
+$(P_PROJDIR)/fsstress_main.$(B_OBJEXT):		$(P_PROJDIR)/fsstress_main.c $(REDHDR)
 
-fsstress: $(P_PROJDIR)/fsstress_main.$(B_OBJEXT) $(REDTOOLCMNOBJ) $(REDALLOBJ)
+fsstress: $(P_PROJDIR)/fsstress_main.$(B_OBJEXT) $(REDALLOBJ)
 	$(B_LDCMD)
 
 .PHONY: clean

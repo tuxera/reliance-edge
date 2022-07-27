@@ -34,7 +34,6 @@
 
 #include <redposix.h>
 #include <redvolume.h>
-#include <wintlcmn.h>
 
 
 /** @brief Entry point for the fsstress test.
@@ -69,7 +68,6 @@ int main(
             /*  Let the Win32 block device layer know the path/drive to be used
                 for this volume's block device.
             */
-            pszDrive = MassageDriveName(pszDrive);
             ret = RedOsBDevConfig(bVolNum, pszDrive);
             if(ret != 0)
             {

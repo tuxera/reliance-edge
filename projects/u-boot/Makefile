@@ -66,7 +66,6 @@ REDPROJOBJ=\
 	red/projects/u-boot/redconf.$(B_OBJEXT) \
 	red/os/$(P_OS)/vfs/vfs.$(B_OBJEXT)
 
-
 .PHONY: clean
 clean:
 	-rm -f $(REDALLOBJ) $(REDPROJOBJ)

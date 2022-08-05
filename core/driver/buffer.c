@@ -78,12 +78,6 @@ typedef struct
     */
     uint16_t    uNumUsed;
 
-  #if MAX_DIRTY_ENABLED
-    /** Number of buffers which are dirty (have #BFLAG_DIRTY).
-    */
-    uint16_t    uNumDirty;
-  #endif
-
     /** MRU array.  Each element of the array stores a buffer index; each buffer
         index appears in the array once and only once.  The first element of the
         array is the most-recently-used (MRU) buffer, followed by the next most
@@ -112,8 +106,6 @@ typedef struct
 static bool BufferToIdx(const void *pBuffer, uint8_t *pbIdx);
 #if REDCONF_READ_ONLY == 0
 static REDSTATUS BufferWrite(uint8_t bIdx);
-static REDSTATUS BufferDirtySet(uint8_t bIdx);
-static void BufferDirtyClear(uint8_t bIdx);
 #endif
 static void BufferMakeLRU(uint8_t bIdx);
 static void BufferMakeMRU(uint8_t bIdx);
@@ -309,42 +301,22 @@ REDSTATUS RedBufferGet(
         {
             BUFFERHEAD *pHead = &gBufCtx.aHead[bIdx];
 
-          #if REDCONF_READ_ONLY == 0
-            if((uFlags & BFLAG_DIRTY) != 0U)
-            {
-                ret = BufferDirtySet(bIdx);
+            pHead->bRefCount++;
 
-                /*  With BFLAG_NEW, the buffer is zeroed rather than populated
-                    by reading from disk.  If an error prevented marking the
-                    buffer as dirty, discard the buffer, so that we don't have a
-                    non-dirty buffer which doesn't match the on-disk contents.
-                */
-                if((ret != 0) && ((uFlags & BFLAG_NEW) != 0U))
-                {
-                    pHead->ulBlock = BBLK_INVALID;
-                }
+            if(pHead->bRefCount == 1U)
+            {
+                gBufCtx.uNumUsed++;
             }
 
-            if(ret == 0)
-          #endif
-            {
-                pHead->bRefCount++;
+            /*  BFLAG_NEW tells this function to zero the buffer instead of
+                reading it from disk; it has no meaning later on, and thus is
+                not saved.
+            */
+            pHead->uFlags |= (uFlags & (~BFLAG_NEW));
 
-                if(pHead->bRefCount == 1U)
-                {
-                    gBufCtx.uNumUsed++;
-                }
+            BufferMakeMRU(bIdx);
 
-                /*  BFLAG_NEW tells this function to zero the buffer instead of
-                    reading it from disk; it has no meaning later on, and thus is
-                    not saved.
-                */
-                pHead->uFlags |= (uFlags & (~BFLAG_NEW));
-
-                BufferMakeMRU(bIdx);
-
-                *ppBuffer = BIDX2BUF(bIdx);
-            }
+            *ppBuffer = BIDX2BUF(bIdx);
         }
     }
 
@@ -420,7 +392,12 @@ REDSTATUS RedBufferFlushRange(
                 && (pHead->ulBlock < (ulBlockStart + ulBlockCount)))
             {
                 ret = BufferWrite(bIdx);
-                if(ret != 0)
+
+                if(ret == 0)
+                {
+                    pHead->uFlags &= (~BFLAG_DIRTY);
+                }
+                else
                 {
                     break;
                 }
@@ -435,32 +412,22 @@ REDSTATUS RedBufferFlushRange(
 /** @brief Mark a buffer dirty.
 
     @param pBuffer  The buffer to mark dirty.
-
-    @return A negated ::REDSTATUS code indicating the operation result.
-
-    @retval 0           Operation was successful.
-    @retval -RED_EIO    A disk I/O error occurred.
-    @retval -RED_EINVAL Invalid parameters.
 */
-REDSTATUS RedBufferDirty(
+void RedBufferDirty(
     const void *pBuffer)
 {
     uint8_t     bIdx;
-    REDSTATUS   ret;
 
     if(!BufferToIdx(pBuffer, &bIdx))
     {
         REDERROR();
-        ret = -RED_EINVAL;
     }
     else
     {
         REDASSERT(gBufCtx.aHead[bIdx].bRefCount > 0U);
 
-        ret = BufferDirtySet(bIdx);
+        gBufCtx.aHead[bIdx].uFlags |= BFLAG_DIRTY;
     }
-
-    return ret;
 }
 
 
@@ -468,25 +435,17 @@ REDSTATUS RedBufferDirty(
 
     @param pBuffer      The buffer to branch.
     @param ulBlockNew   The new block number for the buffer.
-
-    @return A negated ::REDSTATUS code indicating the operation result.
-
-    @retval 0           Operation was successful.
-    @retval -RED_EIO    A disk I/O error occurred.
-    @retval -RED_EINVAL Invalid parameters.
 */
-REDSTATUS RedBufferBranch(
+void RedBufferBranch(
     const void *pBuffer,
     uint32_t    ulBlockNew)
 {
     uint8_t     bIdx;
-    REDSTATUS   ret;
 
     if(    !BufferToIdx(pBuffer, &bIdx)
         || (ulBlockNew >= gpRedVolume->ulBlockCount))
     {
         REDERROR();
-        ret = -RED_EINVAL;
     }
     else
     {
@@ -495,14 +454,9 @@ REDSTATUS RedBufferBranch(
         REDASSERT(pHead->bRefCount > 0U);
         REDASSERT((pHead->uFlags & BFLAG_DIRTY) == 0U);
 
-        ret = BufferDirtySet(bIdx);
-        if(ret == 0)
-        {
-            pHead->ulBlock = ulBlockNew;
-        }
+        pHead->uFlags |= BFLAG_DIRTY;
+        pHead->ulBlock = ulBlockNew;
     }
-
-    return ret;
 }
 
 
@@ -524,8 +478,6 @@ void RedBufferDiscard(
     {
         REDASSERT(gBufCtx.aHead[bIdx].bRefCount == 1U);
         REDASSERT(gBufCtx.uNumUsed > 0U);
-
-        BufferDirtyClear(bIdx);
 
         gBufCtx.aHead[bIdx].bRefCount = 0U;
         gBufCtx.aHead[bIdx].ulBlock = BBLK_INVALID;
@@ -581,9 +533,6 @@ REDSTATUS RedBufferDiscardRange(
                 {
                     pHead->ulBlock = BBLK_INVALID;
 
-                  #if REDCONF_READ_ONLY == 0
-                    BufferDirtyClear(bIdx);
-                  #endif
                     BufferMakeLRU(bIdx);
                 }
                 else
@@ -791,11 +740,6 @@ static REDSTATUS BufferWrite(
             RedBufferEndianSwap(pbBuffer, pHead->uFlags);
           #endif
         }
-
-        if(ret == 0)
-        {
-            BufferDirtyClear(bIdx);
-        }
     }
     else
     {
@@ -804,116 +748,6 @@ static REDSTATUS BufferWrite(
     }
 
     return ret;
-}
-
-
-/** @brief Mark a buffer as dirty, if it's not already dirty.
-
-    @param pBH  The index of the buffer to mark as dirty.
-
-    @return A negated ::REDSTATUS code indicating the operation result.
-
-    @retval 0           Operation was successful.
-    @retval -RED_EIO    A disk I/O error occurred.
-    @retval -RED_EINVAL Invalid parameters.
-*/
-static REDSTATUS BufferDirtySet(
-    uint8_t     bIdx)
-{
-    REDSTATUS   ret = 0;
-
-    if(bIdx >= REDCONF_BUFFER_COUNT)
-    {
-        REDERROR();
-        ret = -RED_EINVAL;
-    }
-    else
-    {
-        BUFFERHEAD *pHead = &gBufCtx.aHead[bIdx];
-
-        if((pHead->uFlags & BFLAG_DIRTY) == 0U)
-        {
-          #if MAX_DIRTY_ENABLED
-            REDASSERT(gBufCtx.uNumDirty <= REDCONF_BUFFER_MAX_DIRTY);
-
-            if(gBufCtx.uNumDirty >= REDCONF_BUFFER_MAX_DIRTY)
-            {
-                uint8_t bLru;
-
-                /*  Find the least-recently used unreferenced dirty buffer.
-                */
-                for(bLru = (uint8_t)(REDCONF_BUFFER_COUNT - 1U); bLru != UINT8_MAX; bLru--)
-                {
-                    const BUFFERHEAD *pLru = &gBufCtx.aHead[gBufCtx.abMRU[bLru]];
-
-                    if(    (pLru->bRefCount == 0U)
-                        && (pLru->ulBlock != BBLK_INVALID)
-                        && ((pLru->uFlags & BFLAG_DIRTY) != 0U))
-                    {
-                        break;
-                    }
-                }
-
-                if(bLru == UINT8_MAX)
-                {
-                    /*  Should not fail to find an unreferenced dirty buffer.  A
-                        minimum value for REDCONF_BUFFER_MAX_DIRTY is enforced
-                        which is supposed to prevent this situation.
-                    */
-                    REDERROR();
-                    ret = -RED_EFUBAR;
-                }
-                else
-                {
-                    /*  Write the LRU dirty buffer to stay under the configured
-                        limit of maximum dirty buffers.
-                    */
-                    bLru = gBufCtx.abMRU[bLru];
-                    ret = BufferWrite(bLru);
-                }
-            }
-
-            if(ret == 0)
-          #endif /* MAX_DIRTY_ENABLED */
-            {
-                pHead->uFlags |= BFLAG_DIRTY;
-
-              #if MAX_DIRTY_ENABLED
-                gBufCtx.uNumDirty++;
-              #endif
-            }
-        }
-    }
-
-    return ret;
-}
-
-
-/** @brief If a buffer is dirty, make it clean.
-
-    @param pBH  The index of the buffer to make clean.
-*/
-static void BufferDirtyClear(
-    uint8_t bIdx)
-{
-    if(bIdx >= REDCONF_BUFFER_COUNT)
-    {
-        REDERROR();
-    }
-    else
-    {
-        BUFFERHEAD *pHead = &gBufCtx.aHead[bIdx];
-
-        if((pHead->uFlags & BFLAG_DIRTY) != 0U)
-        {
-            pHead->uFlags &= ~BFLAG_DIRTY;
-
-          #if MAX_DIRTY_ENABLED
-            REDASSERT(gBufCtx.uNumDirty > 0U);
-            gBufCtx.uNumDirty--;
-          #endif
-        }
-    }
 }
 #endif /* REDCONF_READ_ONLY == 0 */
 

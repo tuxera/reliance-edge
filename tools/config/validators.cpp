@@ -36,7 +36,6 @@
 #include "validators.h"
 
 
-static ulong getMinimumBufferCount();
 static bool isPowerOfTwo(unsigned long value);
 
 
@@ -829,7 +828,57 @@ Validity validateAllocatedBuffers(unsigned long value, QString &msg)
         return Warning;
     }
 
-    ulong minimumBufferCount = getMinimumBufferCount();
+    // Min buffer algorithm derived from preprocessor logic in redbufferpriv.h
+
+    ulong dindirPointers = (getInodeEntries()
+                            - allSettings.sbsDirectPtrs->GetValue())
+                           - allSettings.sbsIndirectPtrs->GetValue();
+
+    ulong inodeMetaBuffers;
+
+    if(dindirPointers > 0)
+    {
+        inodeMetaBuffers = 3;
+    }
+    else if(allSettings.sbsIndirectPtrs->GetValue() > 0)
+    {
+        inodeMetaBuffers = 2;
+    }
+    else
+    {
+        Q_ASSERT(allSettings.sbsDirectPtrs->GetValue() == getInodeEntries());
+        inodeMetaBuffers = 1;
+    }
+
+    ulong inodeBuffers = inodeMetaBuffers + 1;
+
+    bool imapInline, imapExternal;
+    volumeSettings->GetImapRequirements(imapInline, imapExternal);
+
+    ulong imapBuffers = (imapExternal ? 1 : 0);
+
+    ulong minimumBufferCount;
+
+    if(allSettings.cbsReadonly->GetValue()
+            || !allSettings.rbtnsUsePosix->GetValue())
+    {
+        minimumBufferCount = inodeBuffers + imapBuffers;
+    }
+    else if(allSettings.cbsPosixRename->GetValue())
+    {
+        if(allSettings.cbsPosixAtomicRename->GetValue())
+        {
+            minimumBufferCount = inodeBuffers*2 + 3 + imapBuffers;
+        }
+        else
+        {
+            minimumBufferCount = inodeBuffers*2 + 2 + imapBuffers;
+        }
+    }
+    else //POSIX, but no rename
+    {
+        minimumBufferCount = inodeBuffers + 1 + imapBuffers;
+    }
 
     if(value < minimumBufferCount)
     {
@@ -891,9 +940,7 @@ Validity validateBufferWriteGather(unsigned long value, QString &msg)
     unsigned long maximum4GB = 4194304UL;
     unsigned long blockSize = allSettings.cmisBlockSize->GetValue();
     unsigned long bufferCount = allSettings.sbsAllocatedBuffers->GetValue();
-    unsigned long long maximumBufferLimit = ((unsigned long long)blockSize * bufferCount) / 1024;
-    unsigned long dirtyCount = allSettings.sbsMaxDirtyBuffers->GetValue();
-    unsigned long long dirtyBufferLimit = ((unsigned long long)blockSize * dirtyCount) / 1024;
+    unsigned long long maximumBufferLimit = ((unsigned long long )blockSize * bufferCount) / 1024;
 
     if(value > maximum4GB)
     {
@@ -911,17 +958,9 @@ Validity validateBufferWriteGather(unsigned long value, QString &msg)
         return Invalid;
     }
 
-    if((dirtyBufferLimit > 0) && (value > dirtyBufferLimit))
-    {
-        msg = QString("Write-gather size exceeds the dirty buffers maximum of ")
-                + QString::number(dirtyBufferLimit)
-                + QString(".");
-        return Invalid;
-    }
-
     if(value)
     {
-        unsigned long long bigValue = (unsigned long long)value * 1024;
+        unsigned long long bigValue = (unsigned long long )value * 1024;
         unsigned long minimumBlockSizeLimit = blockSize * 2;
 
         if(bigValue < minimumBlockSizeLimit)
@@ -935,38 +974,6 @@ Validity validateBufferWriteGather(unsigned long value, QString &msg)
         if(bigValue % blockSize != 0)
         {
             msg = QString("Write-gather isn't a multiple of block size.");
-            return Invalid;
-        }
-    }
-
-    return Valid;
-}
-
-///
-/// \brief  Validator for allSettings::sbMaxDirtyBuffers
-///
-///         Requires that ::allSettings and ::volumeSettings be initialized.
-///
-Validity validateMaxDirtyBuffers(unsigned long value, QString &msg)
-{
-    if(value)
-    {
-        unsigned long bufferCount = allSettings.sbsAllocatedBuffers->GetValue();
-        unsigned long minimumBufferCount = getMinimumBufferCount();
-
-        if(value <= minimumBufferCount)
-        {
-            msg = QString("Max dirty buffers must exceed minimum buffer count of ")
-                    + QString::number(minimumBufferCount)
-                    + QString(".");
-            return Invalid;
-        }
-
-        if(value > bufferCount)
-        {
-            msg = QString("Max dirty buffers must be less than buffer count of ")
-                    + QString::number(bufferCount)
-                    + QString(".");
             return Invalid;
         }
     }
@@ -1071,63 +1078,6 @@ qulonglong getVolSizeMaxBytes()
     qulonglong blockMax_32bit = 0xFFFFFFFFULL * static_cast<qlonglong>(blockSize);
 
     return (blockMax_32bit < imapMax) ? blockMax_32bit : imapMax;
-}
-
-static ulong getMinimumBufferCount()
-{
-    // Min buffer algorithm derived from preprocessor logic in redbufferpriv.h
-
-    ulong dindirPointers = (getInodeEntries()
-                            - allSettings.sbsDirectPtrs->GetValue())
-                           - allSettings.sbsIndirectPtrs->GetValue();
-
-    ulong inodeMetaBuffers;
-
-    if(dindirPointers > 0)
-    {
-        inodeMetaBuffers = 3;
-    }
-    else if(allSettings.sbsIndirectPtrs->GetValue() > 0)
-    {
-        inodeMetaBuffers = 2;
-    }
-    else
-    {
-        Q_ASSERT(allSettings.sbsDirectPtrs->GetValue() == getInodeEntries());
-        inodeMetaBuffers = 1;
-    }
-
-    ulong inodeBuffers = inodeMetaBuffers + 1;
-
-    bool imapInline, imapExternal;
-    volumeSettings->GetImapRequirements(imapInline, imapExternal);
-
-    ulong imapBuffers = (imapExternal ? 1 : 0);
-
-    ulong minimumBufferCount;
-
-    if(allSettings.cbsReadonly->GetValue()
-            || !allSettings.rbtnsUsePosix->GetValue())
-    {
-        minimumBufferCount = inodeBuffers + imapBuffers;
-    }
-    else if(allSettings.cbsPosixRename->GetValue())
-    {
-        if(allSettings.cbsPosixAtomicRename->GetValue())
-        {
-            minimumBufferCount = inodeBuffers*2 + 3 + imapBuffers;
-        }
-        else
-        {
-            minimumBufferCount = inodeBuffers*2 + 2 + imapBuffers;
-        }
-    }
-    else //POSIX, but no rename
-    {
-        minimumBufferCount = inodeBuffers + 1 + imapBuffers;
-    }
-
-    return minimumBufferCount;
 }
 
 // Checks whether given value is a power of 2.

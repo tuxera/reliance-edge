@@ -61,11 +61,10 @@ public:
               bool enableWhenChecked = true,
               WarningBtn * btnWarn = 0);
 
-    virtual unsigned long GetValue() override;
-
 protected:
     virtual bool TryParse(const QString &toParse, unsigned long &out);
     virtual void setUi() override;
+    virtual unsigned long GetValue() override;
     virtual void SetValue(unsigned long arg, bool updateUi = true) override;
     virtual Validity checkValue(unsigned long value, QString &msg) override;
 

@@ -105,11 +105,7 @@ or `1`:
 
 If you want to use disks formatted with a previous release of Reliance Edge, all
 of the above (except `REDCONF_API_POSIX_FRESERVE`) need to be defined as `0`.
-
-A fifth macro, `REDCONF_BUFFER_MAX_DIRTY` must also be added: if the feature is
-to be disabled (equivalent to v2.6 behavior), use `0U` as the value.
-
-After adding these five new macros, then update `RED_CONFIG_UTILITY_VERSION` and
+After adding these new macros, then update `RED_CONFIG_UTILITY_VERSION` and
 `RED_CONFIG_MINCOMPAT_VER` to have a value of `0x2070000U`.
 
 Reliance Edge v2.7 introduces a new on-disk layout to support its new features:

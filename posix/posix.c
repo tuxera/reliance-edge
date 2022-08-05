@@ -1026,7 +1026,7 @@ int32_t red_gettransmask(
 
     The scenarios where this API is useful are somewhat niche; most use cases
     are better served by red_transact(), which will write all the dirty buffers
-    _and_ commit a transaction point.
+    _and_ commit a transaction point,
 
     @param pszVolume    A path prefix identifying the volume whose dirty buffers
                         are to be written to disk.

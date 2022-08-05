@@ -137,22 +137,6 @@
 #endif
 
 
-#if (REDCONF_BUFFER_MAX_DIRTY != 0U) && (REDCONF_BUFFER_MAX_DIRTY <= MINIMUM_BUFFER_COUNT)
-  #error "Configuration error: REDCONF_BUFFER_MAX_DIRTY is too low for the configuration"
-#endif
-#if REDCONF_BUFFER_MAX_DIRTY > REDCONF_BUFFER_COUNT
-  #error "Configuration error: REDCONF_BUFFER_MAX_DIRTY cannot exceed REDCONF_BUFFER_COUNT"
-#endif
-
-/*  Setting REDCONF_BUFFER_MAX_DIRTY to zero is understood to mean that the
-    feature is disabled.  Additionally, the feature would do nothing if the
-    maximum dirty count equaled the buffer count, so that also disables the
-    feature.
-*/
-#define MAX_DIRTY_ENABLED \
-    ((REDCONF_READ_ONLY == 0) && (REDCONF_BUFFER_MAX_DIRTY != 0U) && (REDCONF_BUFFER_MAX_DIRTY < REDCONF_BUFFER_COUNT))
-
-
 /*  A note on the typecasts in the below macros: Operands to bitwise operators
     are subject to the "usual arithmetic conversions".  This means that the
     flags, which have uint16_t values, are promoted to int (if int is larger

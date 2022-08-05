@@ -77,9 +77,6 @@
 #undef  REDCONF_CRC_ALGORITHM
 #define REDCONF_CRC_ALGORITHM CRC_SLICEBY8
 
-#undef  REDCONF_BUFFER_MAX_DIRTY
-#define REDCONF_BUFFER_MAX_DIRTY 0U
-
 /*  The target redconf.h may have configured the memory and string functions to
     use custom implementations that are only available on the target system.  So
     for the host, we just use the C library versions.

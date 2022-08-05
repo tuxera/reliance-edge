@@ -381,7 +381,7 @@ static REDSTATUS ImapNodeBranch(
 
             if(ret == 0)
             {
-                ret = RedBufferBranch(*ppImap, ulBlockCurrent);
+                RedBufferBranch(*ppImap, ulBlockCurrent);
             }
         }
     }

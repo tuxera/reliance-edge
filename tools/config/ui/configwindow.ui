@@ -69,7 +69,7 @@
              <x>0</x>
              <y>0</y>
              <width>431</width>
-             <height>930</height>
+             <height>846</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_11">
@@ -1074,7 +1074,7 @@
              <x>0</x>
              <y>0</y>
              <width>445</width>
-             <height>648</height>
+             <height>654</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_14">
@@ -2160,7 +2160,7 @@
              <x>0</x>
              <y>0</y>
              <width>445</width>
-             <height>648</height>
+             <height>654</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_19">
@@ -2736,7 +2736,7 @@
              <x>0</x>
              <y>0</y>
              <width>445</width>
-             <height>648</height>
+             <height>654</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_24">
@@ -3047,78 +3047,6 @@
                  </item>
                 </layout>
                </item>
-               <item>
-                <layout class="QHBoxLayout" name="hlayMaxDirtyBuffers">
-                 <item>
-                  <widget class="QLabel" name="label_24a">
-                   <property name="toolTip">
-                    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;What it means:&lt;/span&gt; The maximum number of dirty block buffers.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Guidance:&lt;/span&gt; The option can be used to place an upper bound on the number of dirty buffers in the block buffer cache.  This has the effect of reducing the maximum latency of transaction points, which flush all dirty buffers belonging to the volume being transacted.  While enabling this option may reduce transaction point latency, the trade-off is that it may result in more writes or smaller less efficient writes.&lt;/p&gt;&lt;p&gt;For more information, see the &amp;quot;Product Configuration&amp;quot; chapter of the Reliance Edge Developer's Guide. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                   </property>
-                   <property name="text">
-                    <string>Max dirty:</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QCheckBox" name="cbMaxDirtyBuffers">
-                   <property name="text">
-                    <string>Enable</string>
-                   </property>
-                   <property name="checked">
-                    <bool>false</bool>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QSpinBox" name="sbMaxDirtyBuffers">
-                   <property name="minimum">
-                    <number>1</number>
-                   </property>
-                   <property name="maximum">
-                    <number>33554432</number>
-                   </property>
-                   <property name="value">
-                    <number>1</number>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <spacer name="horizontalSpacer_22a">
-                   <property name="orientation">
-                    <enum>Qt::Horizontal</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>40</width>
-                     <height>20</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                 <item>
-                  <widget class="WarningBtn" name="wbtnMaxDirtyBuffers" native="true">
-                   <property name="sizePolicy">
-                    <sizepolicy hsizetype="Fixed" vsizetype="Ignored">
-                     <horstretch>0</horstretch>
-                     <verstretch>0</verstretch>
-                    </sizepolicy>
-                   </property>
-                   <property name="minimumSize">
-                    <size>
-                     <width>18</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                   <property name="maximumSize">
-                    <size>
-                     <width>18</width>
-                     <height>16777215</height>
-                    </size>
-                   </property>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
               </layout>
              </widget>
             </item>
@@ -3394,7 +3322,7 @@
              <x>0</x>
              <y>0</y>
              <width>445</width>
-             <height>648</height>
+             <height>654</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_29">
@@ -3670,7 +3598,7 @@
              <x>0</x>
              <y>0</y>
              <width>445</width>
-             <height>648</height>
+             <height>654</height>
             </rect>
            </property>
            <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -3865,7 +3793,7 @@
      <x>0</x>
      <y>0</y>
      <width>451</width>
-     <height>22</height>
+     <height>19</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

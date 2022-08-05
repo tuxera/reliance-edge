@@ -863,12 +863,9 @@ REDSTATUS RedInodeBranch(
 
         if(ret == 0)
         {
-            ret = RedBufferBranch(pInode->pInodeBuf, InodeBlock(pInode->ulInode, bWhich));
-            if(ret == 0)
-            {
-                pInode->fBranched = true;
-                pInode->fDirty = true;
-            }
+            RedBufferBranch(pInode->pInodeBuf, InodeBlock(pInode->ulInode, bWhich));
+            pInode->fBranched = true;
+            pInode->fDirty = true;
         }
 
         /*  Toggle the inode slots: the old slot block becomes almost free
@@ -889,11 +886,9 @@ REDSTATUS RedInodeBranch(
     }
     else
     {
-        ret = RedBufferDirty(pInode->pInodeBuf);
-        if(ret == 0)
-        {
-            pInode->fDirty = true;
-        }
+        RedBufferDirty(pInode->pInodeBuf);
+        pInode->fDirty = true;
+        ret = 0;
     }
 
     return ret;

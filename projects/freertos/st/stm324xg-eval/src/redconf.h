@@ -93,8 +93,6 @@
 
 #define REDCONF_BUFFER_WRITE_GATHER_SIZE_KB 0U
 
-#define REDCONF_BUFFER_MAX_DIRTY 0U
-
 #define RedMemCpyUnchecked memcpy
 
 #define RedMemMoveUnchecked memmove

@@ -178,9 +178,6 @@
 #ifndef REDCONF_BUFFER_WRITE_GATHER_SIZE_KB
   #error "Configuration error: REDCONF_BUFFER_WRITE_GATHER_SIZE_KB must be defined."
 #endif
-#ifndef REDCONF_BUFFER_MAX_DIRTY
-  #error "Configuration error: REDCONF_BUFFER_MAX_DIRTY must be defined."
-#endif
 #ifndef REDCONF_BLOCK_SIZE
   #error "Configuration error: REDCONF_BLOCK_SIZE must be defined."
 #endif

@@ -2004,7 +2004,7 @@ static REDSTATUS BranchOneBlock(
                 {
                     if(*ppBuffer != NULL)
                     {
-                        ret = RedBufferDirty(*ppBuffer);
+                        RedBufferDirty(*ppBuffer);
                     }
                     else
                     {
@@ -2071,7 +2071,7 @@ static REDSTATUS BranchOneBlock(
 
                             if(ret == 0)
                             {
-                                ret = RedBufferBranch(*ppBuffer, *pulBlock);
+                                RedBufferBranch(*ppBuffer, *pulBlock);
                             }
                         }
 

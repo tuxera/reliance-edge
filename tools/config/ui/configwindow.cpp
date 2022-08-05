@@ -88,7 +88,6 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     // "Memory" tab
     allSettings.sbsAllocatedBuffers = new SbSetting(macroNameAllocatedBuffers, 12, validateAllocatedBuffers, ui->sbAllocatedBuffers, ui->wbtnAllocatedBuffers);
     allSettings.cmisBufferAlignment = new CmbIntSetting(macroNameBufferAlignment, 8, validateBufferAlignment, ui->cmbBufferAlignment, ui->wbtnBufferAlignment);
-    allSettings.sbsMaxDirtyBuffers = new CheckedSbSetting(macroNameMaxDirtyBuffers, 1, validateMaxDirtyBuffers, ui->sbMaxDirtyBuffers, ui->cbMaxDirtyBuffers, false, true, ui->wbtnMaxDirtyBuffers);
     allSettings.sbsBufferWriteGatherKb = new CheckedSbSetting(macroNameBufferGatherSize, 1, validateBufferWriteGather, ui->sbBufferWriteGatherKB, ui->cbBufferWriteGather, false, true, ui->wbtnBufferWriteGather);
     allSettings.lesMemcpy = new LeSetting(macroNameMemcpy, cstdMemcpy, emptyStringValidator, ui->leMemcpy);
     allSettings.lesMemmov = new LeSetting(macroNameMemmov, cstdMemmov, emptyStringValidator, ui->leMemmov);
@@ -137,21 +136,10 @@ ConfigWindow::ConfigWindow(QWidget *parent) :
     allSettings.cbsPosixRename->notifyList.append(allSettings.sbsAllocatedBuffers);
     allSettings.cbsPosixAtomicRename->notifyList.append(allSettings.sbsAllocatedBuffers);
 
-    allSettings.cbsInodeBlockCount->notifyList.append(allSettings.sbsMaxDirtyBuffers);
-    allSettings.cbsInodeTimestamps->notifyList.append(allSettings.sbsMaxDirtyBuffers);
-    allSettings.rbtnsUsePosix->notifyList.append(allSettings.sbsMaxDirtyBuffers);
-    allSettings.cmisBlockSize->notifyList.append(allSettings.sbsMaxDirtyBuffers);
-    allSettings.sbsIndirectPtrs->notifyList.append(allSettings.sbsMaxDirtyBuffers);
-    allSettings.sbsDirectPtrs->notifyList.append(allSettings.sbsMaxDirtyBuffers);
-    allSettings.cbsPosixRename->notifyList.append(allSettings.sbsMaxDirtyBuffers);
-    allSettings.cbsPosixAtomicRename->notifyList.append(allSettings.sbsMaxDirtyBuffers);
-
     allSettings.cmisBlockSize->notifyList.append(allSettings.cmisBufferAlignment);
 
     allSettings.cmisBlockSize->notifyList.append(allSettings.sbsBufferWriteGatherKb);
     allSettings.sbsAllocatedBuffers->notifyList.append(allSettings.sbsBufferWriteGatherKb);
-    allSettings.sbsAllocatedBuffers->notifyList.append(allSettings.sbsMaxDirtyBuffers);
-    allSettings.sbsMaxDirtyBuffers->notifyList.append(allSettings.sbsBufferWriteGatherKb);
 
     allSettings.cbsAutomaticDiscards->notifyList.append(allSettings.cbsPosixFstrim);
     allSettings.cbsPosixFstrim->notifyList.append(allSettings.cbsPosixFstrim);

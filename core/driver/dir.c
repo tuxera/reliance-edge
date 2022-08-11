@@ -199,6 +199,10 @@ REDSTATUS RedDirEntryCreate(
 
     @param pPInode      A pointer to the cached inode structure of the directory
                         containing the entry to be deleted.
+    @param pInode       A pointer to the cached inode structure of the entry to
+                        be deleted.  This may be `NULL`, but that will cause the
+                        permissions checks to be skipped, which is only
+                        permissible in select circumstances.
     @param ulDeleteIdx  Position within the directory of the entry to be
                         deleted.
 
@@ -234,9 +238,12 @@ REDSTATUS RedDirEntryDelete(
     else
     {
       #if REDCONF_POSIX_OWNER_PERM == 1
-        const INODE *pPIno = pPInode->pInodeBuf;
+        if(pInode != NULL)
+        {
+            const INODE *pPIno = pPInode->pInodeBuf;
 
-        ret = RedPermCheckUnlink(pPIno->uMode, pPIno->ulUID, pPIno->ulGID, pInode->pInodeBuf->ulUID);
+            ret = RedPermCheckUnlink(pPIno->uMode, pPIno->ulUID, pPIno->ulGID, pInode->pInodeBuf->ulUID);
+        }
       #else
         (void)pInode;
       #endif
@@ -876,7 +883,7 @@ REDSTATUS RedDirEntryRename(
                     else
                   #endif
                     {
-                        ret2 = RedDirEntryDelete(pDstPInode, pDstInode, ulDstIdx);
+                        ret2 = RedDirEntryDelete(pDstPInode, NULL, ulDstIdx);
                     }
 
                     if(ret2 != 0)

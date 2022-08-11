@@ -767,28 +767,6 @@ REDSTATUS RedVolRollback(void)
 
     return ret;
 }
-
-
-/** @brief Write dirty buffers, _without_ committing a transaction point.
-
-    @return A negated ::REDSTATUS code indicating the operation result.
-
-    @retval 0           Operation was successful.
-    @retval -RED_EIO    A disk I/O error occurred.
-*/
-REDSTATUS RedVolWriteback(void)
-{
-    REDSTATUS ret = 0;
-
-    REDASSERT(!gpRedVolume->fReadOnly); /* Should be checked by caller. */
-
-    if(gpRedCoreVol->fBranched)
-    {
-        ret = RedBufferFlushRange(0U, gpRedVolume->ulBlockCount);
-    }
-
-    return ret;
-}
 #endif /* REDCONF_READ_ONLY == 0 */
 
 

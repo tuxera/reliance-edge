@@ -272,7 +272,6 @@ REDSTATUS RedVolMountMetaroot(uint32_t ulFlags);
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedVolTransact(void);
 REDSTATUS RedVolRollback(void);
-REDSTATUS RedVolWriteback(void);
 #endif
 uint32_t RedVolFreeBlockCount(void);
 #if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)

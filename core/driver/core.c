@@ -441,36 +441,6 @@ REDSTATUS RedCoreVolRollback(void)
 
     return ret;
 }
-
-
-/** @brief Write dirty buffers, _without_ committing a transaction point.
-
-    @return A negated ::REDSTATUS code indicating the operation result.
-
-    @retval 0           Operation was successful.
-    @retval -RED_EINVAL The volume is not mounted.
-    @retval -RED_EIO    A disk I/O error occurred.
-    @retval -RED_EROFS  The file system volume is read-only.
-*/
-REDSTATUS RedCoreVolWriteback(void)
-{
-    REDSTATUS ret;
-
-    if(!gpRedVolume->fMounted)
-    {
-        ret = -RED_EINVAL;
-    }
-    else if(gpRedVolume->fReadOnly)
-    {
-        ret = -RED_EROFS;
-    }
-    else
-    {
-        ret = RedVolWriteback();
-    }
-
-    return ret;
-}
 #endif /* REDCONF_READ_ONLY == 0 */
 
 

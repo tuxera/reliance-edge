@@ -296,45 +296,45 @@ int32_t red_init(void)
 */
 int32_t red_uninit(void)
 {
-    REDSTATUS ret;
+    REDSTATUS ret = 0;
 
     if(gfPosixInited)
     {
-        ret = PosixEnter();
+        uint8_t bVolNum;
+
+      #if REDCONF_TASK_COUNT > 1U
+        /*  Not using PosixEnter() to acquire the mutex, since we don't want to
+            try and register the calling task as a file system user.
+        */
+        RedOsMutexAcquire();
+      #endif
+
+        for(bVolNum = 0U; bVolNum < REDCONF_VOLUME_COUNT; bVolNum++)
+        {
+            if(gaRedVolume[bVolNum].fMounted)
+            {
+                ret = -RED_EBUSY;
+                break;
+            }
+        }
 
         if(ret == 0)
         {
-            uint8_t bVolNum;
-
-            for(bVolNum = 0U; bVolNum < REDCONF_VOLUME_COUNT; bVolNum++)
-            {
-                if(gaRedVolume[bVolNum].fMounted)
-                {
-                    ret = -RED_EBUSY;
-                    break;
-                }
-            }
-
-            if(ret == 0)
-            {
-                /*  All volumes are unmounted.  Mark the driver as
-                    uninitialized before releasing the FS mutex, to avoid any
-                    race condition where a volume could be mounted and then the
-                    driver uninitialized with a mounted volume.
-                */
-                gfPosixInited = false;
-            }
-
-            /*  The FS mutex must be released before we uninitialize the core,
-                since the FS mutex needs to be in the released state when it
-                gets uninitialized.
-
-                Don't use PosixLeave(), since it asserts gfPosixInited is true.
+            /*  All volumes are unmounted.  Mark the driver as uninitialized
+                before releasing the FS mutex, to avoid any race condition where
+                a volume could be mounted and then the driver uninitialized with
+                a mounted volume.
             */
-          #if REDCONF_TASK_COUNT > 1U
-            RedOsMutexRelease();
-          #endif
+            gfPosixInited = false;
         }
+
+      #if REDCONF_TASK_COUNT > 1U
+        /*  The FS mutex must be released before we uninitialize the core, since
+            the FS mutex needs to be in the released state when it gets
+            uninitialized.
+        */
+        RedOsMutexRelease();
+      #endif
 
         if(ret == 0)
         {
@@ -346,10 +346,6 @@ int32_t red_uninit(void)
             */
             REDASSERT(ret == 0);
         }
-    }
-    else
-    {
-        ret = 0;
     }
 
     return PosixReturn(ret);

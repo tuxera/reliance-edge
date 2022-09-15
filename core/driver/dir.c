@@ -195,7 +195,11 @@ REDSTATUS RedDirEntryCreate(
 
 
 #if DELETE_SUPPORTED
-/** @brief Delete an existing directory entry.
+/** @brief Delete a directory entry.
+
+    The current contents of the directory entry named by @p ulDeleteIdx are
+    ignored: notably, if the directory entry is unused, but is still within the
+    current size of @p pPInode, no error will result.
 
     @param pPInode      A pointer to the cached inode structure of the directory
                         containing the entry to be deleted.

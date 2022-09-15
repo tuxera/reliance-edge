@@ -1071,7 +1071,7 @@ static uint64_t DirEntryIndexToOffset(
     {
         ullOffset += NODEHEADER_SIZE;
     }
-    ullOffset += (uint64_t)ulDirentsIntoBlock * DIRENT_SIZE;
+    ullOffset += ulDirentsIntoBlock * DIRENT_SIZE;
 
     return ullOffset;
 }

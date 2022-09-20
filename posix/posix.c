@@ -5522,9 +5522,8 @@ static REDSTATUS PathStartingPoint(
     @retval -RED_ENOENT         #RED_O_CREAT is not set and the named file does
                                 not exist; or #RED_O_CREAT is set and the parent
                                 directory does not exist; or the volume does not
-                                exist; or the @p pszPath argument, after
-                                removing the volume prefix, points to an empty
-                                string.
+                                exist; or the @p pszPath argument points to an
+                                empty string.
     @retval -RED_EIO            A disk I/O error occurred.
     @retval -RED_ENAMETOOLONG   The length of a component of @p pszPath is
                                 longer than #REDCONF_NAME_MAX.

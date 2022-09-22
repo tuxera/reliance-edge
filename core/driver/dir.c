@@ -226,14 +226,19 @@ REDSTATUS RedDirEntryDelete(
     uint32_t    ulDeleteIdx)
 {
     REDSTATUS   ret = 0;
+    uint64_t    ullIdxOffset = DirEntryIndexToOffset(ulDeleteIdx);
 
-    if(!CINODE_IS_DIRTY(pPInode) || (ulDeleteIdx >= DIRENTS_MAX))
+    if(!CINODE_IS_DIRTY(pPInode))
     {
         ret = -RED_EINVAL;
     }
     else if(!pPInode->fDirectory)
     {
         ret = -RED_ENOTDIR;
+    }
+    else if((ulDeleteIdx >= DIRENTS_MAX) || (ullIdxOffset >= pPInode->pInodeBuf->ullSize))
+    {
+        ret = -RED_EINVAL;
     }
     else
     {
@@ -251,7 +256,7 @@ REDSTATUS RedDirEntryDelete(
 
     if(ret == 0)
     {
-        if((DirEntryIndexToOffset(ulDeleteIdx) + DIRENT_SIZE) == pPInode->pInodeBuf->ullSize)
+        if((ullIdxOffset + DIRENT_SIZE) == pPInode->pInodeBuf->ullSize)
         {
             /*  Start searching one behind the index to be deleted.
             */

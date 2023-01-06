@@ -341,9 +341,9 @@ QString outputIfNotBlank(const QString &macroName, const QString &value,
 // helpful error message.
 static qint32 getMinCompatVer()
 {
-    // Reliance Edge v2.7 added new POSIX-like API configuration macros that
+    // Reliance Edge v3.0 added new POSIX-like API configuration macros that
     // previous versions of Reliance Edge (and this utility) don't know about.
-    return 0x02070000;
+    return 0x03000000;
 }
 
 QString AllSettings::FormatCodefileOutput()

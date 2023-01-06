@@ -5,11 +5,11 @@ recent releases and a list of known issues.
 
 ## Release History and Changes
 
-### Reliance Edge v2.7, Unscheduled Future Release
+### Reliance Edge v3.0, Unscheduled Future Release
 
 #### Common Code Changes
 
-Reliance Edge v2.7 adds features to the POSIX-like API.  Most of these features
+Reliance Edge v3.0 adds features to the POSIX-like API.  Most of these features
 exist in the POSIX file system interface but were not implemented by Reliance
 Edge until now.  The key new features are:
 
@@ -59,7 +59,7 @@ This release also implements another new feature: specifying the inode count
 during format.  Previously, the inode count could only be specified at compile
 time, in the `VOLCONF:ulInodeCount` field in redconf.c.  This was not flexible
 enough when the volume size was based on an auto-detected sector count which
-was known to be widely variable.  With v2.7, `VOLCONF:ulInodeCount` has now
+was known to be widely variable.  With v3.0, `VOLCONF:ulInodeCount` has now
 been redefined as the _default_ inode count, used by the formatter only when
 the inode count is unspecified.  The POSIX-like API `red_format2()`, the host
 tools (`redfmt` and `redimgbld`), and some OS-specific interfaces, optionally
@@ -72,7 +72,7 @@ front of the inode count spinbox.
 
 #### INTEGRITY Port Changes
 
-Most of the added features in v2.7 are supported by Reliance Edge on INTEGRITY:
+Most of the added features in v3.0 are supported by Reliance Edge on INTEGRITY:
 
 - Symbolic links: `readlink()` and `symlink()`.
 - Permissions: `chmod()`, `lchmod()`, `fchmod()`, `access()`; and the mode
@@ -106,9 +106,9 @@ or `1`:
 If you want to use disks formatted with a previous release of Reliance Edge, all
 of the above (except `REDCONF_API_POSIX_FRESERVE`) need to be defined as `0`.
 After adding these new macros, then update `RED_CONFIG_UTILITY_VERSION` and
-`RED_CONFIG_MINCOMPAT_VER` to have a value of `0x2070000U`.
+`RED_CONFIG_MINCOMPAT_VER` to have a value of `0x3000000U`.
 
-Reliance Edge v2.7 introduces a new on-disk layout to support its new features:
+Reliance Edge v3.0 introduces a new on-disk layout to support its new features:
 specifically, POSIX ownership and permissions, symbolic links, and deleting open
 files will require the new on-disk layout.  However, if those features are
 disabled, support for older on-disk layouts is retained.

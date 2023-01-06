@@ -60,13 +60,13 @@
 
 /** @brief Version number to display in output.
 */
-#define RED_VERSION "v2.x"
+#define RED_VERSION "v3.x"
 
 /** @brief Version number in hex.
 
     The most significant byte is the major version number, etc.
 */
-#define RED_VERSION_VAL 0x02FF0000U
+#define RED_VERSION_VAL 0x03FF0000U
 
 
 /** @brief Original Reliance Edge on-disk layout.
@@ -150,7 +150,7 @@
     - 2: Custom version of Reliance Edge for a specific customer
     - 3: Custom version of Reliance Edge for a specific customer
     - 4: Reliance Edge v2.6+
-    - 5: Reliance Edge v2.7+
+    - 5: Reliance Edge v3.0+
 
     The default on-disk version number depends on the file system configuration:
     - None of the features in the newer on-disk layouts are relevant to the

@@ -626,6 +626,12 @@ int FsstressStart(
         }
         loopcntr++;
     }
+
+    if (freq_table != NULL) {
+        free(freq_table);
+        freq_table = NULL;
+    }
+
     return 0;
 }
 

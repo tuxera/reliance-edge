@@ -41,13 +41,6 @@ may be asked to make changes via the comments on the pull request.  If the pull
 request contributes a substantial amount of code, you will need to assign
 copyright to Tuxera US Inc before it will be accepted (see the next section).
 
-Pull requests often will not be directly merged into the Reliance Edge GitHub
-repo.  Due to quality assurance and packaging requirements, pull requests which
-are accepted will be incorporated indirectly and pushed into the GitHub
-repository as part of a build.  In some cases, the pull request may also be
-merged directly on GitHub, but often the pull request will be closed with a
-comment to indicate whether the changes were incorporated or not.
-
 For the portions of the _Developer's Guide_ that are included in the GitHub
 repository (like the API documentation, which is derived from Doxygen comments
 in the code), changes should be submitted as pull requests just like code.  For
@@ -78,4 +71,3 @@ Reliance Edge Coding Style
 
 Code contributed to Reliance Edge should make an attempt to follow its coding
 style.  See the doc/coding_style.txt document.
-

@@ -1412,7 +1412,7 @@ static mode_t redmode_to_mode(
         the file is a regular file or directory; the permission bits are unused.
         So we add hard-coded permissions here.
     */
-    assert((uRedMode & RED_IS_IALLUGO) == 0U);
+    assert((uRedMode & RED_S_IALLUGO) == 0U);
 
     if(S_ISDIR(linuxMode))
     {

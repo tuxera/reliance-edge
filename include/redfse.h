@@ -80,7 +80,7 @@ typedef struct
     uint32_t    ulFileCount;    /**< Total number of file numbers. */
     bool        fReadOnly;      /**< Whether the file system volume is read-only. */
     uint64_t    ullMaxFileSize; /**< Maximum file size. */
-    uint32_t    ulLayoutVer;    /**< On-disk layout verison.  Values defined in redver.h. */
+    uint32_t    ulLayoutVer;    /**< On-disk layout version.  Values defined in redver.h. */
 } REDFSESTATFS;
 
 

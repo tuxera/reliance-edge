@@ -72,7 +72,7 @@ static inline void addIntSetting(QString &outputString, IntSetting *intSetting)
 
 // Add a transaction point to the mask at the end of outputString
 // if trSetting is set to true.
-// Trasnaction point will be excluded without evaluating trSetting
+// Transaction point will be excluded without evaluating trSetting
 // if override is set to false. Evaluated normally if override
 // is true or unspecified.
 static inline void addTrIfChecked(QString &outputString, BoolSetting *trSetting,

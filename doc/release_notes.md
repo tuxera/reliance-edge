@@ -77,7 +77,7 @@ Most of the added features in v3.0 are supported by Reliance Edge on INTEGRITY:
 - Symbolic links: `readlink()` and `symlink()`.
 - Permissions: `chmod()`, `lchmod()`, `fchmod()`, `access()`; and the mode
   arguments to `open()` and `mkdir()`.  Permissions are enforced, with `EPERM`
-  or `EACCES` erorrs when permission is denied.
+  or `EACCES` errors when permission is denied.
 - Ownership: `chown()`, `lchown()`, `fchown()`.
 - Setting timestamps: `utimes()`, `lutimes()`, and `futimes()`.
 - Specifying an inode count during format: supported by `newfs_redfs`.
@@ -220,7 +220,7 @@ SafeRTOS support.
     - The block device OS service (osbdev.c) has a new API to query the sector
       count and sector size: RedOsBDevGetGeometry().  If you implemented your
       own version of osbdev.c for a previous version of Reliance Edge, to update
-      to v2.5 you must add an implemention of this new API.  See
+      to v2.5 you must add an implementation of this new API.  See
       os/stub/services/osbdev.c for a template.  If you do not need the new
       feature, the API can be stubbed to return `-RED_ENOTSUPP`.
 - Implement a block allocation optimization that improves write performance in

@@ -81,7 +81,7 @@ typedef struct
 */
 #define RED_HEAP_VERBOSITY_DEFAULT  0U  /* Default displays no output */
 #define RED_HEAP_VERBOSITY_SUMMARY  1U  /* Display a summary only */
-#define RED_HEAP_VERBOSITY_HEADERS  2U  /* Display each block header and a summmary */
+#define RED_HEAP_VERBOSITY_HEADERS  2U  /* Display each block header and a summary */
 
 
 static REDHEAPINFO gHI;
@@ -127,7 +127,7 @@ void RedHeapInit(
     pHead->pNext = (REDHEAPHDR *)&gHI.pbPoolBase[pHead->ulBlockSize];
     pHead->pPrev = NULL;
 
-    /*  Now make the terminating header.  This places a sentinal at the end
+    /*  Now make the terminating header.  This places a sentinel at the end
         of the heap.  Mark as allocated so it will never combine with a free
         allocation.
     */

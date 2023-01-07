@@ -1935,7 +1935,7 @@ static void check_f(int opno, long r)
         We don't want to overlook a checker error.  Also, if this function fails
         at certain points (while the volume is unmounted or before restoring the
         CWD), then all subsequent operations will fail.  Just keep it simple and
-        abort if this test case doesn't succeeed.
+        abort if this test case doesn't succeed.
     */
     if(ret != 0)
     {

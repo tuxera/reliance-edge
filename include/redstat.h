@@ -188,7 +188,7 @@ typedef struct
   #endif
     uint64_t    f_maxfsize; /**< Maximum file size (POSIX extension). */
     uint32_t    f_dev;      /**< Volume number (POSIX extension). */
-    uint32_t    f_diskver;  /**< On-disk layout verison (POSIX extension).  Values defined in redver.h. */
+    uint32_t    f_diskver;  /**< On-disk layout version (POSIX extension).  Values defined in redver.h. */
 } REDSTATFS;
 
 

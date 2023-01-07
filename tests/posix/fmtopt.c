@@ -24,7 +24,7 @@
     Visit https://www.tuxera.com/products/reliance-edge/ for more information.
 */
 /** @file
-    @brief Implements test utilites for format options.
+    @brief Implements test utilities for format options.
 */
 #include <redfs.h>
 #include <redposix.h>

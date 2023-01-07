@@ -102,7 +102,7 @@ extern "C" {
 #define RED_AT_FDCWD    (-100) /* Any invalid fd value would work; Linux uses -100. */
 #endif
 
-/** Psuedo file descriptor indicating an absolute path.
+/** Pseudo file descriptor indicating an absolute path.
 
     When used as the file descriptor parameter with the `red_*at()` APIs, this
     forces the corresponding path argument to be parsed as an absolute path.

@@ -34,6 +34,13 @@
 
 #if FORMAT_SUPPORTED
 
+/*  The master block has a field for the build number, however this edition
+    of Reliance Edge does not have build numbers.  Populate the field with a
+    placeholder value.
+*/
+#define PLACEHOLDER_BUILD_NUMBER "0"
+
+
 static uint32_t ComputeInodeCount(void);
 
 
@@ -259,7 +266,7 @@ REDSTATUS RedVolFormat(
         if(ret == 0)
         {
             pMB->ulVersion = opts.ulVersion;
-            RedStrNCpy(pMB->acBuildNum, RED_BUILD_NUMBER, sizeof(pMB->acBuildNum));
+            RedStrNCpy(pMB->acBuildNum, PLACEHOLDER_BUILD_NUMBER, sizeof(pMB->acBuildNum));
             pMB->ulFormatTime = RedOsClockGetTime();
             pMB->ulInodeCount = gpRedCoreVol->ulInodeCount;
             pMB->ulBlockCount = gpRedVolume->ulBlockCount;
@@ -372,4 +379,3 @@ static uint32_t ComputeInodeCount(void)
 }
 
 #endif /* FORMAT_SUPPORTED */
-

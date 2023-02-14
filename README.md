@@ -104,9 +104,11 @@ See LICENSE.txt for the full license terms of this distribution of the product.
 If you need assistance using Reliance Edge, and you have already consulted the
 _Developer's Guide_, contact <support@tuxera.com>.
 
-A community forum is also available to facilitate discussion of Reliance Edge
-and allow users to get help from Tuxera and from each other: you can find it at
-<https://www.datalight.com/forums/board/2/reliance-edge>.
+[GitHub Discussions](https://docs.github.com/en/discussions) are enabled on the
+Reliance Edge GitHub repository to provide a forum for discussion of Reliance
+Edge and to allow users to get help from Tuxera and from each other.  To access
+this forum, open the "Discussions" tab on the GitHub page for the repository or
+navigate to the following URL: <https://github.com/tuxera/reliance-edge/discussions>
 
 ## Contributing
 

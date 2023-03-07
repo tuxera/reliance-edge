@@ -157,7 +157,7 @@ static bool PathHasMoreComponents(const char *pszPathIdx);
 static bool IsDot(const char *pszPathComponent);
 static bool IsDotDot(const char *pszPathComponent);
 static bool IsDotOrDotDot(const char *pszPathComponent);
-static REDSTATUS InodeMustBeDir(uint32_t ulInode);
+static REDSTATUS InodeMustBeSearchableDir(uint32_t ulInode);
 #endif
 
 
@@ -796,9 +796,9 @@ static REDSTATUS PathWalkFollow(
   #if REDCONF_API_POSIX_CWD == 1
     else if(IsDot(pCtx->pszName))
     {
-        /*  E.g., "foo/." is valid only if "foo" is a directory.
+        /*  E.g., "foo/." is valid only if "foo" is a searchable directory.
         */
-        ret = InodeMustBeDir(pCtx->ulInode);
+        ret = InodeMustBeSearchableDir(pCtx->ulInode);
 
         /*  Nothing else to do: with a dot entry, we're already where we need to
             be for the next path component.
@@ -806,9 +806,9 @@ static REDSTATUS PathWalkFollow(
     }
     else if(IsDotDot(pCtx->pszName))
     {
-        /*  E.g., "foo/.." is valid only if "foo" is a directory.
+        /*  E.g., "foo/.." is valid only if "foo" is a searchable directory.
         */
-        ret = InodeMustBeDir(pCtx->ulInode);
+        ret = InodeMustBeSearchableDir(pCtx->ulInode);
         if(ret == 0)
         {
             /*  "As a special case, in the root directory, dot-dot may refer to
@@ -1291,20 +1291,22 @@ static bool IsDotOrDotDot(
 }
 
 
-/** @brief Make sure the given inode is a directory.
+/** @brief Make sure the given inode is a searchable directory.
 
     @param ulInode  The inode to examine.
 
     @return A negated ::REDSTATUS code indicating the operation result.
 
     @retval 0               Operation was successful: @p ulInode is a directory.
+    @retval -RED_EACCES     #REDCONF_POSIX_OWNER_PERM is true and @p ulInode is
+                            a directory without read or search permissions.
     @retval -RED_EBADF      @p ulInode is not a valid inode.
     @retval -RED_EIO        A disk I/O error occurred.
     @retval -RED_ENOTDIR    @p ulInode is not a directory.
     @retval -RED_ENOLINK    #REDCONF_API_POSIX_SYMLINK is true and @p ulInode is
                             a symbolic link.
 */
-static REDSTATUS InodeMustBeDir(
+static REDSTATUS InodeMustBeSearchableDir(
     uint32_t    ulInode)
 {
     REDSTATUS   ret = 0;
@@ -1316,10 +1318,18 @@ static REDSTATUS InodeMustBeDir(
         REDSTAT sb;
 
         ret = RedCoreStat(ulInode, &sb);
+
         if(ret == 0)
         {
             ret = RedModeTypeCheck(sb.st_mode, FTYPE_DIR);
         }
+
+      #if REDCONF_POSIX_OWNER_PERM == 1
+        if(ret == 0)
+        {
+            ret = RedPermCheck(RED_X_OK | RED_R_OK, sb.st_mode, sb.st_uid, sb.st_gid);
+        }
+      #endif
     }
 
     return ret;

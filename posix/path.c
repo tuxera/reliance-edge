@@ -1299,7 +1299,7 @@ static bool IsDotOrDotDot(
 
     @retval 0               Operation was successful: @p ulInode is a directory.
     @retval -RED_EACCES     #REDCONF_POSIX_OWNER_PERM is true and @p ulInode is
-                            a directory without read or search permissions.
+                            a directory without search permissions.
     @retval -RED_EBADF      @p ulInode is not a valid inode.
     @retval -RED_EIO        A disk I/O error occurred.
     @retval -RED_ENOTDIR    @p ulInode is not a directory.
@@ -1335,7 +1335,7 @@ static REDSTATUS InodeMustBeSearchableDir(
       #if REDCONF_POSIX_OWNER_PERM == 1
         if(ret == 0)
         {
-            ret = RedPermCheck(RED_X_OK | RED_R_OK, sb.st_mode, sb.st_uid, sb.st_gid);
+            ret = RedPermCheck(RED_X_OK, sb.st_mode, sb.st_uid, sb.st_gid);
         }
       #endif
     }

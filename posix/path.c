@@ -1309,11 +1309,19 @@ static bool IsDotOrDotDot(
 static REDSTATUS InodeMustBeSearchableDir(
     uint32_t    ulInode)
 {
-    REDSTATUS   ret = 0;
+    REDSTATUS   ret;
 
-    /*  Root directory is, by definition, a directory.
+    /*  When permissions are disabled, all we're doing here is checking whether
+        the inode is a directory -- and the root directory is, by definition, a
+        directory.
     */
-    if(ulInode != INODE_ROOTDIR)
+  #if REDCONF_POSIX_OWNER_PERM == 0
+    if(ulInode == INODE_ROOTDIR)
+    {
+        ret = 0;
+    }
+    else
+  #endif
     {
         REDSTAT sb;
 

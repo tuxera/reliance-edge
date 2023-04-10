@@ -107,7 +107,7 @@ int IbPosixCopyDirRecursive(
             update the directory attributes first and then created entries
             within that directory, we have an issue: the directory mtime would
             get stomped on as part of creat() or mkdir().  Furthermore, if the
-            POSIX-like API ever begins to enforce permissions, it would be a
+            POSIX-like API is configured to enforce permissions, it would be a
             problem if we copied restrictive permissions (no write or execute)
             before creating the entries.
         */

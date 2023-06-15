@@ -169,10 +169,12 @@ int IbCopyFile(
         (void)fclose(pFile);
     }
 
+  #if HAVE_SETTABLE_ATTR
     if(ret == 0)
     {
         ret = IbCopyAttr(pFileMapping->szInFilePath, pFileMapping->szOutFilePath);
     }
+  #endif
 
     if(ret == -1)
     {

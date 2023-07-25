@@ -122,7 +122,7 @@ static REDSTATUS DiskGetGeometry(
     uint8_t     bVolNum,
     BDEVINFO   *pInfo)
 {
-    REDSTATUS   ret;
+    REDSTATUS   ret = 0;
     WORD        wSectorSize;
     DWORD       dwSectorCount;
     DRESULT     result;

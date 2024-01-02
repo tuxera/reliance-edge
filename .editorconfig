@@ -1,0 +1,26 @@
+# https://editorconfig.org/
+
+# This is the top-most EditorConfig file for the project.
+root = true
+
+# Settings for all file types, unless overridden below.
+[*]
+# Character set should be UTF-8.
+charset = utf-8
+# The last character of every text file should be a newline.
+insert_final_newline = true
+# Remove superfluous whitespace characters preceding newlines.
+trim_trailing_whitespace = true
+# Indent with four spaces.
+indent_style = space
+indent_size = 4
+
+[*.patch]
+# Patch files have trailing whitespace which shouldn't be removed.
+trim_trailing_whitespace = false
+
+[{Makefile,*.mk}]
+# Makefiles should always be indented with hard tabs, since many make
+# implementations don't support indenting with spaces.
+indent_style = tab
+indent_size = 8

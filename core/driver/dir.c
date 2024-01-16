@@ -415,7 +415,7 @@ REDSTATUS RedDirEntryLookup(
       #if REDCONF_POSIX_OWNER_PERM == 1
         INODE *pPIno = pPInode->pInodeBuf;
 
-        ret = RedPermCheck(RED_X_OK | RED_R_OK, pPIno->uMode, pPIno->ulUID, pPIno->ulGID);
+        ret = RedPermCheck(RED_X_OK, pPIno->uMode, pPIno->ulUID, pPIno->ulGID);
       #endif
     }
 
@@ -850,7 +850,7 @@ REDSTATUS RedDirEntryRename(
 
                     /*  Need write permission to create a dirent in the
                         destination directory.  RedDirEntryLookup() already
-                        ensured we had search and read permissions.
+                        ensured we had search permissions.
                     */
                     ret = RedPermCheck(RED_W_OK, pPIno->uMode, pPIno->ulUID, pPIno->ulGID);
                   #endif

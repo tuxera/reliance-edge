@@ -27,10 +27,15 @@
     @brief Implements routines for certain 64-bit math operations and simulated
            floating point.
 
-    RedUint64DivMod32() and RedUint64DivMod64() are derived from code at
-    http://www.hackersdelight.org.  This web site states explicitly that "You
-    are free to use, copy, and distribute any of the code on this web site,
-    whether modified by you or not.  You need not give attribution."
+    RedUint64DivMod32() and RedUint64DivMod64() are derived from code found at
+    the (now defunct) web site for the "Hacker's Delight" book.  An archived
+    version of that web site is available from the Internet Archive:
+
+    https://web.archive.org/web/20190916060535/http://www.hackersdelight.org/
+
+    That web site stated explicitly that "You are free to use, copy, and
+    distribute any of the code on this web site, whether modified by you or not.
+    You need not give attribution."
 */
 #include <redfs.h>
 #include <redtestutils.h>

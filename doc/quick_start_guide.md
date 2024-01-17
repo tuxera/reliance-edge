@@ -31,7 +31,7 @@ to run Reliance Edge on a Windows computer.
    for Windows" is not compatible._
 
 2. Download and install the
-   [GNU Make utility for Windows](http://gnuwin32.sourceforge.net/packages/make.htm)
+   [GNU Make utility for Windows](https://gnuwin32.sourceforge.net/packages/make.htm)
    (free).
 
    - Download the setup package listed as "Complete package, except sources".

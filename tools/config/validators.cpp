@@ -1085,7 +1085,7 @@ qulonglong getVolSizeMaxBytes()
 // Returns false for 0 as 0 is not considered to be
 // a power of two.
 //
-// Code based on Stack Overflow: http://stackoverflow.com/questions/600293
+// Code based on Stack Overflow: https://stackoverflow.com/questions/600293
 static bool isPowerOfTwo(unsigned long value)
 {
     return (value != 0) && ((value & (value - 1)) == 0);

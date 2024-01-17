@@ -31,7 +31,7 @@ linker scripts for the target.  These source files are all part of the
 STM32CubeF4 package.  Follow these steps to allow the project to find the
 resources needed:
 
-  - Download STM32CubeF4: http://www.st.com/web/en/catalog/tools/PF259243
+  - Download STM32CubeF4: https://www.st.com/web/en/catalog/tools/PF259243
   - Unzip the STM32CubeF4 package to a desirable location; e.g.
     C:/ST/STM32Cube_FW_F4.
   - In this project's properties page (in Atollic TrueStudio), select
@@ -63,7 +63,7 @@ Both the Pro and the Lite versions may be used.
 Resources
 ---------
 
-Atollic TrueStudio is available at http://timor.atollic.com/truestudio/
+Atollic TrueStudio is available at https://timor.atollic.com/truestudio/
 
 The Lite version is free, even though it is a fully functional IDE.  The
 Pro version may be used for a monthly fee.

@@ -1,8 +1,8 @@
 #
 # makefile for Linux project in Reliance Edge
 #
-P_PROJDIR ?= $(shell pwd)
-P_BASEDIR ?= $(shell readlink -f $(P_PROJDIR)/../..)
+P_BASEDIR ?= ../..
+P_PROJDIR ?= $(P_BASEDIR)/projects/linux
 
 B_DEBUG ?= 1
 

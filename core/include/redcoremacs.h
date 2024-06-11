@@ -114,7 +114,11 @@
 
 
 #define CRITICAL_ASSERT(EXP)    ((EXP) ? (void)0 : CRITICAL_ERROR())
+#ifdef __FILE_NAME__
+#define CRITICAL_ERROR()        RedVolCriticalError(__FILE_NAME__, __LINE__)
+#else
 #define CRITICAL_ERROR()        RedVolCriticalError(__FILE__, __LINE__)
+#endif
 
 
 #endif

@@ -1096,9 +1096,15 @@ static void OutputCriticalError(
 
         /*  Many compilers include the path in __FILE__ strings.  szBuffer
             isn't large enough to print paths, so find the basename.
+
+            If __FILE_NAME__ is defined (as is the case for recent GCC and
+            Clang), we use it instead of __FILE__.  It's assumed that
+            __FILE_NAME__ expands to the basename and hence there's no need
+            to skip over directory path components.
         */
         pszBaseName = pszFileName;
         ulIdx = 0U;
+      #ifndef __FILE_NAME__
         while(pszFileName[ulIdx] != '\0')
         {
             /*  Currently it's safe to assume that the host system uses slashes
@@ -1114,6 +1120,7 @@ static void OutputCriticalError(
 
             ulIdx++;
         }
+      #endif
 
         ulNameLen = RedStrLen(pszBaseName);
         ulNameLen = REDMIN(ulNameLen, FILENAME_MAX_LEN); /* Paranoia */

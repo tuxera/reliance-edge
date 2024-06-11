@@ -1695,7 +1695,7 @@ static REDSTATUS WriteAligned(
                     }
                     else
                     {
-                        /*  Data block allocated and discontiguous location,
+                        /*  Data block allocated at discontiguous location,
                             thereby ending the extent.  Save that data block
                             for the next pass.
                         */

@@ -38,6 +38,12 @@
 #include <redcore.h>
 
 
+/*  ulImapNodeCount should never exceed METAROOT_ENTRIES (mount checks for
+    this), but be paranoid.
+*/
+#define IMAPNODEIDX_IS_VALID(imapnode) ((imapnode) < REDMIN(gpRedCoreVol->ulImapNodeCount, METAROOT_ENTRIES))
+
+
 #if REDCONF_READ_ONLY == 0
 static REDSTATUS ImapNodeBranch(uint32_t ulImapNode, IMAPNODE **ppImap);
 static bool ImapNodeIsBranched(uint32_t ulImapNode);
@@ -339,7 +345,7 @@ static REDSTATUS ImapNodeBranch(
 {
     REDSTATUS   ret;
 
-    if((ulImapNode >= gpRedCoreVol->ulImapNodeCount) || (ppImap == NULL))
+    if(!IMAPNODEIDX_IS_VALID(ulImapNode) || (ppImap == NULL))
     {
         REDERROR();
         ret = -RED_EINVAL;
@@ -401,13 +407,20 @@ static REDSTATUS ImapNodeBranch(
 static bool ImapNodeIsBranched(
     uint32_t    ulImapNode)
 {
-    bool        fNodeBitSetInMetaroot0 = RedBitGet(gpRedCoreVol->aMR[0U].abEntries, ulImapNode);
-    bool        fNodeBitSetInMetaroot1 = RedBitGet(gpRedCoreVol->aMR[1U].abEntries, ulImapNode);
+    bool        fIsBranched = false;
 
-    /*  If the imap node is not branched, both metaroots will point to the same
-        copy of the node.
-    */
-    return fNodeBitSetInMetaroot0 != fNodeBitSetInMetaroot1;
+    if(IMAPNODEIDX_IS_VALID(ulImapNode))
+    {
+        bool fNodeBitSetInMetaroot0 = RedBitGet(gpRedCoreVol->aMR[0U].abEntries, ulImapNode);
+        bool fNodeBitSetInMetaroot1 = RedBitGet(gpRedCoreVol->aMR[1U].abEntries, ulImapNode);
+
+        /*  If the imap node is not branched, both metaroots will point to the
+            same copy of the node.
+        */
+        fIsBranched = fNodeBitSetInMetaroot0 != fNodeBitSetInMetaroot1;
+    }
+
+    return fIsBranched;
 }
 #endif /* REDCONF_READ_ONLY == 0 */
 
@@ -429,13 +442,9 @@ uint32_t RedImapNodeBlock(
     uint8_t     bMR,
     uint32_t    ulImapNode)
 {
-    uint32_t    ulBlock;
+    uint32_t    ulBlock = gpRedCoreVol->ulImapStartBN + (ulImapNode * 2U);
 
-    REDASSERT(ulImapNode < gpRedCoreVol->ulImapNodeCount);
-
-    ulBlock = gpRedCoreVol->ulImapStartBN + (ulImapNode * 2U);
-
-    if(bMR > 1U)
+    if((bMR > 1U) || !IMAPNODEIDX_IS_VALID(ulImapNode))
     {
         REDERROR();
     }

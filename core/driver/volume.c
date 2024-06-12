@@ -161,7 +161,18 @@ REDSTATUS RedVolInitBlockLayout(void)
             gpRedCoreVol->ulImapNodeCount =
                 ((gpRedVolume->ulBlockCount - 3U) + ((IMAPNODE_ENTRIES + 2U) - 1U)) / (IMAPNODE_ENTRIES + 2U);
 
-            gpRedCoreVol->ulInodeTableStartBN = gpRedCoreVol->ulImapStartBN + (gpRedCoreVol->ulImapNodeCount * 2U);
+            if(gpRedCoreVol->ulImapNodeCount > METAROOT_ENTRIES)
+            {
+                /*  The imap node count is too large for the metaroot bitmap.
+                    This can happen when the volume size exceeds the maximum
+                    supported volume size for the current block size.
+                */
+                ret = -RED_EINVAL;
+            }
+            else
+            {
+                gpRedCoreVol->ulInodeTableStartBN = gpRedCoreVol->ulImapStartBN + (gpRedCoreVol->ulImapNodeCount * 2U);
+            }
           #else
             REDERROR();
             ret = -RED_EINVAL;

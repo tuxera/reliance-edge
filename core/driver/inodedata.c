@@ -1072,12 +1072,14 @@ static REDSTATUS CountSparseBlocks(
         }
 
         if(    (pInode->uDindirEntry != COORD_ENTRY_INVALID)
+            && (pInode->pDindir != NULL)
             && (pInode->pDindir->aulEntries[pInode->uDindirEntry] != BLOCK_SPARSE))
         {
             uPrevDindirEntry = pInode->uDindirEntry;
         }
 
         if(    (pInode->uIndirEntry != COORD_ENTRY_INVALID)
+            && (pInode->pIndir != NULL)
             && (pInode->pIndir->aulEntries[pInode->uIndirEntry] != BLOCK_SPARSE))
         {
             uPrevIndirEntry = pInode->uIndirEntry;

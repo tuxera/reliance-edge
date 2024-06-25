@@ -1045,8 +1045,12 @@ static REDSTATUS CountSparseBlocks(
     uint32_t    ulEndBlockOffset = (uint32_t)((ullOffset + ullLen + REDCONF_BLOCK_SIZE - 1U) >> BLOCK_SIZE_P2);
     uint32_t    ulBlockOff = ulStartBlockOff;
     uint16_t    uPrevInodeEntry = COORD_ENTRY_INVALID;
+  #if DINDIR_POINTERS > 0U
     uint16_t    uPrevDindirEntry = COORD_ENTRY_INVALID;
+  #endif
+  #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
     uint16_t    uPrevIndirEntry = COORD_ENTRY_INVALID;
+  #endif
     uint32_t    ulSparseBlocks = 0U;
     REDSTATUS   ret;
 
@@ -1071,19 +1075,23 @@ static REDSTATUS CountSparseBlocks(
             uPrevInodeEntry = pInode->uInodeEntry;
         }
 
+      #if DINDIR_POINTERS > 0U
         if(    (pInode->uDindirEntry != COORD_ENTRY_INVALID)
             && (pInode->pDindir != NULL)
             && (pInode->pDindir->aulEntries[pInode->uDindirEntry] != BLOCK_SPARSE))
         {
             uPrevDindirEntry = pInode->uDindirEntry;
         }
+      #endif
 
+      #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
         if(    (pInode->uIndirEntry != COORD_ENTRY_INVALID)
             && (pInode->pIndir != NULL)
             && (pInode->pIndir->aulEntries[pInode->uIndirEntry] != BLOCK_SPARSE))
         {
             uPrevIndirEntry = pInode->uIndirEntry;
         }
+      #endif
     }
 
     /*  TODO: This loop is inefficient.  It seeks to every single block offset
@@ -1119,17 +1127,21 @@ static REDSTATUS CountSparseBlocks(
                 ulSparseBlocks++;
             }
 
+          #if DINDIR_POINTERS > 0U
             if((pInode->uDindirEntry != COORD_ENTRY_INVALID) && (uPrevDindirEntry != pInode->uDindirEntry))
             {
                 uPrevDindirEntry = pInode->uDindirEntry;
                 ulSparseBlocks++;
             }
+          #endif
 
+          #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
             if((pInode->uIndirEntry != COORD_ENTRY_INVALID) && (uPrevIndirEntry != pInode->uIndirEntry))
             {
                 uPrevIndirEntry = pInode->uIndirEntry;
                 ulSparseBlocks++;
             }
+          #endif
 
             ulBlockOff++;
         }

@@ -1,0 +1,16 @@
+# Handle line endings automatically for files which Git believes are text files.
+#
+* text=auto
+
+# Force files with these extensions to be treated as text files.
+#
+*.c text
+*.h text
+*.cpp text
+*.mk text
+*.txt text
+*.md text
+
+# Force files with these extensions to be treated as binary files.
+#
+*.png binary

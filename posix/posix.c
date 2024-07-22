@@ -30,7 +30,7 @@
 
 #if REDCONF_API_POSIX == 1
 
-/** @defgroup red_group_posix The POSIX-like File System Interface
+/** @defgroup red_group_posix POSIX-like File System Interface
     @{
 */
 

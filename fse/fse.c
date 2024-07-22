@@ -30,7 +30,7 @@
 
 #if REDCONF_API_FSE == 1
 
-/** @defgroup red_group_fse The File System Essentials Interface
+/** @defgroup red_group_fse File System Essentials Interface
     @{
 */
 

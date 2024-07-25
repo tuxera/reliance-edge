@@ -162,10 +162,10 @@ typedef struct
     bool        fCoordInited;   /**< True after the first seek. */
 
     INODE      *pInodeBuf;      /**< Pointer to the inode buffer. */
-  #if DINDIR_POINTERS > 0U
+  #if DINDIRS_EXIST
     DINDIR     *pDindir;        /**< Pointer to the double indirect node buffer. */
   #endif
-  #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+  #if INDIRS_EXIST
     INDIR      *pIndir;         /**< Pointer to the indirect node buffer. */
   #endif
     uint8_t    *pbData;         /**< Pointer to the data block buffer. */
@@ -174,19 +174,19 @@ typedef struct
         SeekInode().
     */
     uint32_t    ulLogicalBlock; /**< Logical block offset into the inode. */
-  #if DINDIR_POINTERS > 0U
+  #if DINDIRS_EXIST
     uint32_t    ulDindirBlock;  /**< Physical block number of the double indirect node. */
   #endif
-  #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+  #if INDIRS_EXIST
     uint32_t    ulIndirBlock;   /**< Physical block number of the indirect node. */
   #endif
     uint32_t    ulDataBlock;    /**< Physical block number of the file data block. */
 
     uint16_t    uInodeEntry;    /**< Which inode entry to traverse to reach ulLogicalBlock. */
-  #if DINDIR_POINTERS > 0U
+  #if DINDIRS_EXIST
     uint16_t    uDindirEntry;   /**< Which double indirect entry to traverse to reach ulLogicalBlock. */
   #endif
-  #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+  #if INDIRS_EXIST
     uint16_t    uIndirEntry;    /**< Which indirect entry to traverse to reach ulLogicalBlock. */
   #endif
 } CINODE;
@@ -219,10 +219,10 @@ REDSTATUS RedInodeFree(CINODE *pInode);
 #endif
 void RedInodePut(CINODE *pInode, uint8_t bTimeFields);
 void RedInodePutCoord(CINODE *pInode);
-#if DINDIR_POINTERS > 0U
+#if DINDIRS_EXIST
 void RedInodePutDindir(CINODE *pInode);
 #endif
-#if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+#if INDIRS_EXIST
 void RedInodePutIndir(CINODE *pInode);
 #endif
 void RedInodePutData(CINODE *pInode);

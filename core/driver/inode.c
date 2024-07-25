@@ -684,17 +684,17 @@ void RedInodePutCoord(
     else
     {
         RedInodePutData(pInode);
-      #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+      #if INDIRS_EXIST
         RedInodePutIndir(pInode);
       #endif
-      #if DINDIR_POINTERS > 0U
+      #if DINDIRS_EXIST
         RedInodePutDindir(pInode);
       #endif
     }
 }
 
 
-#if DINDIR_POINTERS > 0U
+#if DINDIRS_EXIST
 /** @brief Put the double indirect buffer.
 
     @param pInode   A pointer to the cached inode structure.
@@ -720,7 +720,7 @@ void RedInodePutDindir(
 #endif
 
 
-#if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+#if INDIRS_EXIST
 /** @brief Put the indirect buffer.
 
     @param pInode   A pointer to the cached inode structure.

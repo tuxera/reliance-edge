@@ -37,6 +37,11 @@
 #define DINDIR_POINTERS     ((INODE_ENTRIES - REDCONF_DIRECT_POINTERS) - REDCONF_INDIRECT_POINTERS)
 #define DINDIR_DATA_BLOCKS  (INDIR_ENTRIES * INDIR_ENTRIES)
 
+/*  Whether INDIR and DINDIR nodes exist with the configured inode pointers.
+*/
+#define DINDIRS_EXIST       (DINDIR_POINTERS > 0U)
+#define INDIRS_EXIST        (REDCONF_DIRECT_POINTERS < INODE_ENTRIES)
+
 #define INODE_INDIR_BLOCKS  (REDCONF_INDIRECT_POINTERS * INDIR_ENTRIES)
 
 /*  With large block sizes, the number of data blocks that a double-indirect can
@@ -62,9 +67,9 @@
 /*  Maximum depth of allocable blocks below the inode, including (if applicable)
     double-indirect node, indirect node, and data block.
 */
-#if DINDIR_POINTERS > 0U
+#if DINDIRS_EXIST
   #define INODE_MAX_DEPTH   3U
-#elif REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+#elif INDIRS_EXIST
   #define INODE_MAX_DEPTH   2U
 #else
   #define INODE_MAX_DEPTH   1U
@@ -93,7 +98,7 @@
 #if REDCONF_READ_ONLY == 1
   #define RESERVED_BLOCKS 0U
 #elif (REDCONF_API_POSIX == 1) && ((REDCONF_API_POSIX_UNLINK == 1) || (REDCONF_API_POSIX_RMDIR == 1))
-  #if DINDIR_POINTERS > 0U
+  #if DINDIRS_EXIST
     #define RESERVED_BLOCKS 3U
   #elif REDCONF_INDIRECT_POINTERS > 0U
     #define RESERVED_BLOCKS 2U
@@ -101,7 +106,7 @@
     #define RESERVED_BLOCKS 1U
   #endif
 #elif ((REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_FTRUNCATE == 1)) || ((REDCONF_API_FSE == 1) && (REDCONF_API_FSE_TRUNCATE == 1))
-  #if DINDIR_POINTERS > 0U
+  #if DINDIRS_EXIST
     #define RESERVED_BLOCKS 2U
   #elif REDCONF_INDIRECT_POINTERS > 0U
     #define RESERVED_BLOCKS 1U

@@ -35,7 +35,7 @@
 static void BufferEndianSwapHeader(NODEHEADER *pHeader);
 static void BufferEndianSwapMaster(MASTERBLOCK *pMaster);
 static void BufferEndianSwapInode(INODE *pInode);
-#if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+#if INDIRS_EXIST
 static void BufferEndianSwapIndir(INDIR *pIndir);
 #endif
 #endif
@@ -94,12 +94,12 @@ bool RedBufferIsValid(
             case META_SIG_INODE:
                 fValid = (uMetaFlags == BFLAG_META_INODE);
                 break;
-          #if DINDIR_POINTERS > 0U
+          #if DINDIRS_EXIST
             case META_SIG_DINDIR:
                 fValid = (uMetaFlags == BFLAG_META_DINDIR);
                 break;
           #endif
-          #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+          #if INDIRS_EXIST
             case META_SIG_INDIR:
                 fValid = (uMetaFlags == BFLAG_META_INDIR);
                 break;
@@ -193,12 +193,12 @@ REDSTATUS RedBufferFinalize(
             case BFLAG_META_INODE:
                 ulSignature = META_SIG_INODE;
                 break;
-          #if DINDIR_POINTERS > 0U
+          #if DINDIRS_EXIST
             case BFLAG_META_DINDIR:
                 ulSignature = META_SIG_DINDIR;
                 break;
           #endif
-          #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+          #if INDIRS_EXIST
             case BFLAG_META_INDIR:
                 ulSignature = META_SIG_INDIR;
                 break;
@@ -278,12 +278,12 @@ void RedBufferEndianSwap(
             case BFLAG_META_INODE:
                 BufferEndianSwapInode(pBuffer);
                 break;
-          #if DINDIR_POINTERS > 0U
+          #if DINDIRS_EXIST
             case BFLAG_META_DINDIR:
                 BufferEndianSwapIndir(pBuffer);
                 break;
           #endif
-          #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+          #if INDIRS_EXIST
             case BFLAG_META_INDIR:
                 BufferEndianSwapIndir(pBuffer);
                 break;
@@ -392,7 +392,7 @@ static void BufferEndianSwapInode(
 }
 
 
-#if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+#if INDIRS_EXIST
 /** @brief Swap the byte order of an indirect or double indirect node
 
     @param pIndir   Pointer to the node to swap
@@ -416,5 +416,5 @@ static void BufferEndianSwapIndir(
         }
     }
 }
-#endif /* REDCONF_DIRECT_POINTERS < INODE_ENTRIES */
+#endif /* INDIRS_EXIST */
 #endif /* #ifdef REDCONF_ENDIAN_SWAP */

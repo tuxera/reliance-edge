@@ -54,7 +54,7 @@
 #endif
 
 
-#if DINDIR_POINTERS > 0U
+#if DINDIRS_EXIST
   #define INODE_META_BUFFERS 3U /* Inode, double indirect, indirect */
 #elif REDCONF_INDIRECT_POINTERS > 0U
   #define INODE_META_BUFFERS 2U /* Inode, indirect */

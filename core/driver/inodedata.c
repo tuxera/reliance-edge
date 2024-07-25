@@ -66,10 +66,10 @@ typedef enum
 #if REDCONF_READ_ONLY == 0
 #if DELETE_SUPPORTED || TRUNCATE_SUPPORTED
 static REDSTATUS Shrink(CINODE *pInode, uint64_t ullSize);
-#if DINDIR_POINTERS > 0U
+#if DINDIRS_EXIST
 static REDSTATUS TruncDindir(CINODE *pInode, bool *pfFreed);
 #endif
-#if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+#if INDIRS_EXIST
 static REDSTATUS TruncIndir(CINODE *pInode, bool *pfFreed);
 #endif
 static REDSTATUS TruncDataBlock(const CINODE *pInode, uint32_t *pulBlock, bool fPropagate);
@@ -491,7 +491,7 @@ static REDSTATUS Shrink(
         }
       #endif
 
-      #if DINDIR_POINTERS > 0U
+      #if DINDIRS_EXIST
         while((ret == 0) && (ulTruncBlock < INODE_DATA_BLOCKS))
         {
             ret = SeekInode(pInode, ulTruncBlock);
@@ -543,7 +543,7 @@ static REDSTATUS Shrink(
 }
 
 
-#if DINDIR_POINTERS > 0U
+#if DINDIRS_EXIST
 /** @brief Truncate a double indirect.
 
     @param pInode   A pointer to the cached inode, whose coordinates indicate
@@ -680,10 +680,10 @@ static REDSTATUS TruncDindir(
 
     return ret;
 }
-#endif /* DINDIR_POINTERS > 0U */
+#endif /* DINDIRS_EXIST */
 
 
-#if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+#if INDIRS_EXIST
 /** @brief Truncate an indirect.
 
     @param pInode   A pointer to the cached inode, whose coordinates indicate
@@ -763,7 +763,7 @@ static REDSTATUS TruncIndir(
 
     return ret;
 }
-#endif /* REDCONF_DIRECT_POINTERS < INODE_ENTRIES */
+#endif /* INDIRS_EXIST */
 
 
 /** @brief Truncate a file data block.
@@ -1045,10 +1045,10 @@ static REDSTATUS CountSparseBlocks(
     uint32_t    ulEndBlockOffset = (uint32_t)((ullOffset + ullLen + REDCONF_BLOCK_SIZE - 1U) >> BLOCK_SIZE_P2);
     uint32_t    ulBlockOff = ulStartBlockOff;
     uint16_t    uPrevInodeEntry = COORD_ENTRY_INVALID;
-  #if DINDIR_POINTERS > 0U
+  #if DINDIRS_EXIST
     uint16_t    uPrevDindirEntry = COORD_ENTRY_INVALID;
   #endif
-  #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+  #if INDIRS_EXIST
     uint16_t    uPrevIndirEntry = COORD_ENTRY_INVALID;
   #endif
     uint32_t    ulSparseBlocks = 0U;
@@ -1075,7 +1075,7 @@ static REDSTATUS CountSparseBlocks(
             uPrevInodeEntry = pInode->uInodeEntry;
         }
 
-      #if DINDIR_POINTERS > 0U
+      #if DINDIRS_EXIST
         if(    (pInode->uDindirEntry != COORD_ENTRY_INVALID)
             && (pInode->pDindir != NULL)
             && (pInode->pDindir->aulEntries[pInode->uDindirEntry] != BLOCK_SPARSE))
@@ -1084,7 +1084,7 @@ static REDSTATUS CountSparseBlocks(
         }
       #endif
 
-      #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+      #if INDIRS_EXIST
         if(    (pInode->uIndirEntry != COORD_ENTRY_INVALID)
             && (pInode->pIndir != NULL)
             && (pInode->pIndir->aulEntries[pInode->uIndirEntry] != BLOCK_SPARSE))
@@ -1127,7 +1127,7 @@ static REDSTATUS CountSparseBlocks(
                 ulSparseBlocks++;
             }
 
-          #if DINDIR_POINTERS > 0U
+          #if DINDIRS_EXIST
             if((pInode->uDindirEntry != COORD_ENTRY_INVALID) && (uPrevDindirEntry != pInode->uDindirEntry))
             {
                 uPrevDindirEntry = pInode->uDindirEntry;
@@ -1135,7 +1135,7 @@ static REDSTATUS CountSparseBlocks(
             }
           #endif
 
-          #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+          #if INDIRS_EXIST
             if((pInode->uIndirEntry != COORD_ENTRY_INVALID) && (uPrevIndirEntry != pInode->uIndirEntry))
             {
                 uPrevIndirEntry = pInode->uIndirEntry;
@@ -1223,7 +1223,7 @@ static REDSTATUS SeekInode(
     {
         SeekCoord(pInode, ulBlock);
 
-      #if DINDIR_POINTERS > 0U
+      #if DINDIRS_EXIST
         if(pInode->uDindirEntry != COORD_ENTRY_INVALID)
         {
             if(pInode->ulDindirBlock == BLOCK_SPARSE)
@@ -1247,7 +1247,7 @@ static REDSTATUS SeekInode(
         }
       #endif
 
-      #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+      #if INDIRS_EXIST
         if((ret == 0) && (pInode->uIndirEntry != COORD_ENTRY_INVALID))
         {
             if(pInode->ulIndirBlock == BLOCK_SPARSE)
@@ -1314,14 +1314,14 @@ static void SeekCoord(
             pInode->uInodeEntry = (uint16_t)ulBlock;
             pInode->ulDataBlock = pInode->pInodeBuf->aulEntries[pInode->uInodeEntry];
 
-          #if DINDIR_POINTERS > 0U
+          #if DINDIRS_EXIST
             pInode->uDindirEntry = COORD_ENTRY_INVALID;
           #endif
-          #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+          #if INDIRS_EXIST
             pInode->uIndirEntry = COORD_ENTRY_INVALID;
           #endif
         }
-      #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+      #if INDIRS_EXIST
         else
       #endif
       #endif
@@ -1334,7 +1334,7 @@ static void SeekCoord(
             uint16_t uInodeEntry = (uint16_t)((ulIndirRangeOffset / INDIR_ENTRIES) + REDCONF_DIRECT_POINTERS);
             uint16_t uIndirEntry = (uint16_t)(ulIndirRangeOffset % INDIR_ENTRIES);
 
-          #if DINDIR_POINTERS > 0U
+          #if DINDIRS_EXIST
             RedInodePutDindir(pInode);
           #endif
 
@@ -1351,7 +1351,7 @@ static void SeekCoord(
                 pInode->ulIndirBlock = pInode->pInodeBuf->aulEntries[pInode->uInodeEntry];
             }
 
-          #if DINDIR_POINTERS > 0U
+          #if DINDIRS_EXIST
             pInode->uDindirEntry = COORD_ENTRY_INVALID;
           #endif
             pInode->uIndirEntry = uIndirEntry;
@@ -1363,11 +1363,11 @@ static void SeekCoord(
                 - ulDataBlock
             */
         }
-      #if DINDIR_POINTERS > 0U
+      #if DINDIRS_EXIST
         else
       #endif
       #endif
-      #if DINDIR_POINTERS > 0U
+      #if DINDIRS_EXIST
         {
             uint32_t ulDindirRangeOffset = (ulBlock - REDCONF_DIRECT_POINTERS) - INODE_INDIR_BLOCKS;
             uint16_t uInodeEntry = (uint16_t)((ulDindirRangeOffset / DINDIR_DATA_BLOCKS) + REDCONF_DIRECT_POINTERS + REDCONF_INDIRECT_POINTERS);
@@ -1865,7 +1865,7 @@ static REDSTATUS BranchBlock(
 
     if(ret == 0)
     {
-      #if DINDIR_POINTERS > 0U
+      #if DINDIRS_EXIST
         if(pInode->uDindirEntry != COORD_ENTRY_INVALID)
         {
             ret = BranchOneBlock(&pInode->ulDindirBlock, (void **)&pInode->pDindir, BFLAG_META_DINDIR);
@@ -1882,7 +1882,7 @@ static REDSTATUS BranchBlock(
 
         if(ret == 0)
       #endif
-      #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+      #if INDIRS_EXIST
         {
             if((pInode->uIndirEntry != COORD_ENTRY_INVALID) && (depth >= BRANCHDEPTH_INDIR))
             {
@@ -1894,7 +1894,7 @@ static REDSTATUS BranchBlock(
                     */
                     pInode->pIndir->ulInode = pInode->ulInode;
 
-                  #if DINDIR_POINTERS > 0U
+                  #if DINDIRS_EXIST
                     if(pInode->uDindirEntry != COORD_ENTRY_INVALID)
                     {
                         pInode->pDindir->aulEntries[pInode->uDindirEntry] = pInode->ulIndirBlock;
@@ -1922,7 +1922,7 @@ static REDSTATUS BranchBlock(
 
                 if(ret == 0)
                 {
-                  #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+                  #if INDIRS_EXIST
                     if(pInode->uIndirEntry != COORD_ENTRY_INVALID)
                     {
                         pInode->pIndir->aulEntries[pInode->uIndirEntry] = pInode->ulDataBlock;
@@ -2145,7 +2145,7 @@ static REDSTATUS BranchBlockCost(
         */
         uint32_t    ulCost = INODE_MAX_DEPTH;
 
-      #if DINDIR_POINTERS > 0U
+      #if DINDIRS_EXIST
         if(pInode->uDindirEntry != COORD_ENTRY_INVALID)
         {
             if(pInode->ulDindirBlock != BLOCK_SPARSE)
@@ -2169,7 +2169,7 @@ static REDSTATUS BranchBlockCost(
 
         if(ret == 0)
       #endif
-      #if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+      #if INDIRS_EXIST
         {
             if((pInode->uIndirEntry != COORD_ENTRY_INVALID) && (depth >= BRANCHDEPTH_INDIR))
             {

@@ -107,10 +107,10 @@ static REDSTATUS MDIterMR(MDICTX *pCtx);
 static REDSTATUS MDIterImaps(MDICTX *pCtx);
 #endif
 static REDSTATUS MDIterInodes(MDICTX *pCtx);
-#if DINDIR_POINTERS > 0U
+#if DINDIRS_EXIST
 static REDSTATUS MDIterDindir(MDICTX *pCtx, uint32_t ulBlock, uint32_t ulInode, bool fIsDirectory);
 #endif
-#if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+#if INDIRS_EXIST
 static REDSTATUS MDIterIndir(MDICTX *pCtx, uint32_t ulBlock, uint32_t ulInode, bool fIsDirectory);
 #endif
 #if REDCONF_API_POSIX == 1
@@ -709,7 +709,7 @@ static REDSTATUS MDIterInodes(
             else
           #endif
             {
-              #if DINDIR_POINTERS > 0U
+              #if DINDIRS_EXIST
                 ret = MDIterDindir(pCtx, ulEntryBlock, ulInode, fIsDirectory);
               #endif
             }
@@ -738,7 +738,7 @@ static REDSTATUS MDIterInodes(
 }
 
 
-#if DINDIR_POINTERS > 0U
+#if DINDIRS_EXIST
 /** @brief Iterate a double indirect node (and all indirect node children).
 
     @param pCtx         Metadata iteration context structure.
@@ -847,10 +847,10 @@ static REDSTATUS MDIterDindir(
 
     return ret;
 }
-#endif /* DINDIR_POINTERS > 0U */
+#endif /* DINDIRS_EXIST */
 
 
-#if REDCONF_DIRECT_POINTERS < INODE_ENTRIES
+#if INDIRS_EXIST
 /** @brief Iterate an indirect node (and all directory data children).
 
     @param pCtx         Metadata iteration context structure.

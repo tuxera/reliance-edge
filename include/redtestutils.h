@@ -42,21 +42,12 @@ uint64_t RedMulDiv64(uint64_t ullBase, uint32_t ulMultiplier, uint64_t ullDiviso
 uint64_t RedUint64DivMod32(uint64_t ullDividend, uint32_t ulDivisor, uint32_t *pulRemainder);
 uint64_t RedUint64DivMod64(uint64_t ullDividend, uint64_t ullDivisor, uint64_t *pullRemainder);
 
-char *RedScaleBytes(uint32_t ulByteValue, char *pszBuffer, uint32_t ulBufferSize);
-char *RedScaleKB(uint32_t ulKBValue, char *pszBuffer, uint32_t ulBufferSize);
-uint32_t RedGetKBPerSecond(uint64_t ullKB, uint32_t ulMS);
-uint32_t RedGetKBPerSecondSectors(uint32_t ulBytesPerSector, uint64_t ullSectors, uint64_t ullUS);
-
 int32_t RedAtoI(const char *pszNum);
 const char *RedHtoUL(const char *pszNum, uint32_t *pulNum);
 const char *RedHtoULL(const char *pszNum, uint64_t *pullNum);
 const char *RedNtoUL(const char *pszNum, uint32_t *pulNum);
 const char *RedNtoULL(const char *pszNum, uint64_t *pullNum);
 const char *RedSizeToUL(const char *pszNum, uint32_t *pulResult);
-
-int32_t RedStrICmp(const char *pszStr1, const char *pszStr2);
-int32_t RedStrNICmp(const char *pszStr1, const char *pszStr2, uint32_t ulLen);
-char RedToLower(char c);
 
 #include <stdarg.h>
 
@@ -68,5 +59,4 @@ int32_t RedSNPrintf(char *pcBuffer, uint32_t ulBufferLen, const char *pszFormat,
 int32_t RedVSNPrintf(char *pcBuffer, uint32_t ulBufferLen, const char *pszFormat, va_list arglist);
 
 
-#endif
-
+#endif /* REDTESTUTILS_H */

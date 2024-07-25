@@ -458,9 +458,9 @@ void RedBufferBranch(
         pHead->ulBlock = ulBlockNew;
     }
 }
+#endif /* REDCONF_READ_ONLY == 0 */
 
 
-#if (REDCONF_API_POSIX == 1) || FORMAT_SUPPORTED
 /** @brief Discard a buffer, releasing it and marking it invalid.
 
     @param pBuffer  The buffer to discard.
@@ -487,8 +487,6 @@ void RedBufferDiscard(
         BufferMakeLRU(bIdx);
     }
 }
-#endif
-#endif /* REDCONF_READ_ONLY == 0 */
 
 
 /** @brief Discard a range of buffers, marking them invalid.

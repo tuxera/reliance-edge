@@ -103,10 +103,8 @@ void RedBufferPut(const void *pBuffer);
 REDSTATUS RedBufferFlushRange(uint32_t ulBlockStart, uint32_t ulBlockCount);
 void RedBufferDirty(const void *pBuffer);
 void RedBufferBranch(const void *pBuffer, uint32_t ulBlockNew);
-#if (REDCONF_API_POSIX == 1) || FORMAT_SUPPORTED
+#endif
 void RedBufferDiscard(const void *pBuffer);
-#endif
-#endif
 REDSTATUS RedBufferDiscardRange(uint32_t ulBlockStart, uint32_t ulBlockCount);
 REDSTATUS RedBufferReadRange(uint32_t ulBlockStart, uint32_t ulBlockCount, uint8_t *pbDataBuffer);
 #if REDCONF_READ_ONLY == 0

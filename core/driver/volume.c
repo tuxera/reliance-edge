@@ -420,7 +420,9 @@ REDSTATUS RedVolMountMaster(
           #endif
         }
 
-        RedBufferPut(pMB);
+        /*  Master block buffer won't be used again, so discard it.
+        */
+        RedBufferDiscard(pMB);
     }
 
     return ret;

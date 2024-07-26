@@ -31,7 +31,7 @@
     This API aims to be compatible with POSIX where reasonable, but it is
     simplified considerably to meet the needs of resource-constrained embedded
     systems.  The API has also been extended to provide access to the unique
-    features of Reliance Edge, and to cover areas (like mountins and formatting)
+    features of Reliance Edge, and to cover areas (like mounting and formatting)
     which do not have APIs in the POSIX specification.
 */
 #ifndef REDPOSIX_H

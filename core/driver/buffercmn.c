@@ -343,6 +343,8 @@ static void BufferEndianSwapMaster(
         pMaster->uMaxNameLen = RedRev16(pMaster->uMaxNameLen);
         pMaster->uDirectPointers = RedRev16(pMaster->uDirectPointers);
         pMaster->uIndirectPointers = RedRev16(pMaster->uIndirectPointers);
+        pMaster->uFeaturesIncompat = RedRev16(pMaster->uFeaturesIncompat);
+        pMaster->uFeaturesReadOnly = RedRev16(pMaster->uFeaturesReadOnly);
     }
 }
 
@@ -374,6 +376,11 @@ static void BufferEndianSwapInode(
         pInode->ulCTime = RedRev32(pInode->ulCTime);
       #endif
 
+      #if (REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1)
+        pInode->ulUID = RedRev32(pInode->ulUID);
+        pInode->ulGID = RedRev32(pInode->ulGID);
+      #endif
+
         pInode->uMode = RedRev16(pInode->uMode);
 
       #if (REDCONF_API_POSIX == 1) && (REDCONF_API_POSIX_LINK == 1)
@@ -382,6 +389,10 @@ static void BufferEndianSwapInode(
 
       #if REDCONF_API_POSIX == 1
         pInode->ulPInode = RedRev32(pInode->ulPInode);
+      #endif
+
+      #if (REDCONF_API_POSIX == 1) && (REDCONF_DELETE_OPEN == 1)
+        pInode->ulNextOrphan = RedRev32(pInode->ulNextOrphan);
       #endif
 
         for(ulIdx = 0; ulIdx < INODE_ENTRIES; ulIdx++)

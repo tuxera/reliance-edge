@@ -992,6 +992,11 @@ static void MetaRootEndianSwap(
         pMetaRoot->ulFreeInodes = RedRev32(pMetaRoot->ulFreeInodes);
       #endif
         pMetaRoot->ulAllocNextBlock = RedRev32(pMetaRoot->ulAllocNextBlock);
+      #if (REDCONF_API_POSIX == 1) && (REDCONF_DELETE_OPEN == 1)
+        pMetaRoot->ulDefunctOrphanHead = RedRev32(pMetaRoot->ulDefunctOrphanHead);
+        pMetaRoot->ulOrphanHead = RedRev32(pMetaRoot->ulOrphanHead);
+        pMetaRoot->ulOrphanTail = RedRev32(pMetaRoot->ulOrphanTail);
+      #endif
     }
 }
 #endif

@@ -26,6 +26,7 @@
 /** @file
     @brief Implements the entry-points to the core file system.
 */
+#include <limits.h> /* for CHAR_BIT */
 #include <redfs.h>
 #include <redcoreapi.h>
 #include <redcore.h>
@@ -58,6 +59,8 @@ static REDSTATUS CoreFileReserve(uint32_t ulInode, uint64_t ullOffset, uint64_t 
 static REDSTATUS CoreFull(void);
 static REDSTATUS CoreAutoTransact(uint32_t ulTransFlag);
 #endif
+
+static void VerifyTypes(void);
 
 
 VOLUME gaRedVolume[REDCONF_VOLUME_COUNT];
@@ -104,17 +107,7 @@ REDSTATUS RedCoreInit(void)
     RedSignOn();
   #endif
 
-    /*  Ensure the hard-coded node header sizes are correct, and that the
-        compiler is packing structures as expected.
-    */
-    REDSTATICASSERT(sizeof(MASTERBLOCK) <= REDCONF_BLOCK_SIZE);
-    REDSTATICASSERT(sizeof(METAROOT) == REDCONF_BLOCK_SIZE);
-  #if REDCONF_IMAP_EXTERNAL == 1
-    REDSTATICASSERT(sizeof(IMAPNODE) == REDCONF_BLOCK_SIZE);
-  #endif
-    REDSTATICASSERT(sizeof(INODE) == REDCONF_BLOCK_SIZE);
-    REDSTATICASSERT(sizeof(INDIR) == REDCONF_BLOCK_SIZE);
-    REDSTATICASSERT(sizeof(DINDIR) == REDCONF_BLOCK_SIZE);
+    VerifyTypes();
 
     RedMemSet(gaRedVolume, 0U, sizeof(gaRedVolume));
     RedMemSet(gaRedCoreVol, 0U, sizeof(gaRedCoreVol));
@@ -2795,3 +2788,35 @@ static REDSTATUS CoreAutoTransact(
     return ret;
 }
 #endif /* REDCONF_READ_ONLY == 0 */
+
+
+/** @brief Verify type sizes via static assertions.
+*/
+static void VerifyTypes(void)
+{
+    /*  Ensure the integer types are the right size.
+    */
+    #define ASSERT_TYPE_BITCOUNT(type, bit_count) REDSTATICASSERT((sizeof(type) * CHAR_BIT) == (bit_count))
+    ASSERT_TYPE_BITCOUNT(int8_t, 8U);
+    ASSERT_TYPE_BITCOUNT(uint8_t, 8U);
+    ASSERT_TYPE_BITCOUNT(int16_t, 16U);
+    ASSERT_TYPE_BITCOUNT(uint16_t, 16U);
+    ASSERT_TYPE_BITCOUNT(int32_t, 32U);
+    ASSERT_TYPE_BITCOUNT(uint32_t, 32U);
+    ASSERT_TYPE_BITCOUNT(int64_t, 64U);
+    ASSERT_TYPE_BITCOUNT(uint64_t, 64U);
+    ASSERT_TYPE_BITCOUNT(uintptr_t, sizeof(void*) * CHAR_BIT);
+    #undef ASSERT_TYPE_BITCOUNT
+
+    /*  Ensure the hard-coded node header sizes are correct, and that the
+        compiler is packing structures as expected.
+    */
+    REDSTATICASSERT(sizeof(MASTERBLOCK) <= REDCONF_BLOCK_SIZE);
+    REDSTATICASSERT(sizeof(METAROOT) == REDCONF_BLOCK_SIZE);
+  #if REDCONF_IMAP_EXTERNAL == 1
+    REDSTATICASSERT(sizeof(IMAPNODE) == REDCONF_BLOCK_SIZE);
+  #endif
+    REDSTATICASSERT(sizeof(INODE) == REDCONF_BLOCK_SIZE);
+    REDSTATICASSERT(sizeof(INDIR) == REDCONF_BLOCK_SIZE);
+    REDSTATICASSERT(sizeof(DINDIR) == REDCONF_BLOCK_SIZE);
+}

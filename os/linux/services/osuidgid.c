@@ -26,6 +26,8 @@
 /** @file
     @brief Implements user and group ID functionality.
 */
+#define _DEFAULT_SOURCE /* Ensure limits.h defines NGROUPS_MAX */
+
 #include <redfs.h>
 
 #if (REDCONF_API_POSIX == 1) && (REDCONF_POSIX_OWNER_PERM == 1)

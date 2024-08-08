@@ -33,6 +33,13 @@
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
 
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200112L /* Ensure ftruncate() is available. */
+#endif
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500 /* Ensure S_IF* constants are available. */
+#endif
+
 #include <features.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1124,4 +1131,3 @@ static REDSTATUS FileDiskFlush(
     return ret;
 }
 #endif /* REDCONF_READ_ONLY == 0 */
-

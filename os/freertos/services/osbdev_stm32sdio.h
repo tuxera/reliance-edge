@@ -13,8 +13,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+    with this program; if not, see <https://www.gnu.org/licenses/>.
 */
 /*  Businesses and individuals that for commercial or other reasons cannot
     comply with the terms of the GPLv2 license must obtain a commercial
@@ -383,4 +382,3 @@ static REDSTATUS CheckStatus(void)
 
 
 #endif /* OSBDEV_STM32SDIO_H */
-

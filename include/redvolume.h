@@ -13,8 +13,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License along
-    with this program; if not, write to the Free Software Foundation, Inc.,
-    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+    with this program; if not, see <https://www.gnu.org/licenses/>.
 */
 /*  Businesses and individuals that for commercial or other reasons cannot
     comply with the terms of the GPLv2 license must obtain a commercial
@@ -175,4 +174,3 @@ extern CONST_IF_ONE_VOLUME uint8_t gbRedVolNum;
 extern VOLUME * CONST_IF_ONE_VOLUME gpRedVolume;
 
 #endif
-

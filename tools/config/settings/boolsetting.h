@@ -1,6 +1,6 @@
 /*             ----> DO NOT REMOVE THE FOLLOWING NOTICE <----
 
-                  Copyright (c) 2014-2024 Tuxera US Inc.
+                  Copyright (c) 2014-2025 Tuxera US Inc.
                       All Rights Reserved Worldwide.
 
     This program is free software; you can redistribute it and/or modify
@@ -20,7 +20,7 @@
     license before incorporating Reliance Edge into proprietary software
     for distribution in any form.
 
-    Visit https://www.tuxera.com/products/reliance-edge/ for more information.
+    Visit https://www.tuxera.com/products/tuxera-edge-fs/ for more information.
 */
 #ifndef BOOLSETTING_H
 #define BOOLSETTING_H

@@ -35,10 +35,10 @@
     these functions to tell Reliance Edge how it should be opening, closing,
     reading from, and writing to your block device (whatever that may be: SD,
     MMC, eMMC, CF, USB, etc.).  This is discussed in detail in the Reliance Edge
-    Developer's Guide (available at tuxera.com/products/reliance-edge); see the
-    _Porting Guide_ chapter, in particular the "Block Device" section, and the
-    _FreeRTOS Integration_ chapter.  This directory contains several examples of
-    how the block device can be implemented (these examples are described in the
+    _Developer's Guide_ (available from support@tuxera.com); see the "Porting
+    Guide" chapter, in particular the "Block Device" section, and the "FreeRTOS
+    Integration" chapter.  This directory contains several examples of how the
+    block device can be implemented (these examples are described in the
     documentation just referenced, and in comments near the top of osbdev.c).
     These examples may be useful to you as a reference; if you are lucky, one of
     them might even work for you.

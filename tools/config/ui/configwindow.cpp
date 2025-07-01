@@ -477,9 +477,7 @@ void ConfigWindow::actionAbout_clicked()
                 "Version " CONFIG_VERSION
                 "<br/><br/>"
                 "This utility is designed to be used to configure the Reliance "
-                "Edge file system. Documentation may be downloaded from "
-                "<a href='https://www.tuxera.com/products/reliance-edge/'>"
-                "tuxera.com/products/reliance-edge</a>. For email support, contact "
+                "Edge file system. For documentation and support, contact "
                 "<a href='mailto:support@tuxera.com'>"
                 "support@tuxera.com</a>."
                 );

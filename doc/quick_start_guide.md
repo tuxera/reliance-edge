@@ -88,8 +88,8 @@ to run Reliance Edge on a Windows computer.
 
 This section introduces the steps needed to get Reliance Edge running on an
 embedded device.  Further information about development for Reliance Edge can be
-found in the documentation, available at
-[tuxera.com/products/reliance-edge](https://www.tuxera.com/products/reliance-edge/).
+found in the _Developer's Guide_ (the user manual), available from Tuxera:
+contact <support@tuxera.com> for details.
 
 The projects you just built use Reliance Edge as a file system on a Windows
 computer using Windows drivers and file systems to access the storage media.
@@ -102,12 +102,12 @@ include various storage media properties.  The configuration values are set by
 the project in the files redconf.h and redconf.c.  The Reliance Edge
 Configuration Utility provides a graphical user interface for easily setting up
 these values.  The tool is available from Tuxera: contact <support@tuxera.com>
-for details.  See the "Product Configuration" section of the documentation for
-more information.
+for details.  See the "Product Configuration" section of the _Developer's Guide_
+for more information.
 
 The interface between Reliance Edge and the underlying storage media drivers
 must also be set up for a project.  Instructions for this procedure are given in
-the "Porting Guide" section of the documentation.
+the "Porting Guide" section of the _Developer's Guide_.
 
 If you have further questions about setting up your Reliance Edge project,
 contact <support@tuxera.com>.

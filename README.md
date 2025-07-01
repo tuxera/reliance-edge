@@ -20,12 +20,10 @@ The complete documentation for Reliance Edge is distributed separately.  It
 includes an API reference and detailed discussions of various aspects of using
 Reliance Edge, including porting, building, configuring, and testing.  This
 complete documentation, called the _Developer's Guide_, can be obtained for free
-from here:
-
-<https://www.tuxera.com/products/reliance-edge/>
+by contacting <support@tuxera.com>.
 
 In addition to this README, see doc/release_notes.md for a list of updates
-to Reliance Edge and a list of known issues. There is also a quick-start
+to Reliance Edge and a list of known issues.  There is also a quick-start
 guide in the doc/ directory that describes step-by-step how to compile
 and run Reliance Edge in a simulated Windows environment.
 
@@ -60,7 +58,7 @@ and 500 to 700 bytes of stack.
 Reliance Edge is not designed for high-end embedded systems that run complicated
 operating systems like Linux or Windows Embedded Compact.  Embedded systems of
 that variety are better served by other file systems, like Tuxera's
-[Reliance Nitro](https://www.tuxera.com/products/reliance-nitro/).
+[Reliance Nitro](https://www.tuxera.com/products/tuxera-nitrofs/).
 
 ## Getting Reliance Edge Working
 
@@ -93,7 +91,7 @@ Reliance Edge is an open-source project licensed under the GNU General Public
 License v2 (GPLv2).  Businesses and individuals that for commercial or other
 reasons cannot comply with the terms of the GPLv2 license must obtain a
 commercial license before incorporating Reliance Edge into proprietary software
-for distribution in any form.  Visit <https://www.tuxera.com/products/reliance-edge/>
+for distribution in any form.  Visit <https://www.tuxera.com/products/tuxera-edge-fs/>
 for more information.  The commercial distribution also includes extra tests and
 tools not distributed with the GPLv2 version.
 

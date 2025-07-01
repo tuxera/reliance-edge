@@ -56,8 +56,8 @@ least 4 KB to 5 KB of RAM, 11 to 18 KB of code space (on the ROM or NOR flash),
 and 500 to 700 bytes of stack.
 
 Reliance Edge is not designed for high-end embedded systems that run complicated
-operating systems like Linux or Windows Embedded Compact.  Embedded systems of
-that variety are better served by other file systems, like Tuxera's
+operating systems like Linux or VxWorks.  Embedded systems of that variety are
+better served by other file systems, like Tuxera's
 [Reliance Nitro](https://www.tuxera.com/products/tuxera-nitrofs/).
 
 ## Getting Reliance Edge Working

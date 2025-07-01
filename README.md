@@ -9,10 +9,10 @@ the precise needs of your application.
 
 ## Getting Help
 
-You will find this section later in our readme as well -- but we wanted to tell
-you up front: TUXERA WANTS TO HEAR FROM YOU!  Whether it's just to make comments
-about the product, to suggest new features, or to tell us what you don't like --
-reach out!  All comments and inquiries can be directed to <support@tuxera.com>.
+You will find this section repeated below, but we wanted to tell you up front:
+TUXERA WANTS TO HEAR FROM YOU!  Whether it's just to make comments about the
+product, to suggest new features, or to tell us what you don't like—reach out!
+All comments and inquiries can be directed to <support@tuxera.com>.
 
 ## Documentation
 
@@ -73,7 +73,7 @@ Configuration Utility (which has source code in the repository and prebuilt
 binaries available from <support@tuxera.com>).
 
 These topics are covered in much greater detail in the _Developer's Guide_,
-linked above.
+discussed above.
 
 ## Using Reliance Edge
 
@@ -83,7 +83,7 @@ include/redfse.h) and compiling and linking against Reliance Edge binaries.
 The Reliance Edge driver must be initialized before it is used (via the
 red\_init() or RedFseInit() functions) and then volumes can be mounted and file
 and directory functions invoked.  The Reliance Edge API is documented in the
-_Developer's Guide_ (linked above) and also via comments in the source code.
+_Developer's Guide_ (see above) and also via comments in the source code.
 
 ## Licensing
 

@@ -193,11 +193,13 @@ static REDSTATUS InodeUnlinkCheck(uint32_t ulInode);
 static void InodeOrphaned(uint32_t ulInode);
 #endif
 static REDSTATUS DirInodeToPath(uint32_t ulDirInode, char *pszBuffer, uint32_t ulBufferSize, uint32_t ulFlags);
-#if (REDCONF_API_POSIX_CWD == 1) || (REDCONF_TASK_COUNT > 1U)
-static TASKSLOT *TaskFind(void);
+#if REDCONF_API_POSIX_CWD == 1
+static TASKSLOT *TaskFindSelf(void);
 #endif
 #if REDCONF_TASK_COUNT > 1U
-static TASKSLOT *TaskRegister(void);
+static TASKSLOT *TaskFind(uint32_t ulTaskId);
+static TASKSLOT *TaskRegister(uint32_t ulTaskId);
+static REDSTATUS TaskUnregister(uint32_t ulTaskId);
 #endif
 #if REDCONF_API_POSIX_CWD == 1
 static REDSTATUS CwdCloseVol(bool fReset);
@@ -349,6 +351,121 @@ int32_t red_uninit(void)
 
     return PosixReturn(ret);
 }
+
+
+#if REDCONF_TASK_COUNT > 1U
+/** @brief Register the given task ID as a file system user.
+
+    File system tasks must be registered in order to set aside memory for
+    per-task errno values and (if enabled) current working directories.  Tasks
+    are automatically registered as file system tasks the first time that they
+    call into any of the POSIX-like APIs, with the exception of red_init(),
+    red_uninit(), red_taskregister(), and red_taskunregister().  Thus, in many
+    cases, there is no need for explicit task registration.  However, it may be
+    desirable in some cases to explicitly register a task ahead of time, without
+    doing anything else, to avoid the possibility of automatic task registration
+    failing with a #RED_EUSERS error.
+
+    @note The task calling this function is _not_ automatically registered as a
+          file system user.  For this reason, #red_errno is _not_ used: errors
+          are returned directly.  The calling task may explicitly register
+          itself by providing its own task ID (or zero) for @p ulTaskId.
+
+    @param ulTaskId The ID of the task to register as a file system user.  Must
+                    be the same ID that RedOsTaskId() would return for that
+                    task.  A value of zero is treated as a synonym for the task
+                    ID of the calling task.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EINVAL The file system driver is uninitialized.
+    @retval -RED_EUSERS Cannot register @p ulTaskId as a file system user: too
+                        many users.
+
+    @sa red_taskunregister()
+*/
+REDSTATUS red_taskregister(
+    uint32_t    ulTaskId)
+{
+    REDSTATUS   ret;
+
+    if(gfPosixInited)
+    {
+        RedOsMutexAcquire();
+
+        if(TaskRegister((ulTaskId == 0U) ? RedOsTaskId() : ulTaskId) != NULL)
+        {
+            ret = 0;
+        }
+        else
+        {
+            ret = -RED_EUSERS;
+        }
+
+        RedOsMutexRelease();
+    }
+    else
+    {
+        ret = -RED_EINVAL;
+    }
+
+    return ret;
+}
+
+
+/** @brief Unregister the file system user with the given task ID.
+
+    This function is primarily useful in environments where tasks which access
+    the file system are created and destroyed at run-time and thus need to
+    change over time.  This function allows a task to be unregistered as a file
+    system user when it is about to be (or already has been) destroyed.  This
+    avoids wasting a task slot for a defunct task.
+
+    @note The task calling this function is _not_ automatically registered as a
+          file system user.  For this reason, #red_errno is _not_ used: errors
+          are returned directly.
+
+    @param ulTaskId The ID of the file system task to unregister as a file
+                    system user.  Must be the same ID that RedOsTaskId() would
+                    have returned for that task.  A value of zero treated as a
+                    synonym for the task ID of the calling task.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EIO    #REDCONF_API_POSIX_CWD and #REDCONF_DELETE_OPEN are
+                        enabled, and the task being unregistered held the last
+                        reference on an orphaned directory, and deleting that
+                        directory inode failed with an I/O error.
+    @retval -RED_EINVAL The file system driver is uninitialized.
+    @retval -RED_ENOENT @p ulTaskId is not a file system user.
+
+    @sa
+    - red_taskregister()
+    - red_uninit(), which unregisters _all_ tasks
+*/
+REDSTATUS red_taskunregister(
+    uint32_t    ulTaskId)
+{
+    REDSTATUS   ret;
+
+    if(gfPosixInited)
+    {
+        RedOsMutexAcquire();
+
+        ret = TaskUnregister((ulTaskId == 0U) ? RedOsTaskId() : ulTaskId);
+
+        RedOsMutexRelease();
+    }
+    else
+    {
+        ret = -RED_EINVAL;
+    }
+
+    return ret;
+}
+#endif /* REDCONF_TASK_COUNT > 1U */
 
 
 #if REDCONF_READ_ONLY == 0
@@ -4719,7 +4836,7 @@ int32_t red_chdir(
                 */
                 if(ret == 0)
                 {
-                    TASKSLOT *pTask = TaskFind();
+                    TASKSLOT *pTask = TaskFindSelf();
 
                     if((pTask == NULL) || (pTask->pCwd == NULL))
                     {
@@ -4812,7 +4929,7 @@ char *red_getcwd(
         ret = PosixEnter();
         if(ret == 0)
         {
-            const TASKSLOT *pTask = TaskFind();
+            const TASKSLOT *pTask = TaskFindSelf();
 
             if((pTask == NULL) || (pTask->pCwd == NULL))
             {
@@ -5007,14 +5124,15 @@ REDSTATUS *red_errnoptr(void)
     if(gfPosixInited)
     {
       #if REDCONF_TASK_COUNT > 1U
-        TASKSLOT *pTask;
+        TASKSLOT   *pTask;
+        uint32_t    ulTaskId = RedOsTaskId();
 
         /*  If this task has used the file system before, it will already have
             a task slot, which includes the task-specific errno.
         */
         RedOsMutexAcquire();
 
-        pTask = TaskFind();
+        pTask = TaskFind(ulTaskId);
 
         RedOsMutexRelease();
 
@@ -5025,13 +5143,13 @@ REDSTATUS *red_errnoptr(void)
             */
             RedOsMutexAcquire();
 
-            pTask = TaskRegister();
+            pTask = TaskRegister(ulTaskId);
 
             RedOsMutexRelease();
 
             if(pTask != NULL)
             {
-                REDASSERT(pTask->ulTaskId == RedOsTaskId());
+                REDASSERT(pTask->ulTaskId == ulTaskId);
                 REDASSERT(pTask->iErrno == 0);
 
                 piErrno = &pTask->iErrno;
@@ -5426,7 +5544,7 @@ static REDSTATUS PathStartingPoint(
               #if REDCONF_API_POSIX_CWD == 1
                 if(iDirFildes == RED_AT_FDCWD)
                 {
-                    const TASKSLOT *pTask = TaskFind();
+                    const TASKSLOT *pTask = TaskFindSelf();
 
                     if((pTask == NULL) || (pTask->pCwd == NULL))
                     {
@@ -6419,7 +6537,7 @@ static REDSTATUS PosixEnter(void)
       #if REDCONF_TASK_COUNT > 1U
         RedOsMutexAcquire();
 
-        if(TaskRegister() == NULL)
+        if(TaskRegister(RedOsTaskId()) == NULL)
         {
             ret = -RED_EUSERS;
             RedOsMutexRelease();
@@ -6672,21 +6790,37 @@ static REDSTATUS DirInodeToPath(
 }
 
 
-#if (REDCONF_API_POSIX_CWD == 1) || (REDCONF_TASK_COUNT > 1U)
+#if REDCONF_API_POSIX_CWD == 1
 /** @brief Find the task slot for the calling task.
 
     @return On success, returns a pointer to the ::TASKSLOT for the calling
             task.  If the calling task is not registered, returns `NULL`.
 */
-static TASKSLOT *TaskFind(void)
+static TASKSLOT *TaskFindSelf(void)
 {
-  #if REDCONF_TASK_COUNT == 1U
+  #if REDCONF_TASK_COUNT > 1U
+    return TaskFind(RedOsTaskId());
+  #else
     /*  Return the one and only task slot.
     */
     return &gaTask[0U];
-  #else
+  #endif
+}
+#endif /* REDCONF_API_POSIX_CWD == 1 */
+
+
+#if REDCONF_TASK_COUNT > 1U
+/** @brief Find the task slot for the given task.
+
+    @param ulTaskId The ID of the task to find.
+
+    @return On success, returns a pointer to the ::TASKSLOT for the given
+            task.  If the given task is not registered, returns `NULL`.
+*/
+static TASKSLOT *TaskFind(
+    uint32_t    ulTaskId)
+{
     uint32_t    ulIdx;
-    uint32_t    ulTaskId = RedOsTaskId();
     TASKSLOT   *pTask = NULL;
 
     REDASSERT(ulTaskId != 0U);
@@ -6701,24 +6835,23 @@ static TASKSLOT *TaskFind(void)
     }
 
     return pTask;
-  #endif
 }
-#endif /* (REDCONF_API_POSIX_CWD == 1) || (REDCONF_TASK_COUNT > 1U) */
 
 
-#if REDCONF_TASK_COUNT > 1U
 /** @brief Register a task as a file system user, if it is not already
            registered as one.
+
+    @param ulTaskId The ID of the task to register as a file system user.
 
     The caller must hold the FS mutex.
 
     @return On success, returns a pointer to the task slot assigned to the
-            calling task.  If the task was not previously registered, and there
+            given task.  If the task was not previously registered, and there
             are no free task slots, returns NULL.
 */
-static TASKSLOT *TaskRegister(void)
+static TASKSLOT *TaskRegister(
+    uint32_t    ulTaskId)
 {
-    uint32_t    ulTaskId = RedOsTaskId();
     uint32_t    ulIdx;
     TASKSLOT   *pTask = NULL;
     TASKSLOT   *pFreeTask = NULL;
@@ -6749,6 +6882,57 @@ static TASKSLOT *TaskRegister(void)
     }
 
     return pTask;
+}
+
+
+/** @brief Unregister a task as a file system user.
+
+    @param ulTaskId The ID of the task to unregister as a file system user.
+
+    The caller must hold the FS mutex.
+
+    @return A negated ::REDSTATUS code indicating the operation result.
+
+    @retval 0           Operation was successful.
+    @retval -RED_EIO    #REDCONF_API_POSIX_CWD and #REDCONF_DELETE_OPEN are
+                        enabled, and the task being unregistered held the last
+                        reference on an orphaned directory, and deleting that
+                        directory inode failed with an I/O error.
+    @retval -RED_ENOENT No file system user found with the @p ulTaskId ID.
+*/
+static REDSTATUS TaskUnregister(
+    uint32_t    ulTaskId)
+{
+    TASKSLOT   *pTask = TaskFind(ulTaskId);
+    REDSTATUS   ret;
+
+    if(pTask == NULL)
+    {
+        ret = -RED_ENOENT;
+    }
+    else
+    {
+        /*  Mark the task slot as available.
+        */
+        pTask->ulTaskId = 0U;
+
+        /*  Reset errno so that, when the task slot is next used, the errno is
+            initially zero.
+        */
+        pTask->iErrno = 0;
+
+      #if REDCONF_API_POSIX_CWD == 1
+        /*  Release the CWD reference that was held by the task.  This resets
+            the CWD for the task slot so that, the next time it is used, the CWD
+            will be the root directory of volume zero.
+        */
+        ret = CwdClose(pTask, true, false);
+      #else
+        ret = 0;
+      #endif
+    }
+
+    return ret;
 }
 #endif /* REDCONF_TASK_COUNT > 1U */
 

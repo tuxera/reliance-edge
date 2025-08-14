@@ -256,6 +256,10 @@ typedef struct
 
 int32_t red_init(void);
 int32_t red_uninit(void);
+#if REDCONF_TASK_COUNT > 1U
+REDSTATUS red_taskregister(uint32_t ulTaskId);
+REDSTATUS red_taskunregister(uint32_t ulTaskId);
+#endif
 int32_t red_mount(const char *pszVolume);
 int32_t red_mount2(const char *pszVolume, uint32_t ulFlags);
 int32_t red_umount(const char *pszVolume);

@@ -59,6 +59,15 @@
 */
 #define BDEV_FLASHFX        (1U)
 
+/** @brief Tuxera SafeFTL driver implementation.
+
+    This implementation uses Tuxera's SafeFTL driver to use raw flash
+    storage with Reliance Edge.
+
+    This option is only available in commercial releases of Reliance Edge.
+*/
+#define BDEV_SAFEFTL        (2U)
+
 /** @brief The FatFs example implementation.
 
     This implementation is designed to reuse an existing block device driver
@@ -111,6 +120,7 @@
     Must be one of:
     - #BDEV_CUSTOM
     - #BDEV_FLASHFX
+    - #BDEV_SAFEFTL
     - #BDEV_FATFS
     - #BDEV_ATMEL_SDMMC
     - #BDEV_STM32_SDIO
@@ -131,6 +141,11 @@
     #error "FlashFX block device only supported in commercial versions of Reliance Edge."
   #endif
   #include "osbdev_flashfx.h"
+#elif BDEV_EXAMPLE_IMPLEMENTATION == BDEV_SAFEFTL
+  #if RED_KIT == RED_KIT_GPL
+    #error "SafeFTL block device only supported in commercial versions of Reliance Edge."
+  #endif
+  #include "osbdev_safeftl.h"
 #elif BDEV_EXAMPLE_IMPLEMENTATION == BDEV_FATFS
   #include "osbdev_fatfs.h"
 #elif BDEV_EXAMPLE_IMPLEMENTATION == BDEV_ATMEL_SDMMC

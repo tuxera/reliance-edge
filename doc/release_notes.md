@@ -9,9 +9,8 @@ recent releases and a list of known issues.
 
 #### Common Code Changes
 
-Reliance Edge v3.0 adds features to the POSIX-like API.  Most of these features
-exist in the POSIX file system interface but were not implemented by Reliance
-Edge until now.  The key new features are:
+Several POSIX filesystem features and interfaces which were originally omitted
+from the Reliance Edge POSIX-like API are now available.  These are:
 
 - POSIX ownership (user ID and group ID) and permissions (07777: read, write,
   execute, setuid, setgid, sticky bit).  Includes support for using these
@@ -26,12 +25,6 @@ Edge until now.  The key new features are:
   (has an open file descriptor, open directory handle, or is the current
   working directory) can be unlinked, and the underlying inode is not freed
   until the final reference is released.
-
-All of the above are optional, and can be turned off to avoid increasing the
-code size or RAM usage of Reliance Edge.
-
-Other APIs which were implemented for this release:
-
 - The `red_*at()` APIs support relative path parsing starting from an arbitrary
   directory file descriptor.  This allows for more efficient path parsing: a
   directory path can be parsed just once to open a directory file descriptor,
@@ -45,30 +38,117 @@ Other APIs which were implemented for this release:
 - `red_stat()`: similar to `red_fstat()`, but uses a path rather than a file
   descriptor.
 - `red_pread()`, `red_pwrite()`: read and write to a specific offset.
-- `red_freserve()`: reserve disk space for an upcoming sequential write.  Useful
-  to write a large file without the risk of disk full errors before finishing.
 - New directory APIs:
-    - `red_fdopendir()`: get a `REDIR` handle from a file descriptor.
+    - `red_fdopendir()`: get a `REDDIR` handle from a file descriptor.
     - `red_telldir()`: return the current directory offset.
     - `red_seekdir()`: seek to a specific directory offset.
+
+Much of the above functionality is optional: a configuration option was added
+for any feature which increased the code size or RAM usage of Reliance Edge by a
+non-trivial amount.
+
+The POSIX-like API now also includes the following non-POSIX extensions:
+
+- `red_taskregister()` and `red_taskunregister()`.  The POSIX-like API stores
+  errno and current-working directory values in a statically allocated but
+  task-specific location.  Each task must be registered so that it can reserve a
+  slot for this information.  Tasks are automatically registered the first time
+  they call into the POSIX-like API.  These two new APIs offer applications more
+  control over task registration.  `red_taskregister()` allows a task to be
+  pre-registered without doing anything else.  `task_taskunregister()` allows a
+  task to be unregistered, which was previously unsupported; the ability to
+  unregister tasks enables using the filesystem from tasks which are created and
+  destroyed dynamically without leaking a task slot.
+- `red_freserve()`: reserve disk space for an upcoming sequential write.  Useful
+  for ensuring that there is space to write a large file before starting to
+  write it.
 - `red_getdirpath()`: given a directory file descriptor, populate a buffer with
   the absolute path to that directory.  Similar to `red_getcwd()` but works for
   any directory, not just the CWD.
+- `red_writeback()` (only available in the commercial release): flushes dirty
+  buffers without committing a transaction point.  Can be used to reduce the
+  latency of a subsequent transaction point, by reducing the number of buffers
+  which are dirty and need to be flushed before transacting.  The new
+  `REDCONF_BUFFER_MAX_DIRTY` configuration option (also only available in the
+  commercial release) can be used to accomplish the same goal, by automatically
+  flushing dirty buffers when their number exceeds a given threshold.
 
-This release also implements another new feature: specifying the inode count
-during format.  Previously, the inode count could only be specified at compile
-time, in the `VOLCONF:ulInodeCount` field in redconf.c.  This was not flexible
-enough when the volume size was based on an auto-detected sector count which
-was known to be widely variable.  With v3.0, `VOLCONF:ulInodeCount` has now
-been redefined as the _default_ inode count, used by the formatter only when
-the inode count is unspecified.  The POSIX-like API `red_format2()`, the host
-tools (`redfmt` and `redimgbld`), and some OS-specific interfaces, optionally
-support specifying an inode count for format.  In addition to an explicit
-numerical count, the formatter also supports an "auto" option which means to
-automatically pick an inode count which is reasonable for the volume size.  The
-"auto" option can also be specified in `VOLCONF:ulInodeCount` via
-`INODE_COUNT_AUTO`; in the Configuration Utility, this is the "Auto" checkbox in
-front of the inode count spinbox.
+The FSE API has one addition: `RedFseStatfs()`.  Similar to `red_statvfs()` from
+the POSIX-like API, `RedFseStatfs()` allows an application to query basic
+filesystem information like free space and inode count.
+
+The inode count for a volume can now be specified as a format parameter.
+Previously, the inode count could only be specified at compile time, in the
+`VOLCONF:ulInodeCount` field in redconf.c.  This was not flexible enough when
+the volume size was based on an auto-detected sector count which was known to be
+widely variable.  With v3.0, `VOLCONF:ulInodeCount` has now been redefined as
+the _default_ inode count, used by the formatter only when the inode count is
+unspecified.  The POSIX-like API `red_format2()`, the host tools (`redfmt` and
+`redimgbld`), and some OS-specific interfaces, optionally support specifying an
+inode count for format.  In addition to an explicit numerical count, the
+formatter also supports an "auto" option which means to automatically pick an
+inode count which is reasonable for the volume size.  The "auto" option can also
+be specified in `VOLCONF:ulInodeCount` via `INODE_COUNT_AUTO`; in the
+Configuration Utility, this is the "Auto" checkbox in front of the inode count
+spinbox.
+
+Reliance Edge v2.6 updated the critical error macro to print the file name and
+line number where the error occurred.  The file name was derived from the
+`__FILE__` macro, but only the basename was printed: the directory path, if
+present, was stripped off.  With v3.0, the `__FILE_NAME__` macro will be used
+instead of `__FILE__` if defined; contemporary versions of GCC and Clang both
+define `__FILE_NAME__`.  Using `__FILE_NAME__` rather than `__FILE__` avoids
+bloating the binary with directory path strings that are not used and which may
+contain sensitive information (e.g., `"/home/johnsmith/redfs"` may be sensitive
+if "johnsmith" does not want recipients of the binary to know his name).
+
+The mount algorithm has been tweaked to tolerate read failure of a metaroot
+node.  Previously, while only one of the metaroot nodes was required to be
+valid, it was expected that both of them could be read from the storage device.
+Now, if an error is reported while reading either metaroot, this is treated the
+same as if the metaroot had been invalid.  Thus, if one metaroot is unreadable
+but the other is readable and valid, mount will succeed.  On most storage
+devices, this change should not affect behavior, since read I/O errors are
+unexpected; however, it may increase reliability on storage devices which lack
+atomic sector updates, and where an interrupted write could corrupt a sector in
+such a way (e.g., an uncorrectable ECC error) that the corruption is detectable,
+and where that corruption results in a read I/O error.
+
+The userspace exchangeability driver is now available on Windows, in addition to
+Linux.  The Linux userspace driver (introduced with the v2.0 release) is
+implemented with FUSE.  The Windows userspace driver is implemented with
+[Dokany](https://github.com/dokan-dev/dokany), using its "dokanfuse" layer so
+that the same underlying FUSE implementation can be used on both Linux and
+Windows.  See the "Command-Line Host Tools" chapter of the _Developer's Guide_
+for more information on the FUSE and Dokany userspace drivers.
+
+The checker (only available in the commercial release) now has a verbosity
+parameter.  At verbosity level 2, the checker will print a variety of volume
+statistics.
+
+Fix a bug in BDevTest (available only in the commercial release) where, when run
+interactively, it always used volume #0's block device, rather than using the
+block device specified on the command line.
+
+Changes which pertain to Linux hosts:
+
+- Linux host support has been added to the test projects included in the
+  commercial release: endian\_tests, corruption\_tests, fstrim, errinject, and
+  powerint.
+  - To facilitate using the same makefiles on Linux and Windows, the Reliance
+    Edge makefiles now use have OS abstractions for Linux and Windows and
+    toolset abstractions for GCC and MSVS.
+- In the Linux implementation of osbdev.c, specifically in `RedOsBDevFlush()`,
+  if `fsync()` fails with an error, that failure status is saved, and subsequent
+  flushes will see that saved status and return an I/O error without calling
+  `fsync()` again.  This change was made because `fsync()` only guarantees an
+  I/O error will be propagated for the _first_ `fsync()` after an I/O failure,
+  but Reliance Edge can be configured to retry after I/O errors
+  (`VOLCONF::bBlockIoRetries`), and it would be incorrect to conclude that a
+  retried `fsync()` was successful just because no error resulted.
+- projects/linux/Makefile no longer uses `readlink(1)` in a variable which is
+  evaluated thousands of times.  This eliminates unnecessary process spawning
+  which made the project take noticeably longer to build.
 
 #### INTEGRITY Port Changes
 
@@ -86,12 +166,34 @@ Additionally, the following changes were made:
 
 - Opening a directory, with `open()` or `opendir()`, no longer uses two
   of Reliance Edge's handles: only one handle is used.
+- In the client-server configuration, if a client is disconnected, all tasks
+  associated with that client are deregistered, allowing the task slots used by
+  a disconnected client to be reused.
+- `chdir()` fails with an error when `REDCONF_POSIX_API_CWD == 0` rather than
+  crashing.
+- Add an explicit filesystem reference to the fsck and newfs utilities, which
+  allows those utilities to be used from an `AddressSpace` which does not
+  otherwise reference the filesystem (e.g., by calling `mount()`).
 - Improve the efficiency of `pread()` and `stat()` using new POSIX-like APIs.
-- Numerous bug fixes in the `porttest` test suite.
+- Fix numerous bugs in the `porttest` test suite.
 - projects/integrity/simarm and projects/integrity/rcar-h3sk have been updated
-  to use a private copy of net_server_module.gpj.
+  to use a private copy of net\_server\_module.gpj, rather than the copy in the
+  INTEGRITY installation directory, which facilitates making project-specific
+  customizations to the INTEGRITY Shell.
 - Add a new project, projects/integrity/simarm-posixsys, for demonstrating
   and testing support for POSIX ownership and permissions.
+
+#### U-Boot Port Chnages
+
+The U-Boot port has been updated for accommodate changes in new versions of
+U-Boot and to implement optional write support.
+
+#### FreeRTOS / SafeRTOS Port Changes
+
+The FreeRTOS and SafeRTOS ports have been updated to add FlashFX Tera RT (fka
+SafeFTL) as a block device option.  This augments the pre-existing support for
+FlashFX Tera (non-RT).  For licensing reasons, these FTLs may only be used with
+the commercial release of Reliance Edge.
 
 #### Upgrading from Reliance Edge v2.6
 
@@ -105,7 +207,11 @@ or `1`:
 
 If you want to use disks formatted with a previous release of Reliance Edge, all
 of the above (except `REDCONF_API_POSIX_FRESERVE`) need to be defined as `0`.
-After adding these new macros, then update `RED_CONFIG_UTILITY_VERSION` and
+
+A fifth macro, `REDCONF_BUFFER_MAX_DIRTY` must also be added: if the feature is
+to be disabled (equivalent to v2.6 behavior), use `0U` as the value.
+
+After adding these five new macros, then update `RED_CONFIG_UTILITY_VERSION` and
 `RED_CONFIG_MINCOMPAT_VER` to have a value of `0x3000000U`.
 
 Reliance Edge v3.0 introduces a new on-disk layout to support its new features:
@@ -117,7 +223,11 @@ If you have a custom port, it must now define the `REDBDEVCTX` type in
 redostypes.h and implement `RedOsBDevConfig()` in osbdev.c.  The "stubbed"
 implementation can be copied: see os/stub/include/redostypes.h and
 os/stub/services/osbdev.c.  The redosconf.h header file must be created: in most
-cases, os/stub/include/redostypes.h can be copied and used without changes.
+cases, os/stub/include/redosconf.h can be copied and used without changes.
+
+If you have a custom port and you want to enable `REDCONF_POSIX_OWNER_PERM`,
+then osuidgid.c must be implemented.  Copy os/stub/services/osuidgid.c into the
+services subdirectory for your port and implement the functions therein.
 
 ### Reliance Edge v2.6, January 2022
 

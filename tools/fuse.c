@@ -24,7 +24,7 @@
 */
 /** @file
     @brief Implements a Reliance Edge FUSE (File System in User Space) port
-           for Linux.
+           for Linux and Windows.
 */
 #define FUSE_USE_VERSION 26
 #include <fuse.h>
@@ -38,6 +38,8 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#ifdef __linux__
 #include <unistd.h>
 #include <pthread.h>
 
@@ -54,6 +56,22 @@
   #undef st_ctime
 #endif
 
+#endif /* ifdef __linux__ */
+
+#ifdef _WIN32
+#include <windows.h>
+
+#define _MODE_T_
+typedef unsigned int mode_t;
+
+#define stat FUSE_STAT
+#define off_t FUSE_OFF_T
+
+#define PATH_MAX 512U /* Long enough for volume prefix + Windows path */
+#define POSIX_2008_STAT
+
+#endif /* ifdef _WIN32 */
+
 #include <redfs.h>
 
 #if REDCONF_API_POSIX == 1
@@ -69,8 +87,20 @@
     suitable for FUSE.  That file is stripped from the FUSE build and instead
     we reimplement the functions here.
 */
-uint32_t RedOsUserId(void) { return fuse_get_context()->uid; }
-uint32_t RedOsGroupId(void) { return fuse_get_context()->gid; }
+uint32_t RedOsUserId(void)
+{
+    /*  On the --format code path, these functions are called before FUSE is
+        initialized, and with Dokany fuse_get_context() has been observed to
+        return NULL in that situation.
+    */
+    const struct fuse_context *c = fuse_get_context();
+    return (c != NULL) ? c->uid : RED_ROOT_USER;
+}
+uint32_t RedOsGroupId(void)
+{
+    const struct fuse_context *c = fuse_get_context();
+    return (c != NULL) ? c->gid : 0U;
+}
 bool RedOsIsGroupMember(uint32_t ulGid) { return RedOsGroupId() == ulGid; }
 bool RedOsIsPrivileged(void)
 {
@@ -89,8 +119,11 @@ bool RedOsIsPrivileged(void)
       assumes that no translation needs to occur: make sure that this is the
       case.
   */
-  #if (RED_S_IFREG != S_IFREG) || (RED_S_IFDIR != S_IFDIR) || (RED_S_ISUID != S_ISUID) || (RED_S_ISGID != S_ISGID) || \
-      (RED_S_ISVTX != S_ISVTX) || (RED_S_IRWXU != S_IRWXU) || (RED_S_IRWXG != S_IRWXG) || (RED_S_IRWXO != S_IRWXO)
+  #if (RED_S_IFREG != S_IFREG) || (RED_S_IFDIR != S_IFDIR)
+    #error "error: Reliance Edge type bits don't match host OS permission bits!"
+  #endif
+  #if defined(__linux__) && ((RED_S_ISUID != S_ISUID) || (RED_S_ISGID != S_ISGID) || (RED_S_ISVTX != S_ISVTX) || \
+      (RED_S_IRWXU != S_IRWXU) || (RED_S_IRWXG != S_IRWXG) || (RED_S_IRWXO != S_IRWXO))
     #error "error: Reliance Edge permission bits don't match host OS permission bits!"
   #endif
 
@@ -179,9 +212,16 @@ static struct fuse_operations red_oper =
 static uint8_t gbVolume;
 static const char *gpszVolume;
 
+#ifdef _WIN32
+static CRITICAL_SECTION gFuseMutex;
+#define REDFS_LOCK() EnterCriticalSection(&gFuseMutex)
+#define REDFS_UNLOCK() LeaveCriticalSection(&gFuseMutex)
+#else
 static pthread_mutex_t gFuseMutex = PTHREAD_MUTEX_INITIALIZER;
 #define REDFS_LOCK() (void)pthread_mutex_lock(&gFuseMutex)
 #define REDFS_UNLOCK() (void)pthread_mutex_unlock(&gFuseMutex)
+#endif
+
 
 static REDOPTIONS gOptions;
 
@@ -239,6 +279,10 @@ int main(
     REDSTATUS           status;     /* For RedOsBDevConfig() return value */
 
     (void)argc;
+
+  #ifdef _WIN32
+    InitializeCriticalSection(&gFuseMutex);
+  #endif
 
     /*  Initialize immediately to ensure the output is printed.
     */
@@ -394,7 +438,7 @@ static int fuse_red_access(
 
     result = fuse_red_getattr(pszPath, &st);
 
-  #if REDCONF_POSIX_OWNER_PERM == 1
+  #if REDCONF_POSIX_OWNER_PERM == 1 && defined(__linux__)
     if(result == 0)
     {
         const struct fuse_context  *pCtx = fuse_get_context();
@@ -853,7 +897,7 @@ static int fuse_red_readlink(
 
     if(result == 0)
     {
-        if(red_readlink(szRedPath, pszBuffer, nBufferSize) != 0)
+        if(red_readlink(szRedPath, pszBuffer, (uint32_t)nBufferSize) != 0)
         {
             result = rederrno_to_errno(red_errno);
         }
@@ -899,7 +943,7 @@ static int fuse_red_read(
     REDFS_LOCK();
 
     iFd = (int32_t)pFileInfo->fh;
-    result = (int)red_pread(iFd, pcBuf, size, (uint64_t)offset);
+    result = (int)red_pread(iFd, pcBuf, (uint32_t)size, (uint64_t)offset);
     if(result < 0)
     {
         result = rederrno_to_errno(red_errno);
@@ -933,7 +977,7 @@ static int fuse_red_write(
     REDFS_LOCK();
 
     iFd = (int32_t)pFileInfo->fh;
-    result = (int)red_pwrite(iFd, pcBuf, size, (uint32_t)offset);
+    result = (int)red_pwrite(iFd, pcBuf, (uint32_t)size, (uint32_t)offset);
     if(result < 0)
     {
         result = rederrno_to_errno(red_errno);
@@ -1397,16 +1441,20 @@ static mode_t redmode_to_mode(
 {
     mode_t      linuxMode;
 
+    /*  One of the type bits should always be set.
+    */
+  #if REDCONF_API_POSIX_SYMLINK == 1
+    assert(RED_S_ISDIR(uRedMode) || RED_S_ISREG(uRedMode) || RED_S_ISLNK(uRedMode));
+  #else
+    assert(RED_S_ISDIR(uRedMode) || RED_S_ISREG(uRedMode));
+  #endif
+
     /*  No need for translation: Reliance Edge mode bits have the same values as
         the Linux mode bits.
     */
     linuxMode = (mode_t)uRedMode;
 
-    /*  One of the type bits should always be set.
-    */
-    assert(S_ISDIR(linuxMode) || S_ISREG(linuxMode) || S_ISLNK(linuxMode));
-
-  #if REDCONF_POSIX_OWNER_PERM == 0
+  #if defined(__linux__) && (REDCONF_POSIX_OWNER_PERM == 0)
     /*  In this configuration, the Reliance Edge mode bits only store whether
         the file is a regular file or directory; the permission bits are unused.
         So we add hard-coded permissions here.
@@ -1425,7 +1473,7 @@ static mode_t redmode_to_mode(
   #if REDCONF_READ_ONLY == 0
     linuxMode |= S_IWUSR | S_IWGRP | S_IWOTH;
   #endif
-  #endif /* REDCONF_POSIX_OWNER_PERM == 0 */
+  #endif /* if defined(__linux__) && REDCONF_POSIX_OWNER_PERM == 0 */
 
     return linuxMode;
 }
@@ -1467,7 +1515,11 @@ static int rederrno_to_errno(
         case RED_ELOOP:     return -ELOOP;
         case RED_ENODATA:   return -ENODATA;
         case RED_ENOLINK:   return -ENOLINK;
+      #if _WIN32
+        case RED_EUSERS:    return -EBUSY;
+      #else
         case RED_EUSERS:    return -EUSERS;
+      #endif
         default:            return -EINVAL;    /* Not expected, but default to EINVAL */
     }
 }
@@ -1636,7 +1688,7 @@ static int red_make_full_path(
         pszPathSep = "";
     }
 
-    if(snprintf(pszBuffer, nBufferSize, "%s%s%s", gpszVolume, pszPathSep, pszPath) >= nBufferSize)
+    if(snprintf(pszBuffer, nBufferSize, "%s%s%s", gpszVolume, pszPathSep, pszPath) >= (int32_t)nBufferSize)
     {
         fprintf(stderr, "Error: path too long (%s%s%s)\n", gpszVolume, pszPathSep, pszPath);
         result = -ENAMETOOLONG;

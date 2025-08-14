@@ -5,7 +5,6 @@ P_CFLAGS += -D_FILE_OFFSET_BITS=64 -D_XOPEN_SOURCE=500 -D_POSIX_C_SOURCE=200809
 
 # Don't build edge-u by default since it relies on libfuse-dev,
 # but do build edge-u if "make all" is explicitly run.
-
 .PHONY: default
 default: redfmt redimgbld
 
@@ -44,7 +43,7 @@ $(P_BASEDIR)/tools/imgbld/ibposix.$(B_OBJEXT):		$(P_BASEDIR)/tools/imgbld/ibposi
 $(P_BASEDIR)/tools/imgbld.$(B_OBJEXT):			$(P_BASEDIR)/tools/imgbld/imgbld.c $(REDHDR) $(TOOLHDR)
 $(P_BASEDIR)/os/$(P_OS)/tools/imgbldlinux.$(B_OBJEXT):	$(P_BASEDIR)/os/$(P_OS)/tools/imgbldlinux.c $(REDHDR) $(TOOLHDR)
 $(P_BASEDIR)/os/$(P_OS)/tools/imgbld_main.$(B_OBJEXT):	$(P_BASEDIR)/os/$(P_OS)/tools/imgbld_main.c $(REDHDR) $(TOOLHDR)
-$(P_BASEDIR)/os/$(P_OS)/tools/fuse.$(B_OBJEXT):		$(P_BASEDIR)/os/$(P_OS)/tools/fuse.c $(REDHDR) $(TOOLHDR)
+$(P_BASEDIR)/tools/fuse.$(B_OBJEXT):			$(P_BASEDIR)/tools/fuse.c $(REDHDR)
 
 # The redconf.c for the tools #includes the redconf.c from the parent project
 # to inherit its settings, so add it as a dependency.
@@ -57,7 +56,7 @@ redfmt: $(P_BASEDIR)/os/$(P_OS)/tools/$(REDTOOLPREFIX)fmt.$(B_OBJEXT) $(REDDRIVO
 redimgbld: $(IMGBLDOBJ) $(REDDRIVOBJ) $(REDTOOLOBJ)
 	$(B_LDCMD)
 
-edge-u: $(P_BASEDIR)/os/$(P_OS)/tools/fuse.$(B_OBJEXT) $(REDTOOLOBJ) $(REDFUSEDRIVOBJ)
+edge-u: $(P_BASEDIR)/tools/fuse.$(B_OBJEXT) $(REDTOOLOBJ) $(REDFUSEDRIVOBJ)
 	$(B_CC) $^ $(LDFLAGS) -lfuse -o $@
 
 # redfuse was renamed to edge-u but retain the redfuse target for backward

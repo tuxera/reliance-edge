@@ -28,10 +28,6 @@
 #define REDCOREAPI_H
 
 
-#if REDCONF_CHECKER == 1
-#include <stdio.h>
-#endif
-
 #include <redstat.h>
 #include <redformat.h>
 
@@ -43,9 +39,6 @@ REDSTATUS RedCoreVolSetCurrent(uint8_t bVolNum);
 
 #if FORMAT_SUPPORTED
 REDSTATUS RedCoreVolFormat(const REDFMTOPT *pOptions);
-#endif
-#if REDCONF_CHECKER == 1
-REDSTATUS RedCoreVolCheck(FILE *pOutputFile, char *pszOutputBuffer, uint32_t nOutputBufferSize);
 #endif
 REDSTATUS RedCoreVolMount(uint32_t ulFlags);
 REDSTATUS RedCoreVolUnmount(void);

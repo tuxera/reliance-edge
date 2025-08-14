@@ -38,7 +38,7 @@ static REDSTATUS InodeIsBranched(uint32_t ulInode, bool *pfIsBranched);
 #if (REDCONF_READ_ONLY == 0) && (REDCONF_API_POSIX == 1)
 static REDSTATUS InodeFindFree(uint32_t *pulInode);
 #endif
-#if (REDCONF_READ_ONLY == 0) && ((REDCONF_API_POSIX == 1) || FORMAT_SUPPORTED) && (REDCONF_CHECKER == 0)
+#if (REDCONF_READ_ONLY == 0) && ((REDCONF_API_POSIX == 1) || FORMAT_SUPPORTED)
 static REDSTATUS RedInodeIsFree(uint32_t ulInode, bool *pfFree);
 #endif
 #if REDCONF_READ_ONLY == 0
@@ -49,9 +49,7 @@ static REDSTATUS InodeGetCurrentCopy(uint32_t ulInode, uint8_t *pbWhich);
 static REDSTATUS InodeBitSet(uint32_t ulInode, uint8_t bWhich, bool fAllocated);
 #endif
 static uint32_t InodeBlock(uint32_t ulInode, uint8_t bWhich);
-#if REDCONF_CHECKER == 0
 static REDSTATUS RedInodeBitGet(uint8_t bMR, uint32_t ulInode, uint8_t bWhich, bool *pfAllocated);
-#endif
 
 
 /** @brief Mount an existing inode.
@@ -960,7 +958,7 @@ static REDSTATUS InodeFindFree(
 #endif
 
 
-#if ((REDCONF_READ_ONLY == 0) && ((REDCONF_API_POSIX == 1) || FORMAT_SUPPORTED)) || (REDCONF_CHECKER == 1)
+#if (REDCONF_READ_ONLY == 0) && ((REDCONF_API_POSIX == 1) || FORMAT_SUPPORTED)
 /** @brief Determine whether an inode number is available.
 
     @param ulInode  The node number to examine.
@@ -974,10 +972,7 @@ static REDSTATUS InodeFindFree(
                         number.
     @retval -RED_EIO    A disk I/O error occurred.
 */
-#if REDCONF_CHECKER == 0
-static
-#endif
-REDSTATUS RedInodeIsFree(
+static REDSTATUS RedInodeIsFree(
     uint32_t    ulInode,
     bool       *pfFree)
 {
@@ -1164,10 +1159,7 @@ static REDSTATUS InodeGetCurrentCopy(
                         `NULL`.
     @retval -RED_EIO    A disk I/O error occurred.
 */
-#if REDCONF_CHECKER == 0
-static
-#endif
-REDSTATUS RedInodeBitGet(
+static REDSTATUS RedInodeBitGet(
     uint8_t     bMR,
     uint32_t    ulInode,
     uint8_t     bWhich,

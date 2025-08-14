@@ -37,10 +37,8 @@
 #define MINIMUM_METADATA_BLOCKS (5U)
 
 
-#if REDCONF_CHECKER == 0
 static REDSTATUS RedVolMountMaster(uint32_t ulFlags);
 static REDSTATUS RedVolMountMetaroot(uint32_t ulFlags);
-#endif
 static bool MetarootIsValid(METAROOT *pMR, bool *pfSectorCRCIsValid);
 #if DELETE_SUPPORTED && (REDCONF_DELETE_OPEN == 1)
 static REDSTATUS ConcatOrphanLists(void);
@@ -324,10 +322,7 @@ REDSTATUS RedVolMount(
     @retval -RED_EIO    Master block missing, corrupt, or inconsistent with the
                         compile-time driver settings.
 */
-#if REDCONF_CHECKER == 0
-static
-#endif
-REDSTATUS RedVolMountMaster(
+static REDSTATUS RedVolMountMaster(
     uint32_t        ulFlags)
 {
     REDSTATUS       ret;
@@ -439,10 +434,7 @@ REDSTATUS RedVolMountMaster(
     @retval 0           Operation was successful.
     @retval -RED_EIO    Both metaroots are missing or corrupt.
 */
-#if REDCONF_CHECKER == 0
-static
-#endif
-REDSTATUS RedVolMountMetaroot(
+static REDSTATUS RedVolMountMetaroot(
     uint32_t    ulFlags)
 {
     REDSTATUS   retMR0;

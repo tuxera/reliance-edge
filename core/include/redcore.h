@@ -215,12 +215,6 @@ void RedInodePutDindir(CINODE *pInode);
 void RedInodePutIndir(CINODE *pInode);
 #endif
 void RedInodePutData(CINODE *pInode);
-#if REDCONF_CHECKER == 1
-REDSTATUS RedInodeIsFree(uint32_t ulInode, bool *pfFree);
-#endif
-#if REDCONF_CHECKER == 1
-REDSTATUS RedInodeBitGet(uint8_t bMR, uint32_t ulInode, uint8_t bWhich, bool *pfAllocated);
-#endif
 
 REDSTATUS RedInodeDataRead(CINODE *pInode, uint64_t ullStart, uint32_t *pulLen, void *pBuffer);
 #if REDCONF_READ_ONLY == 0
@@ -252,10 +246,6 @@ REDSTATUS RedDirEntryRename(CINODE *pSrcPInode, const char *pszSrcName, CINODE *
 REDSTATUS RedVolInitBlockGeometry(void);
 REDSTATUS RedVolInitBlockLayout(void);
 REDSTATUS RedVolMount(uint32_t ulFlags);
-#if REDCONF_CHECKER == 1
-REDSTATUS RedVolMountMaster(uint32_t ulFlags);
-REDSTATUS RedVolMountMetaroot(uint32_t ulFlags);
-#endif
 #if REDCONF_READ_ONLY == 0
 REDSTATUS RedVolTransact(void);
 REDSTATUS RedVolRollback(void);

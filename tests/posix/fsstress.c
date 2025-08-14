@@ -56,10 +56,6 @@
 #include <redgetopt.h>
 #include <redtoolcmn.h>
 
-#if REDCONF_CHECKER == 1
-#include <redcoreapi.h>
-#endif
-
 
 /*  Create POSIX types.  Use #define to avoid name conflicts in those
     environments where the type names already exist.
@@ -262,9 +258,6 @@ typedef enum {
     OP_TRUNCATE,
     OP_UNLINK,
     OP_WRITE,
-  #if REDCONF_CHECKER == 1
-    OP_CHECK,
-  #endif
     OP_LAST
 } opty_t;
 
@@ -330,9 +323,6 @@ static void stat_f(int opno, long r);
 static void truncate_f(int opno, long r);
 static void unlink_f(int opno, long r);
 static void write_f(int opno, long r);
-#if REDCONF_CHECKER == 1
-static void check_f(int opno, long r);
-#endif
 
 static opdesc_t ops[] = {
   #if REDCONF_POSIX_OWNER_PERM == 1
@@ -351,9 +341,6 @@ static opdesc_t ops[] = {
     {OP_TRUNCATE, "truncate", truncate_f, 2, 1},
     {OP_UNLINK, "unlink", unlink_f, 1, 1},
     {OP_WRITE, "write", write_f, 4, 1},
-  #if REDCONF_CHECKER == 1
-    {OP_CHECK, "check", check_f, 1, 1},
-  #endif
 }, *ops_end;
 
 static flist_t flist[FT_nft] = {
@@ -1875,80 +1862,4 @@ static void write_f(int opno, long r)
 }
 
 
-#if REDCONF_CHECKER == 1
-static void check_f(int opno, long r)
-{
-    const char *pszVolume = gpRedVolConf->pszPathPrefix;
-    char *pszCwd;
-    int32_t ret;
-
-    (void)r;
-
-    errno = 0;
-
-    /*  Unmounting resets the CWD.  Save the CWD so we can restore it when
-        the volume is mounted again.
-    */
-    pszCwd = fsstress_getcwd(NULL, 0);
-    ret = (pszCwd == NULL) ? -1 : 0;
-
-    /*  Transact so that red_umount() won't revert recent changes, even if
-        unmount transactions are disabled.
-    */
-    if(ret == 0)
-    {
-        ret = red_transact(pszVolume);
-    }
-
-    /*  The checker can only be run on unmounted volumes.
-    */
-    if(ret == 0)
-    {
-        ret = red_umount(pszVolume);
-    }
-
-    if(ret == 0)
-    {
-        errno = -RedCoreVolCheck(stderr, NULL, 0U);
-        ret = (errno != 0) ? -1 : 0;
-    }
-
-    /*  Mount the volume for the subsequent test cases.
-    */
-    if(ret == 0)
-    {
-        ret = red_mount(pszVolume);
-    }
-
-    /*  Restore the original CWD.  If this isn't done, check_cwd() will fail.
-    */
-    if(ret == 0)
-    {
-        ret = red_chdir(pszCwd);
-    }
-    if(pszCwd != NULL)
-    {
-        free(pszCwd);
-    }
-
-    if (verbose)
-    {
-        RedPrintf("%d/%d: check %s %d\n", procid, opno, pszVolume, errno);
-    }
-
-    /*  Nothing in this function is expected to fail.  If it does fail, abort.
-        We don't want to overlook a checker error.  Also, if this function fails
-        at certain points (while the volume is unmounted or before restoring the
-        CWD), then all subsequent operations will fail.  Just keep it simple and
-        abort if this test case doesn't succeed.
-    */
-    if(ret != 0)
-    {
-        exit(1);
-    }
-}
-#endif
-
-
 #endif /* FSSTRESS_SUPPORTED */
-

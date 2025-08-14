@@ -4,11 +4,8 @@
 # their intended use.
 
 # The Win32 port of GNU Make uses sh.exe as its default SHELL.  Change this
-# to cmd.exe.  However, if SHELL has been explicitly assigned a value, leave
-# it alone.
-ifeq ($(origin SHELL),default)
+# to cmd.exe.
 SHELL=cmd
-endif
 
 B_CC=cl
 B_OBJEXT ?= obj

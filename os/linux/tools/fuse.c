@@ -76,7 +76,7 @@ bool RedOsIsPrivileged(void)
 {
     /*  User is always privileged.  This implicitly disables all permissions
         enforcement in the Reliance Edge POSIX-like API, which is what we want:
-        redfuse is a developer tool, intended to allow the developer to view and
+        edge-u is a developer tool, intended to allow the developer to view and
         modify a file system on removable media from an embedded target.  If
         we enforced permissions, that would just get in the way.  If permissions
         enforcement is really desired, then -o default_permissions (a FUSE mount

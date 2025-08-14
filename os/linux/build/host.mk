@@ -3,14 +3,14 @@ B_OBJEXT ?= to
 P_CFLAGS +=-Werror
 P_CFLAGS += -D_FILE_OFFSET_BITS=64 -D_XOPEN_SOURCE=500 -D_POSIX_C_SOURCE=200809
 
-# Don't build redfuse by default since it relies on libfuse-dev,
-# but do build redfuse if "make all" is explicitly run.
+# Don't build edge-u by default since it relies on libfuse-dev,
+# but do build edge-u if "make all" is explicitly run.
 
 .PHONY: default
 default: redfmt redimgbld
 
 .PHONY: all
-all: default redfuse
+all: default edge-u
 
 # The redconf.h for the tools #includes the redconf.h from the parent project
 # to inherit its settings, so add it as a dependency.
@@ -38,7 +38,6 @@ REDPROJOBJ=\
 	$(P_BASEDIR)/os/$(P_OS)/tools/$(REDTOOLPREFIX)chk.$(B_OBJEXT) \
 	$(P_BASEDIR)/os/$(P_OS)/tools/$(REDTOOLPREFIX)fmt.$(B_OBJEXT)
 
-
 $(P_BASEDIR)/tools/imgbld/ibcommon.$(B_OBJEXT):		$(P_BASEDIR)/tools/imgbld/ibcommon.c $(REDHDR) $(TOOLHDR)
 $(P_BASEDIR)/tools/imgbld/ibfse.$(B_OBJEXT):		$(P_BASEDIR)/tools/imgbld/ibfse.c $(REDHDR) $(TOOLHDR)
 $(P_BASEDIR)/tools/imgbld/ibposix.$(B_OBJEXT):		$(P_BASEDIR)/tools/imgbld/ibposix.c $(REDHDR) $(TOOLHDR)
@@ -58,12 +57,17 @@ redfmt: $(P_BASEDIR)/os/$(P_OS)/tools/$(REDTOOLPREFIX)fmt.$(B_OBJEXT) $(REDDRIVO
 redimgbld: $(IMGBLDOBJ) $(REDDRIVOBJ) $(REDTOOLOBJ)
 	$(B_LDCMD)
 
-redfuse: $(P_BASEDIR)/os/$(P_OS)/tools/fuse.$(B_OBJEXT) $(REDTOOLOBJ) $(REDFUSEDRIVOBJ)
+edge-u: $(P_BASEDIR)/os/$(P_OS)/tools/fuse.$(B_OBJEXT) $(REDTOOLOBJ) $(REDFUSEDRIVOBJ)
 	$(B_CC) $^ $(LDFLAGS) -lfuse -o $@
+
+# redfuse was renamed to edge-u but retain the redfuse target for backward
+# compatibility.
+redfuse: edge-u
+	mv $^ $@
 
 .PHONY: clean
 clean:
 	$(B_DEL) $(REDDRIVOBJ) $(REDTOOLOBJ) $(REDPROJOBJ)
 	$(B_DEL) $(P_BASEDIR)/os/$(P_OS)/tools/*.$(B_OBJEXT)
 	$(B_DEL) $(P_BASEDIR)/tools/*.$(B_OBJEXT)
-	$(B_DEL) redfmt redimgbld redfuse
+	$(B_DEL) edge-u redfmt redfuse redimgbld

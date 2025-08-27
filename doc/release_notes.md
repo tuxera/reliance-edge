@@ -183,7 +183,7 @@ Additionally, the following changes were made:
 - Add a new project, projects/integrity/simarm-posixsys, for demonstrating
   and testing support for POSIX ownership and permissions.
 
-#### U-Boot Port Chnages
+#### U-Boot Port Changes
 
 The U-Boot port has been updated for accommodate changes in new versions of
 U-Boot and to implement optional write support.

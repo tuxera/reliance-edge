@@ -4416,6 +4416,8 @@ int32_t red_freserve(
       both enabled and @p pszPath cannot be resolved because it either contains
       a symbolic link loop or nested symbolic links which exceed the nesting
       limit.
+    - #RED_ENAMETOOLONG: The length of a component of @p pszPath is longer than
+      #REDCONF_NAME_MAX.
     - #RED_ENOENT: A component of @p pszPath does not exist; or the @p pszPath
       argument points to an empty string (and there is no volume with an empty
       path prefix); or #REDCONF_API_POSIX_SYMLINK and #REDOSCONF_SYMLINK_FOLLOW

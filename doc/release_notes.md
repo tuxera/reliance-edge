@@ -5,7 +5,7 @@ recent releases and a list of known issues.
 
 ## Release History and Changes
 
-### Reliance Edge v3.0, Unscheduled Future Release
+### Reliance Edge v3.0, December 2025
 
 #### Common Code Changes
 

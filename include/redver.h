@@ -40,13 +40,13 @@
 
 /** @brief Version number to display in output.
 */
-#define RED_VERSION "v3.x"
+#define RED_VERSION "v3.0"
 
 /** @brief Version number in hex.
 
     The most significant byte is the major version number, etc.
 */
-#define RED_VERSION_VAL 0x03FF0000U
+#define RED_VERSION_VAL 0x03000000U
 
 
 /** @brief Original Reliance Edge on-disk layout.
@@ -157,7 +157,7 @@
 
 /*  Specifies whether the product is in alpha stage, beta stage, or neither.
 */
-#if 1
+#if 0
   #if 1
     #define ALPHABETA   " (Alpha)"
   #else
